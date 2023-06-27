@@ -72,7 +72,6 @@ var (
 	minus3   = regexp.MustCompile(`---`)
 	plus3    = regexp.MustCompile(`\+\+\+`)
 	minus1   = regexp.MustCompile(`-`)
-	dup2     = regexp.MustCompile(`AA|TT|CC|GG`)
 	regPolyA = regexp.MustCompile(`AAAAAAAA`)
 	regN     = regexp.MustCompile(`N`)
 	regA     = regexp.MustCompile(`A`)
@@ -134,7 +133,6 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 		output        = osUtil.Create(path)
 		output90      = osUtil.Create(path + ".90.txt")
 		outputUnmatch = osUtil.Create(path + ".unmatch.txt")
-		outputHit     = osUtil.Create(path + ".Hit.txt")
 	)
 	defer simpleUtil.DeferClose(output)
 	defer simpleUtil.DeferClose(output90)
@@ -160,7 +158,6 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 			seqInfo.Stats["seqHitReadsNum"]++
 			seqInfo.HitSeqCount[tSeq]++
 			fmtUtil.Fprintf(output, "%s\t%s\n", tSeq, seqInfo.BarCode)
-			fmtUtil.Fprintf(outputHit, "%s\t%s\t%s\t%+v\n")
 			for i2, c := range []byte(s) {
 				switch c {
 				case 'A':
@@ -222,10 +219,14 @@ func (seqInfo *SeqInfo) WriteSeqResultBarCode(output *os.File) {
 
 func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	var (
-		outputDel   = osUtil.Create("SeqResult_Num_Deletion.txt")
-		outputIns   = osUtil.Create("SeqResult_Num_Insertion.txt")
-		outputMut   = osUtil.Create("SeqResult_Num_Mutation.txt")
-		outputOther = osUtil.Create("SeqResult_Num_Other.txt")
+		outputDel    = osUtil.Create("SeqResult_Num_Deletion.txt")
+		outputDel1   = osUtil.Create("SeqResult_Num_Deletion1.txt")
+		outputDel2   = osUtil.Create("SeqResult_Num_Deletion2.txt")
+		outputDel3   = osUtil.Create("SeqResult_Num_Deletion3.txt")
+		outputIns    = osUtil.Create("SeqResult_Num_Insertion.txt")
+		outputInsDel = osUtil.Create("SeqResult_Num_InsertionDeletion.txt")
+		outputMut    = osUtil.Create("SeqResult_Num_Mutation.txt")
+		outputOther  = osUtil.Create("SeqResult_Num_Other.txt")
 
 		keys = seqInfo.HitSeq
 	)
@@ -240,11 +241,11 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	fmtUtil.Fprintf(outputOther, "%s\t%s\t%s\t%s\t%s\t%s\n", "#TargetSeq", "SubMatchSeq", "Count", "AlignDeletion", "AlignInsertion", "AlignMutation")
 
 	for _, key := range keys {
-		if seqInfo.Align1(key, outputDel) {
+		if seqInfo.Align1(key, outputDel, outputDel1, outputDel2, outputDel3) {
 			continue
 		}
 
-		if seqInfo.Align2(key, outputIns) {
+		if seqInfo.Align2(key, outputIns, outputInsDel) {
 			continue
 		}
 
@@ -363,13 +364,14 @@ func (seqInfo *SeqInfo) CountError4() {
 	seqInfo.WriteDistributionFreq(summary)
 }
 
-func (seqInfo *SeqInfo) Align1(key string, output *os.File) bool {
+func (seqInfo *SeqInfo) Align1(key string, output ...*os.File) bool {
 	var (
 		a = seqInfo.Seq
 		b = []byte(key)
 		c []byte
 
-		count = seqInfo.HitSeqCount[key]
+		count    = seqInfo.HitSeqCount[key]
+		delCount = 0
 	)
 
 	if len(a) == 1 && len(b) == 1 && b[0] == 'X' {
@@ -391,11 +393,19 @@ func (seqInfo *SeqInfo) Align1(key string, output *os.File) bool {
 			k++
 		} else {
 			c = append(c, '-')
+			delCount++
 		}
 	}
 	seqInfo.Align = c
 	if k >= len(b) { // all match
-		fmtUtil.Fprintf(output, "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
+		fmtUtil.Fprintf(output[0], "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
+		if delCount == 1 {
+			fmtUtil.Fprintf(output[1], "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
+		} else if delCount == 2 {
+			fmtUtil.Fprintf(output[2], "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
+		} else if delCount >= 3 {
+			fmtUtil.Fprintf(output[3], "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
+		}
 		for i, c1 := range c {
 			if c1 == '-' {
 				seqInfo.DistributionNum[0][i] += count
@@ -411,7 +421,7 @@ func (seqInfo *SeqInfo) Align1(key string, output *os.File) bool {
 	return false
 }
 
-func (seqInfo *SeqInfo) Align2(key string, output *os.File) bool {
+func (seqInfo *SeqInfo) Align2(key string, outputIns, outputInsDel *os.File) bool {
 	var (
 		a      = seqInfo.Seq
 		b      = []byte(key)
@@ -449,8 +459,12 @@ func (seqInfo *SeqInfo) Align2(key string, output *os.File) bool {
 	}
 	seqInfo.AlignInsert = c
 	if k >= len(b)-1 && c[0] != '+' {
-		if !minus3.Match(c) && !plus3.Match(c) && !minus1.Match(c) {
-			fmtUtil.Fprintf(output, "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
+		if !plus3.Match(c) {
+			if minus1.Match(c) {
+				fmtUtil.Fprintf(outputInsDel, "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
+			} else {
+				fmtUtil.Fprintf(outputIns, "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
+			}
 			seqInfo.Stats["errorInsReadsNum"] += count
 			var i = 0
 			for _, c1 := range c[1:] {
@@ -488,16 +502,14 @@ func (seqInfo *SeqInfo) Align3(key string, output *os.File) bool {
 	}
 	seqInfo.AlignMut = c
 	if k < 2 && len(c) > 0 {
-		if !dup2.MatchString(key) {
-			fmtUtil.Fprintf(output, "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
-			seqInfo.Stats["errorMutReadsNum"] += count
-			for i, c1 := range c {
-				if c1 == 'X' {
-					seqInfo.DistributionNum[2][i] += count
-				}
+		fmtUtil.Fprintf(output, "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
+		seqInfo.Stats["errorMutReadsNum"] += count
+		for i, c1 := range c {
+			if c1 == 'X' {
+				seqInfo.DistributionNum[2][i] += count
 			}
-			return true
 		}
+		return true
 	}
 	return false
 }
