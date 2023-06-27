@@ -24,6 +24,11 @@ var (
 		"",
 		"workdir",
 	)
+	input = flag.String(
+		"i",
+		"input.txt",
+		"input info",
+	)
 )
 
 // global
@@ -37,7 +42,7 @@ func main() {
 		simpleUtil.CheckErr(os.Chdir(*workDir))
 	}
 
-	var seqList = textUtil.File2Array("input.txt")
+	var seqList = textUtil.File2Array(*input)
 	var out = osUtil.Create("output.txt")
 	defer simpleUtil.DeferClose(out)
 
@@ -47,10 +52,10 @@ func main() {
 		a = append(a, "", "", "")
 
 		var seqInfo = &SeqInfo{
-			Seq:         []byte(a[1]),
-			IndexSeq:    a[2],
+			Seq:         []byte(a[0]),
+			IndexSeq:    a[1],
 			BarCode:     BarCode,
-			Fastq:       a[0],
+			Fastqs:      []string{a[2], a[3]},
 			Stats:       make(map[string]int),
 			HitSeqCount: make(map[string]int),
 			ReadsLength: make(map[int]int),
@@ -69,7 +74,6 @@ func main() {
 
 // regexp
 var (
-	minus3   = regexp.MustCompile(`---`)
 	plus3    = regexp.MustCompile(`\+\+\+`)
 	minus1   = regexp.MustCompile(`-`)
 	regPolyA = regexp.MustCompile(`AAAAAAAA`)
@@ -88,7 +92,7 @@ type SeqInfo struct {
 
 	IndexSeq string
 	BarCode  string
-	Fastq    string
+	Fastqs   []string
 
 	HitSeq      []string
 	HitSeqCount map[string]int
@@ -140,64 +144,66 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 
 	fmtUtil.Fprintf(outputUnmatch, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", "#Seq", "A", "C", "G", "T", "TargetSeq", "IndexSeq", "PloyA")
 
-	for i, s := range textUtil.File2Array(seqInfo.Fastq) {
-		if i%4 != 1 {
-			continue
-		}
-		seqInfo.ReadsLength[len(s)]++
-
-		if len(s) <= 90 {
-			seqInfo.Stats["shortReadsNum"]++
-			fmtUtil.Fprintf(output90, "%s\t%d\n", s, len(s))
-			continue
-		}
-		seqInfo.Stats["allReadsNum"]++
-		var tSeq = tarSeq
-		if seqHit.MatchString(s) {
-			seqInfo.Stats["analyzedReadsNum"]++
-			seqInfo.Stats["seqHitReadsNum"]++
-			seqInfo.HitSeqCount[tSeq]++
-			fmtUtil.Fprintf(output, "%s\t%s\n", tSeq, seqInfo.BarCode)
-			for i2, c := range []byte(s) {
-				switch c {
-				case 'A':
-					seqInfo.A[i2]++
-				case 'C':
-					seqInfo.C[i2]++
-				case 'G':
-					seqInfo.G[i2]++
-				case 'T':
-					seqInfo.T[i2]++
-				}
+	for _, fastq := range seqInfo.Fastqs {
+		for i, s := range textUtil.File2Array(fastq) {
+			if i%4 != 1 {
+				continue
 			}
+			seqInfo.ReadsLength[len(s)]++
 
-		} else if polyA.MatchString(s) {
-			seqInfo.Stats["analyzedReadsNum"]++
-			var m = polyA.FindStringSubmatch(s)
-			tSeq = m[2]
-
-			if len(tSeq) == 0 {
-				tSeq = "X"
-				seqInfo.HitSeqCount[tSeq]++
-			} else if len(tSeq) > 1 && !regN.MatchString(tSeq) && len(tSeq) < tarLength {
+			if len(s) <= 90 {
+				seqInfo.Stats["shortReadsNum"]++
+				fmtUtil.Fprintf(output90, "%s\t%d\n", s, len(s))
+				continue
+			}
+			seqInfo.Stats["allReadsNum"]++
+			var tSeq = tarSeq
+			if seqHit.MatchString(s) {
+				seqInfo.Stats["analyzedReadsNum"]++
+				seqInfo.Stats["seqHitReadsNum"]++
 				seqInfo.HitSeqCount[tSeq]++
 				fmtUtil.Fprintf(output, "%s\t%s\n", tSeq, seqInfo.BarCode)
+				for i2, c := range []byte(s) {
+					switch c {
+					case 'A':
+						seqInfo.A[i2]++
+					case 'C':
+						seqInfo.C[i2]++
+					case 'G':
+						seqInfo.G[i2]++
+					case 'T':
+						seqInfo.T[i2]++
+					}
+				}
+
+			} else if polyA.MatchString(s) {
+				seqInfo.Stats["analyzedReadsNum"]++
+				var m = polyA.FindStringSubmatch(s)
+				tSeq = m[2]
+
+				if len(tSeq) == 0 {
+					tSeq = "X"
+					seqInfo.HitSeqCount[tSeq]++
+				} else if len(tSeq) > 1 && !regN.MatchString(tSeq) && len(tSeq) < tarLength {
+					seqInfo.HitSeqCount[tSeq]++
+					fmtUtil.Fprintf(output, "%s\t%s\n", tSeq, seqInfo.BarCode)
+				} else {
+					seqInfo.Stats["analyzedExcludeReadsNum"]++
+				}
 			} else {
-				seqInfo.Stats["analyzedExcludeReadsNum"]++
+				fmtUtil.Fprintf(
+					outputUnmatch,
+					"%s\t%d\t%d\t%d\t%d\t%v\t%v\t%v\n",
+					s,
+					len(regA.FindAllString(s, -1)),
+					len(regC.FindAllString(s, -1)),
+					len(regG.FindAllString(s, -1)),
+					len(regT.FindAllString(s, -1)),
+					regTarSeq.MatchString(s),
+					regIndexSeq.MatchString(s),
+					regPolyA.MatchString(s),
+				)
 			}
-		} else {
-			fmtUtil.Fprintf(
-				outputUnmatch,
-				"%s\t%d\t%d\t%d\t%d\t%v\t%v\t%v\n",
-				s,
-				len(regA.FindAllString(s, -1)),
-				len(regC.FindAllString(s, -1)),
-				len(regG.FindAllString(s, -1)),
-				len(regT.FindAllString(s, -1)),
-				regTarSeq.MatchString(s),
-				regIndexSeq.MatchString(s),
-				regPolyA.MatchString(s),
-			)
 		}
 	}
 }
