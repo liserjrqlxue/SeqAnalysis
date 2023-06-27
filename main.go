@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"log"
 	"os"
 	"regexp"
 	"sort"
@@ -52,23 +53,29 @@ func main() {
 		a = append(a, "", "", "")
 
 		var seqInfo = &SeqInfo{
-			Seq:         []byte(a[0]),
-			IndexSeq:    a[1],
+			IndexSeq:    a[0],
+			Seq:         []byte(a[1]),
 			BarCode:     BarCode,
 			Fastqs:      []string{a[2], a[3]},
 			Stats:       make(map[string]int),
 			HitSeqCount: make(map[string]int),
 			ReadsLength: make(map[int]int),
 		}
+		log.Print("seqInfo.Init")
 		seqInfo.Init()
+		log.Print("seqInfo.CountError4")
 		seqInfo.CountError4()
 
+		log.Print("write output.txt")
 		fmtUtil.Fprintf(out, "#######################################  Summary of %s\n", s)
 		seqInfo.WriteStats(out)
 		seqInfo.WriteDistributionFreq(out)
 		fmtUtil.Fprint(out, "\n\n\n")
 
+		log.Print("eqInfo.PlotLineACGT")
 		seqInfo.PlotLineACGT("ACGT.html")
+
+		log.Print("Done")
 	}
 }
 
@@ -151,15 +158,14 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 			}
 			seqInfo.ReadsLength[len(s)]++
 
+			seqInfo.Stats["allReadsNum"]++
 			if len(s) <= 90 {
 				seqInfo.Stats["shortReadsNum"]++
 				fmtUtil.Fprintf(output90, "%s\t%d\n", s, len(s))
 				continue
 			}
-			seqInfo.Stats["allReadsNum"]++
 			var tSeq = tarSeq
 			if seqHit.MatchString(s) {
-				seqInfo.Stats["analyzedReadsNum"]++
 				seqInfo.Stats["seqHitReadsNum"]++
 				seqInfo.HitSeqCount[tSeq]++
 				fmtUtil.Fprintf(output, "%s\t%s\n", tSeq, seqInfo.BarCode)
@@ -184,8 +190,10 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 				if len(tSeq) == 0 {
 					tSeq = "X"
 					seqInfo.HitSeqCount[tSeq]++
+					seqInfo.Stats["indexPolyAReadsNum"]++
 				} else if len(tSeq) > 1 && !regN.MatchString(tSeq) && len(tSeq) < tarLength {
 					seqInfo.HitSeqCount[tSeq]++
+					seqInfo.Stats["indexPolyAReadsNum"]++
 					fmtUtil.Fprintf(output, "%s\t%s\n", tSeq, seqInfo.BarCode)
 				} else {
 					seqInfo.Stats["analyzedExcludeReadsNum"]++
@@ -206,6 +214,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 			}
 		}
 	}
+	seqInfo.Stats["analyzedReadsNum"] = seqInfo.Stats["seqHitReadsNum"] + seqInfo.Stats["indexPolyAReadsNum"] + seqInfo.Stats["analyzedExcludeReadsNum"]
 }
 
 func (seqInfo *SeqInfo) GetHitSeq() {
@@ -247,6 +256,9 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	fmtUtil.Fprintf(outputOther, "%s\t%s\t%s\t%s\t%s\t%s\n", "#TargetSeq", "SubMatchSeq", "Count", "AlignDeletion", "AlignInsertion", "AlignMutation")
 
 	for _, key := range keys {
+		if key == string(seqInfo.Seq) {
+			continue
+		}
 		if seqInfo.Align1(key, outputDel, outputDel1, outputDel2, outputDel3) {
 			continue
 		}
@@ -266,7 +278,7 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 
 func (seqInfo *SeqInfo) UpdateDistributionStats() {
 	seqInfo.Stats["errorReadsNum"] = seqInfo.Stats["errorDelReadsNum"] + seqInfo.Stats["errorInsReadsNum"] + seqInfo.Stats["errorMutReadsNum"] + seqInfo.Stats["errorOtherReadsNum"]
-	seqInfo.Stats["excludeOtherReadsNum"] = seqInfo.Stats["rightReadsNum"] + seqInfo.Stats["errorReadsNum"] - seqInfo.Stats["errorOtherReadsNum"]
+	seqInfo.Stats["excludeOtherReadsNum"] = seqInfo.Stats["seqHitReadsNum"] + seqInfo.Stats["errorReadsNum"] - seqInfo.Stats["errorOtherReadsNum"]
 	seqInfo.Stats["accuReadsNum"] = seqInfo.Stats["excludeOtherReadsNum"] * len(seqInfo.Seq)
 
 	for i := range seqInfo.Seq {
@@ -317,23 +329,72 @@ func (seqInfo *SeqInfo) WriteDistributionFreq(output *os.File) {
 func (seqInfo *SeqInfo) WriteStats(output *os.File) {
 	var stats = seqInfo.Stats
 
-	fmtUtil.Fprintf(output, "AllReadsNum = %d\n", stats["allReadsNum"])
-	fmtUtil.Fprintf(output, "++AnalyzedReadsNum = %d\n", stats["analyzedReadsNum"])
 	fmtUtil.Fprintf(
 		output,
-		"++++RightReadsNum = %d   Accuracy = %f,\n",
-		stats["rightReadsNum"],
-		math.DivisionInt(stats["rightReadsNum"], stats["analyzedReadsNum"]-stats["errorOtherReadsNum"]),
+		"AllReadsNum\t\t\t\t= %d\n",
+		stats["allReadsNum"],
 	)
-	fmtUtil.Fprintf(output, "++++ErrorReadsNum = %d\n", stats["errorReadsNum"])
-	fmtUtil.Fprintf(output, "++++++ErrorDelReadsNum = %d\n", stats["errorDelReadsNum"])
-	fmtUtil.Fprintf(output, "++++++ErrorInsReadsNum = %d\n", stats["errorInsReadsNum"])
-	fmtUtil.Fprintf(output, "++++++ErrorMutReadsNum = %d\n", stats["errorMutReadsNum"])
-	fmtUtil.Fprintf(output, "++++++ErrorOtherReadsNum = %d\n", stats["errorOtherReadsNum"])
 	fmtUtil.Fprintf(
 		output,
-		"++++++AverageBaseAccuracy = %f\n",
-		math.DivisionInt(stats["accuRightNum"], stats["accuReadsNum"]),
+		"+ShortReadsNum\t\t\t= %d\t%7.4f%%)\n",
+		stats["shortReadsNum"],
+		math.DivisionInt(stats["shortReadsNum"], stats["allReadsNum"])*100,
+	)
+	fmtUtil.Fprintf(
+		output,
+		"+AnalyzedReadsNum\t\t= %d\t%.4f%%\n",
+		stats["analyzedReadsNum"],
+		math.DivisionInt(stats["analyzedReadsNum"], stats["allReadsNum"]-stats["shortReadsNum"])*100,
+	)
+	fmtUtil.Fprintf(
+		output,
+		"++ExcludeReadsNum\t\t= %d\t%7.4f%%\n",
+		stats["analyzedExcludeReadsNum"],
+		math.DivisionInt(stats["analyzedExcludeReadsNum"], stats["analyzedReadsNum"])*100,
+	)
+	fmtUtil.Fprintf(
+		output,
+		"++SeqHitReadsNum\t\t= %d\t%.4f%%\tAccuracy = %.4f%%,\n",
+		stats["seqHitReadsNum"],
+		math.DivisionInt(stats["seqHitReadsNum"], stats["analyzedReadsNum"])*100,
+		math.DivisionInt(stats["seqHitReadsNum"], stats["analyzedReadsNum"]-stats["errorOtherReadsNum"])*100,
+	)
+	fmtUtil.Fprintf(
+		output,
+		"++IndexPolyAReadsNum\t= %d\t%.4f%%\n",
+		stats["indexPolyAReadsNum"],
+		math.DivisionInt(stats["indexPolyAReadsNum"], stats["analyzedReadsNum"])*100,
+	)
+	fmtUtil.Fprintf(
+		output,
+		"+++ErrorReadsNum\t\t= %d\n",
+		stats["errorReadsNum"],
+	)
+	fmtUtil.Fprintf(output,
+		"++++ErrorDelReadsNum\t= %d\t%.4f%%\n",
+		stats["errorDelReadsNum"],
+		math.DivisionInt(stats["errorDelReadsNum"], stats["errorReadsNum"])*100,
+	)
+	fmtUtil.Fprintf(output,
+		"++++ErrorInsReadsNum\t= %d\t%.4f%%\n",
+		stats["errorInsReadsNum"],
+		math.DivisionInt(stats["errorInsReadsNum"], stats["errorReadsNum"])*100,
+	)
+	fmtUtil.Fprintf(output,
+		"++++ErrorMutReadsNum\t= %d\t%7.4f%%\n",
+		stats["errorMutReadsNum"],
+		math.DivisionInt(stats["errorMutReadsNum"], stats["errorReadsNum"])*100,
+	)
+	fmtUtil.Fprintf(output,
+		"++++ErrorOtherReadsNum\t= %d\t%.4f%%\n",
+		stats["errorOtherReadsNum"],
+		math.DivisionInt(stats["errorOtherReadsNum"], stats["errorReadsNum"])*100,
+	)
+	fmtUtil.Fprintf(
+		output,
+		"++AverageBaseAccuracy\t= %7.4f%%\t%d/%d\n",
+		math.DivisionInt(stats["accuRightNum"], stats["accuReadsNum"])*100,
+		stats["accuRightNum"], stats["accuReadsNum"],
 	)
 	fmtUtil.Fprint(output, "\n\n")
 }
@@ -341,31 +402,39 @@ func (seqInfo *SeqInfo) WriteStats(output *os.File) {
 // CountError4 count seq error
 func (seqInfo *SeqInfo) CountError4() {
 	// 1. 统计不同测序结果出现的频数
+	log.Print("seqInfo.WriteSeqResult")
 	seqInfo.WriteSeqResult("SeqResult.txt")
 
+	log.Print("seqInfo.GetHitSeq")
 	seqInfo.GetHitSeq()
 	// SeqResult_BarCode.txt
 	var seqBarCode = osUtil.Create("SeqResult_BarCode.txt")
+	log.Print("seqInfo.WriteSeqResultBarCode")
 	seqInfo.WriteSeqResultBarCode(seqBarCode)
 
 	// 2. 与正确合成序列进行比对,统计不同合成结果出现的频数
+	log.Print("seqInfo.WriteSeqResultNum")
 	seqInfo.WriteSeqResultNum()
 
+	log.Print("seqInfo.UpdateDistributionStats")
 	seqInfo.UpdateDistributionStats()
 
 	// write distribution_Num.txt
 	var disNum = osUtil.Create("distribution_Num.txt")
 	defer simpleUtil.DeferClose(disNum)
+	log.Print("seqInfo.WriteDistributionNum")
 	seqInfo.WriteDistributionNum(disNum)
 
 	// distribution_Frequency.txt
 	var disFrequency = osUtil.Create("distribution_Frequency.txt")
 	defer simpleUtil.DeferClose(disFrequency)
+	log.Print("seqInfo.WriteDistributionFreq")
 	seqInfo.WriteDistributionFreq(disFrequency)
 
 	// write Summary.txt
 	var summary = osUtil.Create("Summary.txt")
 	defer simpleUtil.DeferClose(summary)
+	log.Print("write Summary.txt")
 	seqInfo.WriteStats(summary)
 	seqInfo.WriteDistributionFreq(summary)
 }
@@ -384,11 +453,7 @@ func (seqInfo *SeqInfo) Align1(key string, output ...*os.File) bool {
 		c = append(c, '-')
 		seqInfo.Align = c
 		seqInfo.DistributionNum[0][0] += count
-		if string(c) == string(seqInfo.Seq) {
-			seqInfo.Stats["rightReadsNum"] += count
-		} else {
-			seqInfo.Stats["errorDelReadsNum"] += count
-		}
+		seqInfo.Stats["errorDelReadsNum"] += count
 		return true
 	}
 
@@ -417,11 +482,7 @@ func (seqInfo *SeqInfo) Align1(key string, output ...*os.File) bool {
 				seqInfo.DistributionNum[0][i] += count
 			}
 		}
-		if string(c) == string(seqInfo.Seq) {
-			seqInfo.Stats["rightReadsNum"] += count
-		} else {
-			seqInfo.Stats["errorDelReadsNum"] += count
-		}
+		seqInfo.Stats["errorDelReadsNum"] += count
 		return true
 	}
 	return false
