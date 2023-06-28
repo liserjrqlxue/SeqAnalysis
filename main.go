@@ -4,10 +4,19 @@ import (
 	"flag"
 	"log"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
 	"github.com/liserjrqlxue/goUtil/textUtil"
+)
+
+// os
+var (
+	ex, _   = os.Executable()
+	exPath  = filepath.Dir(ex)
+	etcPath = path.Join(exPath, "etc")
 )
 
 // flag
