@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"os"
@@ -145,8 +146,7 @@ func (seqInfo *SeqInfo) Save() {
 // CountError4 count seq error
 func (seqInfo *SeqInfo) CountError4() {
 	// 1. 统计不同测序结果出现的频数
-	log.Print("seqInfo.WriteSeqResult")
-	seqInfo.WriteSeqResult("SeqResult.txt")
+	seqInfo.WriteSeqResult(".SeqResult.txt")
 
 	log.Print("seqInfo.GetHitSeq")
 	seqInfo.GetHitSeq()
@@ -168,18 +168,7 @@ func (seqInfo *SeqInfo) CountError4() {
 	log.Print("seqInfo.WriteDistributionNum")
 	seqInfo.WriteDistributionNum(disNum)
 
-	// distribution_Frequency.txt
-	var disFrequency = osUtil.Create("distribution_Frequency.txt")
-	defer simpleUtil.DeferClose(disFrequency)
-	log.Print("seqInfo.WriteDistributionFreq")
-	seqInfo.WriteDistributionFreq(disFrequency)
-
-	// write Summary.txt
-	var summary = osUtil.Create("Summary.txt")
-	defer simpleUtil.DeferClose(summary)
-	log.Print("write Summary.txt")
-	seqInfo.WriteStats(summary)
-	seqInfo.WriteDistributionFreq(summary)
+	//seqInfo.WriteStats()
 }
 
 func (seqInfo *SeqInfo) WriteSeqResult(path string) {
@@ -192,15 +181,13 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 		regIndexSeq = regexp.MustCompile(indexSeq)
 		regTarSeq   = regexp.MustCompile(tarSeq)
 
-		output        = osUtil.Create(path)
-		output90      = osUtil.Create(path + ".90.txt")
-		outputUnmatch = osUtil.Create(path + ".unmatch.txt")
+		outputShort     = osUtil.Create(seqInfo.Name + path + ".short.txt")
+		outputUnmatched = osUtil.Create(seqInfo.Name + path + ".unmatched.txt")
 	)
-	defer simpleUtil.DeferClose(output)
-	defer simpleUtil.DeferClose(output90)
-	defer simpleUtil.DeferClose(outputUnmatch)
+	defer simpleUtil.DeferClose(outputShort)
+	defer simpleUtil.DeferClose(outputUnmatched)
 
-	fmtUtil.Fprintf(outputUnmatch, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", "#Seq", "A", "C", "G", "T", "TargetSeq", "IndexSeq", "PloyA")
+	fmtUtil.Fprintf(outputUnmatched, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", "#Seq", "A", "C", "G", "T", "TargetSeq", "IndexSeq", "PloyA")
 
 	var row = 1
 	for _, fastq := range seqInfo.Fastqs {
@@ -212,16 +199,15 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 			seqInfo.ReadsLength[len(s)]++
 
 			seqInfo.Stats["allReadsNum"]++
-			if len(s) <= 90 {
+			if len(s) < 50 {
 				seqInfo.Stats["shortReadsNum"]++
-				fmtUtil.Fprintf(output90, "%s\t%d\n", s, len(s))
+				fmtUtil.Fprintf(outputShort, "%s\t%d\n", s, len(s))
 				continue
 			}
 			var tSeq = tarSeq
 			if seqHit.MatchString(s) {
 				seqInfo.Stats["seqHitReadsNum"]++
 				seqInfo.HitSeqCount[tSeq]++
-				fmtUtil.Fprintf(output, "%s\t%s\n", tSeq, seqInfo.BarCode)
 				SetRow(seqInfo.xlsx, seqInfo.Sheets[1], 1, row, []interface{}{tSeq, seqInfo.BarCode})
 				row++
 				for i2, c := range []byte(s) {
@@ -249,7 +235,6 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 				} else if len(tSeq) > 1 && !regN.MatchString(tSeq) && len(tSeq) < tarLength {
 					seqInfo.HitSeqCount[tSeq]++
 					seqInfo.Stats["indexPolyAReadsNum"]++
-					fmtUtil.Fprintf(output, "%s\t%s\n", tSeq, seqInfo.BarCode)
 					SetRow(seqInfo.xlsx, seqInfo.Sheets[1], 1, row, []interface{}{tSeq, seqInfo.BarCode})
 					row++
 				} else {
@@ -257,7 +242,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 				}
 			} else {
 				fmtUtil.Fprintf(
-					outputUnmatch,
+					outputUnmatched,
 					"%s\t%d\t%d\t%d\t%d\t%v\t%v\t%v\n",
 					s,
 					len(regA.FindAllString(s, -1)),
@@ -536,94 +521,68 @@ func (seqInfo *SeqInfo) WriteDistributionNum(output *os.File) {
 	}
 }
 
-func (seqInfo *SeqInfo) WriteStats(output *os.File) {
+func (seqInfo *SeqInfo) WriteStats() {
 	var stats = seqInfo.Stats
 
-	fmtUtil.Fprintf(
-		output,
-		"AllReadsNum\t\t\t\t= %d\n",
+	fmt.Printf(
+		"AllReadsNum\t\t= %d\n",
 		stats["allReadsNum"],
 	)
-	fmtUtil.Fprintf(
-		output,
-		"+ShortReadsNum\t\t\t= %d\t%7.4f%%)\n",
+	fmt.Printf(
+		"+ShortReadsNum\t\t= %d\t%7.4f%%)\n",
 		stats["shortReadsNum"],
 		math2.DivisionInt(stats["shortReadsNum"], stats["allReadsNum"])*100,
 	)
-	fmtUtil.Fprintf(
-		output,
-		"+AnalyzedReadsNum\t\t= %d\t%.4f%%\n",
+	fmt.Printf(
+		"+AnalyzedReadsNum\t= %d\t%.4f%%\n",
 		stats["analyzedReadsNum"],
 		math2.DivisionInt(stats["analyzedReadsNum"], stats["allReadsNum"]-stats["shortReadsNum"])*100,
 	)
-	fmtUtil.Fprintf(
-		output,
-		"++ExcludeReadsNum\t\t= %d\t%7.4f%%\n",
+	fmt.Printf(
+		"++ExcludeReadsNum\t= %d\t%7.4f%%\n",
 		stats["analyzedExcludeReadsNum"],
 		math2.DivisionInt(stats["analyzedExcludeReadsNum"], stats["analyzedReadsNum"])*100,
 	)
-	fmtUtil.Fprintf(
-		output,
-		"++SeqHitReadsNum\t\t= %d\t%.4f%%\tAccuracy = %.4f%%,\n",
+	fmt.Printf(
+		"++SeqHitReadsNum\t= %d\t%.4f%%\tAccuracy = %.4f%%,\n",
 		stats["seqHitReadsNum"],
 		math2.DivisionInt(stats["seqHitReadsNum"], stats["analyzedReadsNum"])*100,
 		math2.DivisionInt(stats["seqHitReadsNum"], stats["analyzedReadsNum"]-stats["errorOtherReadsNum"])*100,
 	)
-	fmtUtil.Fprintf(
-		output,
+	fmt.Printf(
 		"++IndexPolyAReadsNum\t= %d\t%.4f%%\n",
 		stats["indexPolyAReadsNum"],
 		math2.DivisionInt(stats["indexPolyAReadsNum"], stats["analyzedReadsNum"])*100,
 	)
-	fmtUtil.Fprintf(
-		output,
-		"+++ErrorReadsNum\t\t= %d\n",
+	fmt.Printf(
+		"+++ErrorReadsNum\t= %d\n",
 		stats["errorReadsNum"],
 	)
-	fmtUtil.Fprintf(output,
+	fmt.Printf(
 		"++++ErrorDelReadsNum\t= %d\t%.4f%%\n",
 		stats["errorDelReadsNum"],
 		math2.DivisionInt(stats["errorDelReadsNum"], stats["errorReadsNum"])*100,
 	)
-	fmtUtil.Fprintf(output,
+	fmt.Printf(
 		"++++ErrorInsReadsNum\t= %d\t%.4f%%\n",
 		stats["errorInsReadsNum"],
 		math2.DivisionInt(stats["errorInsReadsNum"], stats["errorReadsNum"])*100,
 	)
-	fmtUtil.Fprintf(output,
+	fmt.Printf(
 		"++++ErrorMutReadsNum\t= %d\t%7.4f%%\n",
 		stats["errorMutReadsNum"],
 		math2.DivisionInt(stats["errorMutReadsNum"], stats["errorReadsNum"])*100,
 	)
-	fmtUtil.Fprintf(output,
+	fmt.Printf(
 		"++++ErrorOtherReadsNum\t= %d\t%.4f%%\n",
 		stats["errorOtherReadsNum"],
 		math2.DivisionInt(stats["errorOtherReadsNum"], stats["errorReadsNum"])*100,
 	)
-	fmtUtil.Fprintf(
-		output,
+	fmt.Printf(
 		"++AverageBaseAccuracy\t= %7.4f%%\t%d/%d\n",
 		math2.DivisionInt(stats["accuRightNum"], stats["accuReadsNum"])*100,
 		stats["accuRightNum"], stats["accuReadsNum"],
 	)
-	fmtUtil.Fprint(output, "\n\n")
-}
-
-func (seqInfo *SeqInfo) WriteDistributionFreq(output *os.File) {
-	var distribution = seqInfo.DistributionFreq
-
-	fmtUtil.Fprintf(output, "%s\t%s\t%s\t%s\t%s\n", "Tar", "Del", "Ins", "Mut", "Right")
-
-	for i, b := range seqInfo.Seq {
-		fmtUtil.Fprintf(output,
-			"%c\t%0.4f\t%0.4f\t%0.4f\t%0.4f\n",
-			b,
-			distribution[0][i],
-			distribution[1][i],
-			distribution[2][i],
-			distribution[3][i],
-		)
-	}
 }
 
 func (seqInfo *SeqInfo) PlotLineACGT(path string) {
@@ -678,7 +637,7 @@ func (seqInfo *SeqInfo) WriteExcel() {
 		seqInfo.IndexSeq,
 		string(seqInfo.Seq),
 		stats["seqHitReadsNum"],
-		math2.DivisionInt(stats["seqHitReadsNum"], stats["analyzedReadsNum"]-stats["errorOtherReadsNum"]),
+		math2.DivisionInt(stats["seqHitReadsNum"], stats["analyzedReadsNum"]),
 		stats["errorReadsNum"],
 		stats["errorDelReadsNum"],
 		stats["errorInsReadsNum"],

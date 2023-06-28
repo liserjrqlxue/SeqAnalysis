@@ -6,8 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/liserjrqlxue/goUtil/fmtUtil"
-	"github.com/liserjrqlxue/goUtil/osUtil"
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
 	"github.com/liserjrqlxue/goUtil/textUtil"
 )
@@ -38,9 +36,6 @@ func main() {
 	}
 
 	var seqList = textUtil.File2Array(*input)
-	var out = osUtil.Create("output.txt")
-	defer simpleUtil.DeferClose(out)
-
 	for _, s := range seqList {
 		strings.TrimSuffix(s, "\r")
 		var a = strings.Split(s, "\t")
@@ -59,12 +54,6 @@ func main() {
 		seqInfo.Init()
 		log.Print("seqInfo.CountError4")
 		seqInfo.CountError4()
-
-		log.Print("write output.txt")
-		fmtUtil.Fprintf(out, "#######################################  Summary of %s\n", s)
-		seqInfo.WriteStats(out)
-		seqInfo.WriteDistributionFreq(out)
-		fmtUtil.Fprint(out, "\n\n\n")
 
 		seqInfo.WriteExcel()
 		seqInfo.Save()
