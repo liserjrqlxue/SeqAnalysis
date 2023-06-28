@@ -66,6 +66,9 @@ func main() {
 		seqInfo.WriteDistributionFreq(out)
 		fmtUtil.Fprint(out, "\n\n\n")
 
+		seqInfo.WriteExcel()
+		seqInfo.Save()
+
 		log.Print("eqInfo.PlotLineACGT")
 		seqInfo.PlotLineACGT("ACGT.html")
 

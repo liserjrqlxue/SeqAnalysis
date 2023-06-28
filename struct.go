@@ -13,11 +13,16 @@ import (
 	"os"
 	"regexp"
 	"sort"
+
+	"github.com/xuri/excelize/v2"
 )
 
 type SeqInfo struct {
-	Name  string
-	Excel string
+	Name   string
+	Excel  string
+	Sheets []string
+
+	xlsx *excelize.File
 
 	Seq         []byte
 	Align       []byte
@@ -56,6 +61,24 @@ func (seqInfo *SeqInfo) Init() {
 			seqInfo.DistributionFreq[j] = append(seqInfo.DistributionFreq[j], 0)
 		}
 	}
+
+	seqInfo.Excel = seqInfo.Name + ".xlsx"
+	seqInfo.xlsx = excelize.NewFile()
+	seqInfo.Sheets = []string{
+		"Sheet",
+		"SeqResult",
+		"BarCode",
+		"Deletion",
+	}
+	simpleUtil.CheckErr(seqInfo.xlsx.SetSheetName("Sheet1", seqInfo.Sheets[0]))
+
+	SetCellStr(seqInfo.xlsx, seqInfo.Sheets[0], 1, 1, seqInfo.Name)
+}
+
+func (seqInfo *SeqInfo) Save() {
+	log.Printf("seqInfo.xlsx.SaveAs(%s)", seqInfo.Excel)
+
+	simpleUtil.CheckErr(seqInfo.xlsx.SaveAs(seqInfo.Excel))
 }
 
 // CountError4 count seq error
@@ -534,4 +557,58 @@ func (seqInfo *SeqInfo) PlotLineACGT(path string) {
 		AddSeries("T", generateLineItems(seqInfo.T[:]))
 	// SetSeriesOptions(charts.WithLineChartOpts(opts.LineChart{Smooth: true}))
 	simpleUtil.CheckErr(line.Render(output))
+}
+
+func (seqInfo *SeqInfo) WriteExcel() {
+	var stats = seqInfo.Stats
+	var xlsx = seqInfo.xlsx
+
+	var sheet = seqInfo.Sheets[0]
+	var col1_2 = []interface{}{
+		"AllReadsNum",
+		"AnalyzedReadsNum",
+		"靶标",
+		"合成序列",
+		"RightReadsNum",
+		"Accuracy",
+		"ErrorReadsNum",
+		"ErrorDelReadsNum",
+		"ErrorInsReadsNum",
+		"ErrorMutReadsNum",
+		"ErrorOtherReadsNum",
+		"AverageBaseAccuracy",
+	}
+	var col2_2 = []interface{}{
+		stats["allReadsNum"],
+		stats["analyzedReadsNum"],
+		seqInfo.IndexSeq,
+		string(seqInfo.Seq),
+		stats["seqHitReadsNum"],
+		math.DivisionInt(stats["seqHitReadsNum"], stats["analyzedReadsNum"]-stats["errorOtherReadsNum"]),
+		stats["errorReadsNum"],
+		stats["errorDelReadsNum"],
+		stats["errorInsReadsNum"],
+		stats["errorMutReadsNum"],
+		stats["errorOtherReadsNum"],
+		math.DivisionInt(stats["accuRightNum"], stats["accuReadsNum"]),
+	}
+	SetCol(xlsx, sheet, 1, 2, col1_2)
+	SetCol(xlsx, sheet, 2, 2, col2_2)
+	var row = 14
+	var row1_14 = []interface{}{
+		"Tar", "Del", "Ins", "Mut", "Right", "readsCount", "A", "T", "C", "G", "-", "收率", "单步准确率A", "单步准确率T", "单步准确率C", "单步准确率G", "单步准确率", "收率平均准确率",
+	}
+	SetRow(xlsx, sheet, 1, row, row1_14)
+	row++
+	var distribution = seqInfo.DistributionFreq
+	for i, b := range seqInfo.Seq {
+		var rows = []interface{}{
+			string(b),
+			distribution[0][i],
+			distribution[1][i],
+			distribution[2][i],
+			distribution[3][i],
+		}
+		SetRow(xlsx, sheet, 1, row+i, rows)
+	}
 }
