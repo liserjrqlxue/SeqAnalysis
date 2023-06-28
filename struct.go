@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math"
 	"os"
 	"regexp"
 	"sort"
@@ -10,7 +11,7 @@ import (
 	"github.com/go-echarts/go-echarts/v2/opts"
 	"github.com/go-echarts/go-echarts/v2/types"
 	"github.com/liserjrqlxue/goUtil/fmtUtil"
-	"github.com/liserjrqlxue/goUtil/math"
+	math2 "github.com/liserjrqlxue/goUtil/math"
 	"github.com/liserjrqlxue/goUtil/osUtil"
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
 	"github.com/liserjrqlxue/goUtil/textUtil"
@@ -23,6 +24,7 @@ type SeqInfo struct {
 
 	xlsx         *excelize.File
 	Sheets       []string
+	Style        map[string]int
 	rowDeletion  int
 	rowDeletion1 int
 	rowDeletion2 int
@@ -52,6 +54,12 @@ type SeqInfo struct {
 	T           [151]int
 }
 
+var center = &excelize.Style{
+	Alignment: &excelize.Alignment{
+		Horizontal: "center",
+	},
+}
+
 func (seqInfo *SeqInfo) Init() {
 	if seqInfo.Seq == nil {
 		seqInfo.Seq = []byte("CTCTCTCTCTCTCTCTCTCT")
@@ -68,6 +76,9 @@ func (seqInfo *SeqInfo) Init() {
 
 	seqInfo.Excel = seqInfo.Name + ".xlsx"
 	seqInfo.xlsx = excelize.NewFile()
+	seqInfo.Style = make(map[string]int)
+	seqInfo.Style["center"] = simpleUtil.HandleError(seqInfo.xlsx.NewStyle(center)).(int)
+
 	seqInfo.Sheets = []string{
 		"Sheet",
 		"SeqResult",
@@ -89,7 +100,13 @@ func (seqInfo *SeqInfo) Init() {
 		}
 	}
 
+	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets[0], "A", "A", 20))
+	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets[0], "M", "Q", 12))
+	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets[0], "R", "R", 14))
+
+	simpleUtil.CheckErr(seqInfo.xlsx.SetRowStyle(seqInfo.Sheets[0], 1, 18, seqInfo.Style["center"]))
 	SetCellStr(seqInfo.xlsx, seqInfo.Sheets[0], 1, 1, seqInfo.Name)
+	simpleUtil.CheckErr(seqInfo.xlsx.MergeCell(seqInfo.Sheets[0], "A1", "R1"))
 }
 
 func (seqInfo *SeqInfo) Save() {
@@ -451,7 +468,7 @@ func (seqInfo *SeqInfo) UpdateDistributionStats() {
 		// right reads num
 		seqInfo.DistributionNum[3][i] = seqInfo.Stats["excludeOtherReadsNum"] - seqInfo.DistributionNum[0][i] - seqInfo.DistributionNum[1][i] - seqInfo.DistributionNum[2][i]
 		for j := 0; j < 4; j++ {
-			seqInfo.DistributionFreq[j][i] = math.DivisionInt(seqInfo.DistributionNum[j][i], seqInfo.Stats["excludeOtherReadsNum"])
+			seqInfo.DistributionFreq[j][i] = math2.DivisionInt(seqInfo.DistributionNum[j][i], seqInfo.Stats["excludeOtherReadsNum"])
 		}
 
 		seqInfo.Stats["accuRightNum"] += seqInfo.DistributionNum[3][i]
@@ -487,32 +504,32 @@ func (seqInfo *SeqInfo) WriteStats(output *os.File) {
 		output,
 		"+ShortReadsNum\t\t\t= %d\t%7.4f%%)\n",
 		stats["shortReadsNum"],
-		math.DivisionInt(stats["shortReadsNum"], stats["allReadsNum"])*100,
+		math2.DivisionInt(stats["shortReadsNum"], stats["allReadsNum"])*100,
 	)
 	fmtUtil.Fprintf(
 		output,
 		"+AnalyzedReadsNum\t\t= %d\t%.4f%%\n",
 		stats["analyzedReadsNum"],
-		math.DivisionInt(stats["analyzedReadsNum"], stats["allReadsNum"]-stats["shortReadsNum"])*100,
+		math2.DivisionInt(stats["analyzedReadsNum"], stats["allReadsNum"]-stats["shortReadsNum"])*100,
 	)
 	fmtUtil.Fprintf(
 		output,
 		"++ExcludeReadsNum\t\t= %d\t%7.4f%%\n",
 		stats["analyzedExcludeReadsNum"],
-		math.DivisionInt(stats["analyzedExcludeReadsNum"], stats["analyzedReadsNum"])*100,
+		math2.DivisionInt(stats["analyzedExcludeReadsNum"], stats["analyzedReadsNum"])*100,
 	)
 	fmtUtil.Fprintf(
 		output,
 		"++SeqHitReadsNum\t\t= %d\t%.4f%%\tAccuracy = %.4f%%,\n",
 		stats["seqHitReadsNum"],
-		math.DivisionInt(stats["seqHitReadsNum"], stats["analyzedReadsNum"])*100,
-		math.DivisionInt(stats["seqHitReadsNum"], stats["analyzedReadsNum"]-stats["errorOtherReadsNum"])*100,
+		math2.DivisionInt(stats["seqHitReadsNum"], stats["analyzedReadsNum"])*100,
+		math2.DivisionInt(stats["seqHitReadsNum"], stats["analyzedReadsNum"]-stats["errorOtherReadsNum"])*100,
 	)
 	fmtUtil.Fprintf(
 		output,
 		"++IndexPolyAReadsNum\t= %d\t%.4f%%\n",
 		stats["indexPolyAReadsNum"],
-		math.DivisionInt(stats["indexPolyAReadsNum"], stats["analyzedReadsNum"])*100,
+		math2.DivisionInt(stats["indexPolyAReadsNum"], stats["analyzedReadsNum"])*100,
 	)
 	fmtUtil.Fprintf(
 		output,
@@ -522,27 +539,27 @@ func (seqInfo *SeqInfo) WriteStats(output *os.File) {
 	fmtUtil.Fprintf(output,
 		"++++ErrorDelReadsNum\t= %d\t%.4f%%\n",
 		stats["errorDelReadsNum"],
-		math.DivisionInt(stats["errorDelReadsNum"], stats["errorReadsNum"])*100,
+		math2.DivisionInt(stats["errorDelReadsNum"], stats["errorReadsNum"])*100,
 	)
 	fmtUtil.Fprintf(output,
 		"++++ErrorInsReadsNum\t= %d\t%.4f%%\n",
 		stats["errorInsReadsNum"],
-		math.DivisionInt(stats["errorInsReadsNum"], stats["errorReadsNum"])*100,
+		math2.DivisionInt(stats["errorInsReadsNum"], stats["errorReadsNum"])*100,
 	)
 	fmtUtil.Fprintf(output,
 		"++++ErrorMutReadsNum\t= %d\t%7.4f%%\n",
 		stats["errorMutReadsNum"],
-		math.DivisionInt(stats["errorMutReadsNum"], stats["errorReadsNum"])*100,
+		math2.DivisionInt(stats["errorMutReadsNum"], stats["errorReadsNum"])*100,
 	)
 	fmtUtil.Fprintf(output,
 		"++++ErrorOtherReadsNum\t= %d\t%.4f%%\n",
 		stats["errorOtherReadsNum"],
-		math.DivisionInt(stats["errorOtherReadsNum"], stats["errorReadsNum"])*100,
+		math2.DivisionInt(stats["errorOtherReadsNum"], stats["errorReadsNum"])*100,
 	)
 	fmtUtil.Fprintf(
 		output,
 		"++AverageBaseAccuracy\t= %7.4f%%\t%d/%d\n",
-		math.DivisionInt(stats["accuRightNum"], stats["accuReadsNum"])*100,
+		math2.DivisionInt(stats["accuRightNum"], stats["accuReadsNum"])*100,
 		stats["accuRightNum"], stats["accuReadsNum"],
 	)
 	fmtUtil.Fprint(output, "\n\n")
@@ -617,31 +634,67 @@ func (seqInfo *SeqInfo) WriteExcel() {
 		seqInfo.IndexSeq,
 		string(seqInfo.Seq),
 		stats["seqHitReadsNum"],
-		math.DivisionInt(stats["seqHitReadsNum"], stats["analyzedReadsNum"]-stats["errorOtherReadsNum"]),
+		math2.DivisionInt(stats["seqHitReadsNum"], stats["analyzedReadsNum"]-stats["errorOtherReadsNum"]),
 		stats["errorReadsNum"],
 		stats["errorDelReadsNum"],
 		stats["errorInsReadsNum"],
 		stats["errorMutReadsNum"],
 		stats["errorOtherReadsNum"],
-		math.DivisionInt(stats["accuRightNum"], stats["accuReadsNum"]),
+		math2.DivisionInt(stats["accuRightNum"], stats["accuReadsNum"]),
 	}
 	SetCol(xlsx, sheet, 1, 2, col1_2)
 	SetCol(xlsx, sheet, 2, 2, col2_2)
-	var row = 14
+
+	for i := range col2_2 {
+		MergeCells(seqInfo.xlsx, seqInfo.Sheets[0], 2, i+2, 18, i+2)
+	}
+
+	var row = len(col1_2) + 2
 	var row1_14 = []interface{}{
 		"Tar", "Del", "Ins", "Mut", "Right", "readsCount", "A", "T", "C", "G", "-", "收率", "单步准确率A", "单步准确率T", "单步准确率C", "单步准确率G", "单步准确率", "收率平均准确率",
 	}
 	SetRow(xlsx, sheet, 1, row, row1_14)
 	row++
 	var distribution = seqInfo.DistributionFreq
+	var readsCount = stats["analyzedReadsNum"]
 	for i, b := range seqInfo.Seq {
+		var counts = make(map[byte]int)
+		for seq, count := range seqInfo.HitSeqCount {
+			if len(seq) <= i {
+				delete(seqInfo.HitSeqCount, seq)
+				continue
+			}
+			var c = seq[i]
+			counts[c] += count
+			if c != b {
+				delete(seqInfo.HitSeqCount, seq)
+			}
+		}
+		var del = readsCount - counts['A'] - counts['C'] - counts['G'] - counts['T']
+		var yieldCoefficient = math2.DivisionInt(counts[b], stats["analyzedReadsNum"])
 		var rows = []interface{}{
 			string(b),
 			distribution[0][i],
 			distribution[1][i],
 			distribution[2][i],
 			distribution[3][i],
+			readsCount,
+			counts['A'],
+			counts['C'],
+			counts['G'],
+			counts['T'],
+			del,
+			yieldCoefficient, // 收率
+			math2.DivisionInt(counts['A'], readsCount),
+			math2.DivisionInt(counts['C'], readsCount),
+			math2.DivisionInt(counts['G'], readsCount),
+			math2.DivisionInt(counts['T'], readsCount),
+			math2.DivisionInt(counts[b], readsCount),     // 单步准确率
+			math.Pow(yieldCoefficient, 1.0/float64(i+1)), // 收率平均准确率
 		}
-		SetRow(xlsx, sheet, 1, row+i, rows)
+		readsCount = counts[b]
+		SetRow(xlsx, sheet, 1, row, rows)
+		row++
 	}
+	simpleUtil.CheckErr(seqInfo.xlsx.SetRowStyle(seqInfo.Sheets[0], 1, row, seqInfo.Style["center"]))
 }

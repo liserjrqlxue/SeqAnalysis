@@ -52,3 +52,11 @@ func SetCol(xlsx *excelize.File, sheet string, col, row int, value []interface{}
 		),
 	)
 }
+
+func MergeCells(xlsx *excelize.File, sheet string, col1, row1, col2, row2 int) {
+	var (
+		hCel = simpleUtil.HandleError(excelize.CoordinatesToCellName(col1, row1)).(string)
+		vCel = simpleUtil.HandleError(excelize.CoordinatesToCellName(col2, row2)).(string)
+	)
+	simpleUtil.CheckErr(xlsx.MergeCell(sheet, hCel, vCel))
+}
