@@ -8,6 +8,7 @@ ErrorReadsNum
 ErrorDelReadsNum
 ErrorDel1ReadsNum
 ErrorDel2ReadsNum
+ErrorDelDupReadsNum
 ErrorDel3ReadsNum
 ErrorInsReadsNum
 ErrorMutReadsNum

@@ -6,6 +6,7 @@ import "regexp"
 var (
 	plus3    = regexp.MustCompile(`\+\+\+`)
 	minus1   = regexp.MustCompile(`-`)
+	minus2   = regexp.MustCompile(`--`)
 	regPolyA = regexp.MustCompile(`AAAAAAAA`)
 	regN     = regexp.MustCompile(`N`)
 	regA     = regexp.MustCompile(`A`)

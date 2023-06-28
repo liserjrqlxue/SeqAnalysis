@@ -64,7 +64,7 @@ func main() {
 		log.Print("seqInfo.CountError4")
 		seqInfo.CountError4()
 
-		seqInfo.WriteExcel()
+		seqInfo.WriteStatsSheet()
 		seqInfo.Save()
 
 		log.Print("eqInfo.PlotLineACGT")

@@ -1,0 +1,13 @@
+Name	SheetName
+Stats	Sheet
+SeqResult	SeqResult
+BarCode	BarCode
+Deletion	Deletion
+Deletion1	DeletionSingle
+Deletion2	DeletionDouble
+DeletionDup	DeletionDuplicate
+Deletion3	DeletionOther
+Insertion	Insertion
+InsertionDeletion	InsertionDeletion
+Mutation	Mutation
+Other	Other
