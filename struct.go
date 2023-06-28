@@ -18,11 +18,12 @@ import (
 )
 
 type SeqInfo struct {
-	Name   string
-	Excel  string
-	Sheets []string
+	Name  string
+	Excel string
 
-	xlsx *excelize.File
+	xlsx        *excelize.File
+	Sheets      []string
+	rowDeletion int
 
 	Seq         []byte
 	Align       []byte
@@ -258,8 +259,11 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	fmtUtil.Fprintf(outputMut, "%s\t%s\t%s\t%s\n", "#TargetSeq", "SubMatchSeq", "Count", "AlignResult")
 	fmtUtil.Fprintf(outputOther, "%s\t%s\t%s\t%s\t%s\t%s\n", "#TargetSeq", "SubMatchSeq", "Count", "AlignDeletion", "AlignInsertion", "AlignMutation")
 
+	seqInfo.rowDeletion = 1
 	for _, key := range keys {
 		if key == string(seqInfo.Seq) {
+			SetRow(seqInfo.xlsx, seqInfo.Sheets[3], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
+			seqInfo.rowDeletion++
 			continue
 		}
 		if seqInfo.Align1(key, outputDel, outputDel1, outputDel2, outputDel3) {
@@ -310,6 +314,8 @@ func (seqInfo *SeqInfo) Align1(key string, output ...*os.File) bool {
 	seqInfo.Align = c
 	if k >= len(b) { // all match
 		fmtUtil.Fprintf(output[0], "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
+		SetRow(seqInfo.xlsx, seqInfo.Sheets[3], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, count, c})
+		seqInfo.rowDeletion++
 		if delCount == 1 {
 			fmtUtil.Fprintf(output[1], "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
 		} else if delCount == 2 {
