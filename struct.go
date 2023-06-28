@@ -1,6 +1,11 @@
 package main
 
 import (
+	"log"
+	"os"
+	"regexp"
+	"sort"
+
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/opts"
 	"github.com/go-echarts/go-echarts/v2/types"
@@ -9,11 +14,6 @@ import (
 	"github.com/liserjrqlxue/goUtil/osUtil"
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
 	"github.com/liserjrqlxue/goUtil/textUtil"
-	"log"
-	"os"
-	"regexp"
-	"sort"
-
 	"github.com/xuri/excelize/v2"
 )
 
@@ -70,7 +70,13 @@ func (seqInfo *SeqInfo) Init() {
 		"BarCode",
 		"Deletion",
 	}
-	simpleUtil.CheckErr(seqInfo.xlsx.SetSheetName("Sheet1", seqInfo.Sheets[0]))
+	for i, sheet := range seqInfo.Sheets {
+		if i == 0 {
+			simpleUtil.CheckErr(seqInfo.xlsx.SetSheetName("Sheet1", sheet))
+		} else {
+			simpleUtil.HandleError(seqInfo.xlsx.NewSheet(sheet))
+		}
+	}
 
 	SetCellStr(seqInfo.xlsx, seqInfo.Sheets[0], 1, 1, seqInfo.Name)
 }
@@ -141,6 +147,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 
 	fmtUtil.Fprintf(outputUnmatch, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", "#Seq", "A", "C", "G", "T", "TargetSeq", "IndexSeq", "PloyA")
 
+	var row = 1
 	for _, fastq := range seqInfo.Fastqs {
 		log.Printf("load %s", fastq)
 		for i, s := range textUtil.File2Array(fastq) {
@@ -160,6 +167,8 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 				seqInfo.Stats["seqHitReadsNum"]++
 				seqInfo.HitSeqCount[tSeq]++
 				fmtUtil.Fprintf(output, "%s\t%s\n", tSeq, seqInfo.BarCode)
+				SetRow(seqInfo.xlsx, seqInfo.Sheets[1], 1, row, []interface{}{tSeq, seqInfo.BarCode})
+				row++
 				for i2, c := range []byte(s) {
 					switch c {
 					case 'A':
@@ -186,6 +195,8 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 					seqInfo.HitSeqCount[tSeq]++
 					seqInfo.Stats["indexPolyAReadsNum"]++
 					fmtUtil.Fprintf(output, "%s\t%s\n", tSeq, seqInfo.BarCode)
+					SetRow(seqInfo.xlsx, seqInfo.Sheets[1], 1, row, []interface{}{tSeq, seqInfo.BarCode})
+					row++
 				} else {
 					seqInfo.Stats["analyzedExcludeReadsNum"]++
 				}
@@ -218,8 +229,9 @@ func (seqInfo *SeqInfo) GetHitSeq() {
 }
 
 func (seqInfo *SeqInfo) WriteSeqResultBarCode(output *os.File) {
-	for _, s := range seqInfo.HitSeq {
+	for i, s := range seqInfo.HitSeq {
 		fmtUtil.Fprintf(output, "%s\t%d\n", s, seqInfo.HitSeqCount[s])
+		SetRow(seqInfo.xlsx, seqInfo.Sheets[2], 1, i+1, []interface{}{s, seqInfo.HitSeqCount[s]})
 	}
 }
 
