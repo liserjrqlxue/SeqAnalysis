@@ -22,13 +22,18 @@ type SeqInfo struct {
 	Name  string
 	Excel string
 
-	xlsx         *excelize.File
-	Sheets       []string
-	Style        map[string]int
-	rowDeletion  int
-	rowDeletion1 int
-	rowDeletion2 int
-	rowDeletion3 int
+	xlsx   *excelize.File
+	Sheets []string
+	Style  map[string]int
+
+	rowDeletion          int
+	rowDeletion1         int
+	rowDeletion2         int
+	rowDeletion3         int
+	rowInsertion         int
+	rowInsertionDeletion int
+	rowMutation          int
+	rowOther             int
 
 	Seq         []byte
 	Align       []byte
@@ -87,11 +92,19 @@ func (seqInfo *SeqInfo) Init() {
 		"DeletionSingle",
 		"DeletionDouble",
 		"DeletionOther",
+		"Insertion",
+		"InsertionDeletion",
+		"Mutation",
+		"Other",
 	}
 	seqInfo.rowDeletion = 1
 	seqInfo.rowDeletion1 = 1
 	seqInfo.rowDeletion2 = 1
 	seqInfo.rowDeletion3 = 1
+	seqInfo.rowInsertion = 1
+	seqInfo.rowInsertionDeletion = 1
+	seqInfo.rowMutation = 1
+	seqInfo.rowOther = 1
 	for i, sheet := range seqInfo.Sheets {
 		if i == 0 {
 			simpleUtil.CheckErr(seqInfo.xlsx.SetSheetName("Sheet1", sheet))
@@ -407,8 +420,12 @@ func (seqInfo *SeqInfo) Align2(key string, outputIns, outputInsDel *os.File) boo
 		if !plus3.Match(c) {
 			if minus1.Match(c) {
 				fmtUtil.Fprintf(outputInsDel, "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
+				SetRow(seqInfo.xlsx, seqInfo.Sheets[8], 1, seqInfo.rowInsertionDeletion, []interface{}{seqInfo.Seq, key, count, c})
+				seqInfo.rowInsertionDeletion++
 			} else {
 				fmtUtil.Fprintf(outputIns, "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
+				SetRow(seqInfo.xlsx, seqInfo.Sheets[7], 1, seqInfo.rowInsertion, []interface{}{seqInfo.Seq, key, count, c})
+				seqInfo.rowInsertion++
 			}
 			seqInfo.Stats["errorInsReadsNum"] += count
 			var i = 0
