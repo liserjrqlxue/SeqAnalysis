@@ -35,6 +35,11 @@ type SeqInfo struct {
 	rowMutation          int
 	rowOther             int
 
+	countDeletion  int
+	countDeletion1 int
+	countDeletion2 int
+	countDeletion3 int
+
 	Seq         []byte
 	Align       []byte
 	AlignInsert []byte
@@ -97,14 +102,14 @@ func (seqInfo *SeqInfo) Init() {
 		"Mutation",
 		"Other",
 	}
-	seqInfo.rowDeletion = 1
-	seqInfo.rowDeletion1 = 1
-	seqInfo.rowDeletion2 = 1
-	seqInfo.rowDeletion3 = 1
-	seqInfo.rowInsertion = 1
-	seqInfo.rowInsertionDeletion = 1
-	seqInfo.rowMutation = 1
-	seqInfo.rowOther = 1
+	seqInfo.rowDeletion = 2
+	seqInfo.rowDeletion1 = 2
+	seqInfo.rowDeletion2 = 2
+	seqInfo.rowDeletion3 = 2
+	seqInfo.rowInsertion = 2
+	seqInfo.rowInsertionDeletion = 2
+	seqInfo.rowMutation = 2
+	seqInfo.rowOther = 2
 	for i, sheet := range seqInfo.Sheets {
 		if i == 0 {
 			simpleUtil.CheckErr(seqInfo.xlsx.SetSheetName("Sheet1", sheet))
@@ -116,10 +121,19 @@ func (seqInfo *SeqInfo) Init() {
 	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets[0], "A", "A", 20))
 	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets[0], "M", "Q", 12))
 	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets[0], "R", "R", 14))
+	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets[1], "A", "A", 25))
+	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets[2], "A", "A", 25))
 
 	simpleUtil.CheckErr(seqInfo.xlsx.SetRowStyle(seqInfo.Sheets[0], 1, 18, seqInfo.Style["center"]))
 	SetCellStr(seqInfo.xlsx, seqInfo.Sheets[0], 1, 1, seqInfo.Name)
 	simpleUtil.CheckErr(seqInfo.xlsx.MergeCell(seqInfo.Sheets[0], "A1", "R1"))
+
+	for i := 3; i < 10; i++ {
+		SetRow(seqInfo.xlsx, seqInfo.Sheets[i], 1, 1, []interface{}{"#TargetSeq", "SubMatchSeq", "Count", "AlignResult"})
+		simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets[i], "A", "D", 25))
+	}
+	SetRow(seqInfo.xlsx, seqInfo.Sheets[10], 1, 1, []interface{}{"#TargetSeq", "SubMatchSeq", "Count", "AlignDeletion", "AlignInsertion", "AlignMutation"})
+	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets[10], "A", "F", 25))
 }
 
 func (seqInfo *SeqInfo) Save() {
@@ -303,6 +317,7 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 		if key == string(seqInfo.Seq) {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets[3], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
 			seqInfo.rowDeletion++
+			seqInfo.countDeletion += seqInfo.HitSeqCount[key]
 			continue
 		}
 		if seqInfo.Align1(key, outputDel, outputDel1, outputDel2, outputDel3) {
@@ -318,8 +333,14 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 		}
 
 		fmtUtil.Fprintf(outputOther, "%s\t%s\t%d\t%s\t%s\t%s\n", seqInfo.Seq, key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut)
+		SetRow(seqInfo.xlsx, seqInfo.Sheets[10], 1, seqInfo.rowOther, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
+		seqInfo.rowOther++
 		seqInfo.Stats["errorOtherReadsNum"] += seqInfo.HitSeqCount[key]
 	}
+	SetRow(seqInfo.xlsx, seqInfo.Sheets[3], 5, 1, []interface{}{"总数", seqInfo.countDeletion})
+	SetRow(seqInfo.xlsx, seqInfo.Sheets[4], 5, 1, []interface{}{"总数", seqInfo.countDeletion1})
+	SetRow(seqInfo.xlsx, seqInfo.Sheets[5], 5, 1, []interface{}{"总数", seqInfo.countDeletion2})
+	SetRow(seqInfo.xlsx, seqInfo.Sheets[6], 5, 1, []interface{}{"总数", seqInfo.countDeletion3})
 }
 
 func (seqInfo *SeqInfo) Align1(key string, output ...*os.File) bool {
@@ -354,18 +375,22 @@ func (seqInfo *SeqInfo) Align1(key string, output ...*os.File) bool {
 	if k >= len(b) { // all match
 		fmtUtil.Fprintf(output[0], "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
 		SetRow(seqInfo.xlsx, seqInfo.Sheets[3], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, count, c})
+		seqInfo.countDeletion += count
 		seqInfo.rowDeletion++
 		if delCount == 1 {
 			fmtUtil.Fprintf(output[1], "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
 			SetRow(seqInfo.xlsx, seqInfo.Sheets[4], 1, seqInfo.rowDeletion1, []interface{}{seqInfo.Seq, key, count, c})
+			seqInfo.countDeletion1 += count
 			seqInfo.rowDeletion1++
 		} else if delCount == 2 {
 			fmtUtil.Fprintf(output[2], "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
 			SetRow(seqInfo.xlsx, seqInfo.Sheets[5], 1, seqInfo.rowDeletion2, []interface{}{seqInfo.Seq, key, count, c})
+			seqInfo.countDeletion2 += count
 			seqInfo.rowDeletion2++
 		} else if delCount >= 3 {
 			fmtUtil.Fprintf(output[3], "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
 			SetRow(seqInfo.xlsx, seqInfo.Sheets[6], 1, seqInfo.rowDeletion3, []interface{}{seqInfo.Seq, key, count, c})
+			seqInfo.countDeletion3 += count
 			seqInfo.rowDeletion3++
 		}
 		for i, c1 := range c {
@@ -465,6 +490,8 @@ func (seqInfo *SeqInfo) Align3(key string, output *os.File) bool {
 	seqInfo.AlignMut = c
 	if k < 2 && len(c) > 0 {
 		fmtUtil.Fprintf(output, "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
+		SetRow(seqInfo.xlsx, seqInfo.Sheets[9], 1, seqInfo.rowMutation, []interface{}{seqInfo.Seq, key, count, c})
+		seqInfo.rowMutation++
 		seqInfo.Stats["errorMutReadsNum"] += count
 		for i, c1 := range c {
 			if c1 == 'X' {
