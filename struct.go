@@ -21,9 +21,12 @@ type SeqInfo struct {
 	Name  string
 	Excel string
 
-	xlsx        *excelize.File
-	Sheets      []string
-	rowDeletion int
+	xlsx         *excelize.File
+	Sheets       []string
+	rowDeletion  int
+	rowDeletion1 int
+	rowDeletion2 int
+	rowDeletion3 int
 
 	Seq         []byte
 	Align       []byte
@@ -70,7 +73,14 @@ func (seqInfo *SeqInfo) Init() {
 		"SeqResult",
 		"BarCode",
 		"Deletion",
+		"DeletionSingle",
+		"DeletionDouble",
+		"DeletionOther",
 	}
+	seqInfo.rowDeletion = 1
+	seqInfo.rowDeletion1 = 1
+	seqInfo.rowDeletion2 = 1
+	seqInfo.rowDeletion3 = 1
 	for i, sheet := range seqInfo.Sheets {
 		if i == 0 {
 			simpleUtil.CheckErr(seqInfo.xlsx.SetSheetName("Sheet1", sheet))
@@ -259,7 +269,6 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	fmtUtil.Fprintf(outputMut, "%s\t%s\t%s\t%s\n", "#TargetSeq", "SubMatchSeq", "Count", "AlignResult")
 	fmtUtil.Fprintf(outputOther, "%s\t%s\t%s\t%s\t%s\t%s\n", "#TargetSeq", "SubMatchSeq", "Count", "AlignDeletion", "AlignInsertion", "AlignMutation")
 
-	seqInfo.rowDeletion = 1
 	for _, key := range keys {
 		if key == string(seqInfo.Seq) {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets[3], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
@@ -318,10 +327,16 @@ func (seqInfo *SeqInfo) Align1(key string, output ...*os.File) bool {
 		seqInfo.rowDeletion++
 		if delCount == 1 {
 			fmtUtil.Fprintf(output[1], "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
+			SetRow(seqInfo.xlsx, seqInfo.Sheets[4], 1, seqInfo.rowDeletion1, []interface{}{seqInfo.Seq, key, count, c})
+			seqInfo.rowDeletion1++
 		} else if delCount == 2 {
 			fmtUtil.Fprintf(output[2], "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
+			SetRow(seqInfo.xlsx, seqInfo.Sheets[5], 1, seqInfo.rowDeletion2, []interface{}{seqInfo.Seq, key, count, c})
+			seqInfo.rowDeletion2++
 		} else if delCount >= 3 {
 			fmtUtil.Fprintf(output[3], "%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
+			SetRow(seqInfo.xlsx, seqInfo.Sheets[6], 1, seqInfo.rowDeletion3, []interface{}{seqInfo.Seq, key, count, c})
+			seqInfo.rowDeletion3++
 		}
 		for i, c1 := range c {
 			if c1 == '-' {
