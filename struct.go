@@ -15,6 +15,7 @@ import (
 	math2 "github.com/liserjrqlxue/goUtil/math"
 	"github.com/liserjrqlxue/goUtil/osUtil"
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
+	"github.com/liserjrqlxue/goUtil/stringsUtil"
 	"github.com/liserjrqlxue/goUtil/textUtil"
 	"github.com/xuri/excelize/v2"
 )
@@ -111,11 +112,12 @@ func (seqInfo *SeqInfo) Init() {
 		}
 	}
 
+	// 设置列宽
 	//simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets[0], "A", "A", 20))
 	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets["Stats"], "M", "R", 12))
 	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets["Stats"], "S", "S", 14))
 	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets["SeqResult"], "A", "A", 25))
-	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets["BarCode"], "A", "A", 25))
+	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets["BarCode"], "A", "E", 25))
 
 	for i := 3; i < len(sheetList)-1; i++ {
 		SetRow(seqInfo.xlsx, sheetList[i], 1, 1, []interface{}{"#TargetSeq", "SubMatchSeq", "Count", "AlignResult"})
@@ -138,7 +140,6 @@ func (seqInfo *SeqInfo) CountError4() {
 
 	log.Print("seqInfo.GetHitSeq")
 	seqInfo.GetHitSeq()
-	seqInfo.SetBarCode()
 
 	// 2. 与正确合成序列进行比对,统计不同合成结果出现的频数
 	log.Print("seqInfo.WriteSeqResultNum")
@@ -246,33 +247,29 @@ func (seqInfo *SeqInfo) GetHitSeq() {
 	})
 }
 
-func (seqInfo *SeqInfo) SetBarCode() {
-	for i, s := range seqInfo.HitSeq {
-		SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{s, seqInfo.HitSeqCount[s]})
-	}
-}
-
 func (seqInfo *SeqInfo) WriteSeqResultNum() {
-	var (
-		keys = seqInfo.HitSeq
-	)
-	for _, key := range keys {
+	for i, key := range seqInfo.HitSeq {
 		if key == string(seqInfo.Seq) {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key]})
 			seqInfo.rowDeletion++
 			continue
 		}
 		if seqInfo.Align1(key) {
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align})
 			continue
 		}
 
 		if seqInfo.Align2(key) {
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert})
 			continue
 		}
 
 		if seqInfo.Align3(key) {
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
 			continue
 		}
+		SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
 
 		SetRow(seqInfo.xlsx, seqInfo.Sheets["Other"], 1, seqInfo.rowOther, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
 		seqInfo.rowOther++
@@ -293,6 +290,37 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion3"], 5, 1,
 		[]interface{}{"总数", seqInfo.Stats["ErrorDel3ReadsNum"]},
 	)
+
+	var sheet = seqInfo.Sheets["Deletion"]
+	for i := 3; i < seqInfo.rowDeletion; i++ {
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i))
+		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["ErrorDelReadsNum"]))
+		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
+	}
+	sheet = seqInfo.Sheets["Deletion1"]
+	for i := 2; i < seqInfo.rowDeletion1; i++ {
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i))
+		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["ErrorDel1ReadsNum"]))
+		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
+	}
+	sheet = seqInfo.Sheets["Deletion2"]
+	for i := 2; i < seqInfo.rowDeletion2; i++ {
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i))
+		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["ErrorDel2ReadsNum"]))
+		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
+	}
+	sheet = seqInfo.Sheets["Deletion3"]
+	for i := 2; i < seqInfo.rowDeletion3; i++ {
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i))
+		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["ErrorDel3ReadsNum"]))
+		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
+	}
+	sheet = seqInfo.Sheets["DeletionDup"]
+	for i := 2; i < seqInfo.rowDeletionDup; i++ {
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i))
+		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["ErrorDelDupReadsNum"]))
+		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
+	}
 }
 
 func (seqInfo *SeqInfo) Align1(key string) bool {

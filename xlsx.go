@@ -5,6 +5,17 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+func GetCellValue(xlsx *excelize.File, sheet string, col, row int) string {
+	return simpleUtil.HandleError(
+		xlsx.GetCellValue(
+			sheet,
+			simpleUtil.HandleError(
+				excelize.CoordinatesToCellName(col, row),
+			).(string),
+		),
+	).(string)
+}
+
 func SetCellValue(xlsx *excelize.File, sheet string, col, row int, value interface{}) {
 	simpleUtil.CheckErr(
 		xlsx.SetCellValue(
