@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 
@@ -24,9 +25,10 @@ type SeqInfo struct {
 	Name  string
 	Excel string
 
-	xlsx   *excelize.File
-	Sheets map[string]string
-	Style  map[string]int
+	xlsx      *excelize.File
+	Sheets    map[string]string
+	SheetList []string
+	Style     map[string]int
 
 	rowDeletion          int
 	rowDeletion1         int
@@ -82,18 +84,9 @@ func (seqInfo *SeqInfo) Init() {
 		}
 	}
 
-	seqInfo.Excel = seqInfo.Name + ".xlsx"
 	seqInfo.xlsx = excelize.NewFile()
 	seqInfo.Style = make(map[string]int)
 	seqInfo.Style["center"] = simpleUtil.HandleError(seqInfo.xlsx.NewStyle(center)).(int)
-
-	seqInfo.Sheets = make(map[string]string)
-	var sheetMap, _ = textUtil.File2MapArray(path.Join(etcPath, "sheet.txt"), "\t", nil)
-	var sheetList []string
-	for _, m := range sheetMap {
-		seqInfo.Sheets[m["Name"]] = m["SheetName"]
-		sheetList = append(sheetList, m["SheetName"])
-	}
 
 	seqInfo.rowDeletion = 2
 	seqInfo.rowDeletion1 = 2
@@ -104,7 +97,7 @@ func (seqInfo *SeqInfo) Init() {
 	seqInfo.rowInsertionDeletion = 2
 	seqInfo.rowMutation = 2
 	seqInfo.rowOther = 2
-	for i, sheet := range sheetList {
+	for i, sheet := range seqInfo.SheetList {
 		if i == 0 {
 			simpleUtil.CheckErr(seqInfo.xlsx.SetSheetName("Sheet1", sheet))
 		} else {
@@ -119,9 +112,9 @@ func (seqInfo *SeqInfo) Init() {
 	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets["SeqResult"], "A", "A", 25))
 	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets["BarCode"], "A", "E", 25))
 
-	for i := 3; i < len(sheetList)-1; i++ {
-		SetRow(seqInfo.xlsx, sheetList[i], 1, 1, []interface{}{"#TargetSeq", "SubMatchSeq", "Count", "AlignResult"})
-		simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(sheetList[i], "A", "D", 25))
+	for i := 3; i < len(seqInfo.SheetList)-1; i++ {
+		SetRow(seqInfo.xlsx, seqInfo.SheetList[i], 1, 1, []interface{}{"#TargetSeq", "SubMatchSeq", "Count", "AlignResult"})
+		simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.SheetList[i], "A", "D", 25))
 	}
 	SetRow(seqInfo.xlsx, seqInfo.Sheets["Other"], 1, 1, []interface{}{"#TargetSeq", "SubMatchSeq", "Count", "AlignDeletion", "AlignInsertion", "AlignMutation"})
 	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets["Other"], "A", "F", 25))
@@ -161,8 +154,8 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 		regIndexSeq = regexp.MustCompile(indexSeq)
 		regTarSeq   = regexp.MustCompile(tarSeq)
 
-		outputShort     = osUtil.Create(seqInfo.Name + path + ".short.txt")
-		outputUnmatched = osUtil.Create(seqInfo.Name + path + ".unmatched.txt")
+		outputShort     = osUtil.Create(filepath.Join(*outputDir, seqInfo.Name+path+".short.txt"))
+		outputUnmatched = osUtil.Create(filepath.Join(*outputDir, seqInfo.Name+path+".unmatched.txt"))
 	)
 	defer simpleUtil.DeferClose(outputShort)
 	defer simpleUtil.DeferClose(outputUnmatched)
@@ -661,15 +654,15 @@ func (seqInfo *SeqInfo) WriteStatsSheet() {
 			distribution[3][i],
 			readsCount,
 			counts['A'],
+			counts['T'],
 			counts['C'],
 			counts['G'],
-			counts['T'],
 			del,
 			yieldCoefficient, // 收率
 			math2.DivisionInt(counts['A'], readsCount),
+			math2.DivisionInt(counts['T'], readsCount),
 			math2.DivisionInt(counts['C'], readsCount),
 			math2.DivisionInt(counts['G'], readsCount),
-			math2.DivisionInt(counts['T'], readsCount),
 			math2.DivisionInt(counts[b], readsCount),     // 单步准确率
 			math.Pow(yieldCoefficient, 1.0/float64(i+1)), // 收率平均准确率
 		}
