@@ -82,7 +82,7 @@ func main() {
 
 		seqInfo.WriteStatsSheet()
 		seqInfo.Save()
-		seqInfo.WriteStats()
+		seqInfo.PrintStats()
 		seqInfo.PlotLineACGT("ACGT.html")
 	}
 }

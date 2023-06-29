@@ -141,7 +141,7 @@ func (seqInfo *SeqInfo) CountError4() {
 	log.Print("seqInfo.UpdateDistributionStats")
 	seqInfo.UpdateDistributionStats()
 
-	//seqInfo.WriteStats()
+	//seqInfo.PrintStats()
 }
 
 func (seqInfo *SeqInfo) WriteSeqResult(path string) {
@@ -173,7 +173,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 
 			seqInfo.Stats["AllReadsNum"]++
 			if len(s) < 50 {
-				seqInfo.Stats["shortReadsNum"]++
+				seqInfo.Stats["ShortReadsNum"]++
 				fmtUtil.Fprintf(outputShort, "%s\t%d\n", s, len(s))
 				continue
 			}
@@ -203,16 +203,18 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 				if len(tSeq) == 0 {
 					tSeq = "X"
 					seqInfo.HitSeqCount[tSeq]++
-					seqInfo.Stats["indexPolyAReadsNum"]++
+					seqInfo.Stats["IndexPolyAReadsNum"]++
 				} else if len(tSeq) > 1 && !regN.MatchString(tSeq) && len(tSeq) < tarLength {
 					seqInfo.HitSeqCount[tSeq]++
-					seqInfo.Stats["indexPolyAReadsNum"]++
+					seqInfo.Stats["IndexPolyAReadsNum"]++
 					SetRow(seqInfo.xlsx, seqInfo.Sheets["SeqResult"], 1, row, []interface{}{tSeq, seqInfo.BarCode})
 					row++
 				} else {
-					seqInfo.Stats["analyzedExcludeReadsNum"]++
+					//fmt.Printf("[%s]:[%s]:[%+v]\n", s, tSeq, m)
+					seqInfo.Stats["ExcludeReadsNum"]++
 				}
 			} else {
+				seqInfo.Stats["UnmatchedReadsNum"]++
 				fmtUtil.Fprintf(
 					outputUnmatched,
 					"%s\t%d\t%d\t%d\t%d\t%v\t%v\t%v\n",
@@ -228,7 +230,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 			}
 		}
 	}
-	seqInfo.Stats["AnalyzedReadsNum"] = seqInfo.Stats["RightReadsNum"] + seqInfo.Stats["indexPolyAReadsNum"] + seqInfo.Stats["analyzedExcludeReadsNum"]
+	seqInfo.Stats["AnalyzedReadsNum"] = seqInfo.Stats["RightReadsNum"] + seqInfo.Stats["IndexPolyAReadsNum"]
 }
 
 func (seqInfo *SeqInfo) GetHitSeq() {
@@ -490,7 +492,7 @@ func (seqInfo *SeqInfo) UpdateDistributionStats() {
 	}
 }
 
-func (seqInfo *SeqInfo) WriteStats() {
+func (seqInfo *SeqInfo) PrintStats() {
 	var stats = seqInfo.Stats
 
 	fmt.Printf(
@@ -498,30 +500,34 @@ func (seqInfo *SeqInfo) WriteStats() {
 		stats["AllReadsNum"],
 	)
 	fmt.Printf(
-		"+ShortReadsNum\t\t= %d\t%7.4f%%)\n",
-		stats["shortReadsNum"],
-		math2.DivisionInt(stats["shortReadsNum"], stats["AllReadsNum"])*100,
+		"+ShortReadsNum\t\t= %d\t%7.4f%%\n",
+		stats["ShortReadsNum"],
+		math2.DivisionInt(stats["ShortReadsNum"], stats["AllReadsNum"])*100,
+	)
+	fmt.Printf(
+		"+UnmatchedReadsNum\t= %d\t%7.4f%%\n",
+		stats["UnmatchedReadsNum"],
+		math2.DivisionInt(stats["UnmatchedReadsNum"], stats["AllReadsNum"])*100,
+	)
+	fmt.Printf(
+		"+ExcludeReadsNum\t= %d\t%7.4f%%\n",
+		stats["ExcludeReadsNum"],
+		math2.DivisionInt(stats["ExcludeReadsNum"], stats["AllReadsNum"])*100,
 	)
 	fmt.Printf(
 		"+AnalyzedReadsNum\t= %d\t%.4f%%\n",
 		stats["AnalyzedReadsNum"],
-		math2.DivisionInt(stats["AnalyzedReadsNum"], stats["AllReadsNum"]-stats["shortReadsNum"])*100,
+		math2.DivisionInt(stats["AnalyzedReadsNum"], stats["AllReadsNum"])*100,
 	)
 	fmt.Printf(
-		"++ExcludeReadsNum\t= %d\t%7.4f%%\n",
-		stats["analyzedExcludeReadsNum"],
-		math2.DivisionInt(stats["analyzedExcludeReadsNum"], stats["AnalyzedReadsNum"])*100,
-	)
-	fmt.Printf(
-		"++SeqHitReadsNum\t= %d\t%.4f%%\tAccuracy = %.4f%%,\n",
+		"++SeqHitReadsNum\t= %d\t%.4f%%\n",
 		stats["RightReadsNum"],
 		math2.DivisionInt(stats["RightReadsNum"], stats["AnalyzedReadsNum"])*100,
-		math2.DivisionInt(stats["RightReadsNum"], stats["AnalyzedReadsNum"]-stats["ErrorOtherReadsNum"])*100,
 	)
 	fmt.Printf(
 		"++IndexPolyAReadsNum\t= %d\t%.4f%%\n",
-		stats["indexPolyAReadsNum"],
-		math2.DivisionInt(stats["indexPolyAReadsNum"], stats["AnalyzedReadsNum"])*100,
+		stats["IndexPolyAReadsNum"],
+		math2.DivisionInt(stats["IndexPolyAReadsNum"], stats["AnalyzedReadsNum"])*100,
 	)
 	fmt.Printf(
 		"+++ErrorReadsNum\t= %d\n",
@@ -665,6 +671,12 @@ func (seqInfo *SeqInfo) WriteStatsSheet() {
 			math2.DivisionInt(counts['G'], readsCount),
 			math2.DivisionInt(counts[b], readsCount),     // 单步准确率
 			math.Pow(yieldCoefficient, 1.0/float64(i+1)), // 收率平均准确率
+		}
+		if i == 0 {
+			log.Printf("%+v", rowValue)
+			for b2, i2 := range counts {
+				log.Printf("%c:%d", b2, i2)
+			}
 		}
 
 		readsCount = counts[b]
