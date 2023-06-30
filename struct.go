@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"math"
+	"os"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -114,8 +115,8 @@ func (seqInfo *SeqInfo) Init() {
 	//simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets[0], "A", "A", 20))
 	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets["Stats"], "M", "R", 12))
 	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets["Stats"], "S", "S", 14))
-	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets["SeqResult"], "A", "A", 25))
-	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets["BarCode"], "A", "E", 25))
+	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets["BarCode"], "A", "E", 50))
+	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets["BarCode"], "B", "B", 50))
 
 	for i := 3; i < len(seqInfo.SheetList)-1; i++ {
 		SetRow(seqInfo.xlsx, seqInfo.SheetList[i], 1, 1, []interface{}{"#TargetSeq", "SubMatchSeq", "Count", "AlignResult"})
@@ -132,9 +133,9 @@ func (seqInfo *SeqInfo) Save() {
 }
 
 // CountError4 count seq error
-func (seqInfo *SeqInfo) CountError4() {
+func (seqInfo *SeqInfo) CountError4(verbose int) {
 	// 1. 统计不同测序结果出现的频数
-	seqInfo.WriteSeqResult(".SeqResult.txt")
+	seqInfo.WriteSeqResult(".SeqResult.txt", verbose)
 
 	log.Print("seqInfo.GetHitSeq")
 	seqInfo.GetHitSeq()
@@ -149,7 +150,7 @@ func (seqInfo *SeqInfo) CountError4() {
 	//seqInfo.PrintStats()
 }
 
-func (seqInfo *SeqInfo) WriteSeqResult(path string) {
+func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 	var (
 		tarSeq      = string(seqInfo.Seq)
 		indexSeq    = seqInfo.IndexSeq
@@ -159,13 +160,14 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 		regIndexSeq = regexp.MustCompile(indexSeq)
 		regTarSeq   = regexp.MustCompile(tarSeq)
 
-		outputShort     = osUtil.Create(filepath.Join(*outputDir, seqInfo.Name+path+".short.txt"))
-		outputUnmatched = osUtil.Create(filepath.Join(*outputDir, seqInfo.Name+path+".unmatched.txt"))
+		outputShort     *os.File
+		outputUnmatched *os.File
 	)
-	defer simpleUtil.DeferClose(outputShort)
-	defer simpleUtil.DeferClose(outputUnmatched)
-
-	fmtUtil.Fprintf(outputUnmatched, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", "#Seq", "A", "C", "G", "T", "TargetSeq", "IndexSeq", "PloyA")
+	if verbose > 0 {
+		outputShort = osUtil.Create(filepath.Join(*outputDir, seqInfo.Name+path+".short.txt"))
+		outputUnmatched = osUtil.Create(filepath.Join(*outputDir, seqInfo.Name+path+".unmatched.txt"))
+		fmtUtil.Fprintf(outputUnmatched, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", "#Seq", "A", "C", "G", "T", "TargetSeq", "IndexSeq", "PloyA")
+	}
 
 	var row = 1
 	for _, fastq := range seqInfo.Fastqs {
@@ -191,14 +193,15 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 			seqInfo.Stats["AllReadsNum"]++
 			if len(s) < 50 {
 				seqInfo.Stats["ShortReadsNum"]++
-				fmtUtil.Fprintf(outputShort, "%s\t%d\n", s, len(s))
+				if verbose > 0 {
+					fmtUtil.Fprintf(outputShort, "%s\t%d\n", s, len(s))
+				}
 				continue
 			}
 			var tSeq = tarSeq
 			if seqHit.MatchString(s) {
 				seqInfo.Stats["RightReadsNum"]++
 				seqInfo.HitSeqCount[tSeq]++
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["SeqResult"], 1, row, []interface{}{tSeq, seqInfo.BarCode})
 				row++
 				for i2, c := range []byte(s) {
 					switch c {
@@ -224,7 +227,6 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 				} else if len(tSeq) > 1 && !regN.MatchString(tSeq) && len(tSeq) < tarLength {
 					seqInfo.HitSeqCount[tSeq]++
 					seqInfo.Stats["IndexPolyAReadsNum"]++
-					SetRow(seqInfo.xlsx, seqInfo.Sheets["SeqResult"], 1, row, []interface{}{tSeq, seqInfo.BarCode})
 					row++
 				} else {
 					//fmt.Printf("[%s]:[%s]:[%+v]\n", s, tSeq, m)
@@ -232,23 +234,31 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 				}
 			} else {
 				seqInfo.Stats["UnmatchedReadsNum"]++
-				fmtUtil.Fprintf(
-					outputUnmatched,
-					"%s\t%d\t%d\t%d\t%d\t%v\t%v\t%v\n",
-					s,
-					len(regA.FindAllString(s, -1)),
-					len(regC.FindAllString(s, -1)),
-					len(regG.FindAllString(s, -1)),
-					len(regT.FindAllString(s, -1)),
-					regTarSeq.MatchString(s),
-					regIndexSeq.MatchString(s),
-					regPolyA.MatchString(s),
-				)
+				if verbose > 0 {
+
+					fmtUtil.Fprintf(
+						outputUnmatched,
+						"%s\t%d\t%d\t%d\t%d\t%v\t%v\t%v\n",
+						s,
+						len(regA.FindAllString(s, -1)),
+						len(regC.FindAllString(s, -1)),
+						len(regG.FindAllString(s, -1)),
+						len(regT.FindAllString(s, -1)),
+						regTarSeq.MatchString(s),
+						regIndexSeq.MatchString(s),
+						regPolyA.MatchString(s),
+					)
+				}
 			}
 		}
 		simpleUtil.CheckErr(file.Close())
 	}
 	seqInfo.Stats["AnalyzedReadsNum"] = seqInfo.Stats["RightReadsNum"] + seqInfo.Stats["IndexPolyAReadsNum"]
+
+	if verbose > 0 {
+		simpleUtil.CheckErr(outputShort.Close())
+		simpleUtil.CheckErr(outputUnmatched.Close())
+	}
 }
 
 func (seqInfo *SeqInfo) GetHitSeq() {

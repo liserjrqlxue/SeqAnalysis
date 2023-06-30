@@ -34,7 +34,13 @@ var (
 	outputDir = flag.String(
 		"o",
 		".",
-		"output directory")
+		"output directory",
+	)
+	verbose = flag.Int(
+		"v",
+		0,
+		"verbose level",
+	)
 )
 
 // global
@@ -78,7 +84,7 @@ func main() {
 		}
 		log.Printf("[%s]:[%s]:[%s]:[%+v]\n", seqInfo.Name, seqInfo.IndexSeq, seqInfo.Seq, seqInfo.Fastqs)
 		seqInfo.Init()
-		seqInfo.CountError4()
+		seqInfo.CountError4(*verbose)
 
 		seqInfo.WriteStatsSheet()
 		seqInfo.Save()

@@ -1,6 +1,5 @@
 Name	SheetName
 Stats	Sheet
-SeqResult	SeqResult
 BarCode	BarCode
 Deletion	Deletion
 Deletion1	DeletionSingle
