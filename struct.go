@@ -1,13 +1,18 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
+
+	//"compress/gzip"
+	gzip "github.com/klauspost/pgzip"
 
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/opts"
@@ -165,7 +170,19 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 	var row = 1
 	for _, fastq := range seqInfo.Fastqs {
 		log.Printf("load %s", fastq)
-		for i, s := range textUtil.File2Array(fastq) {
+		var (
+			file    = osUtil.Open(fastq)
+			scanner *bufio.Scanner
+			i       = -1
+		)
+		if gz.MatchString(fastq) {
+			scanner = bufio.NewScanner(simpleUtil.HandleError(gzip.NewReader(file)).(io.Reader))
+		} else {
+			scanner = bufio.NewScanner(file)
+		}
+		for scanner.Scan() {
+			var s = scanner.Text()
+			i++
 			if i%4 != 1 {
 				continue
 			}
@@ -229,6 +246,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string) {
 				)
 			}
 		}
+		simpleUtil.CheckErr(file.Close())
 	}
 	seqInfo.Stats["AnalyzedReadsNum"] = seqInfo.Stats["RightReadsNum"] + seqInfo.Stats["IndexPolyAReadsNum"]
 }

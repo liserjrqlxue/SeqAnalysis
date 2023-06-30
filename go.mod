@@ -4,11 +4,13 @@ go 1.20
 
 require (
 	github.com/go-echarts/go-echarts/v2 v2.2.6
+	github.com/klauspost/pgzip v1.2.6
 	github.com/liserjrqlxue/goUtil v0.1.1
 	github.com/xuri/excelize/v2 v2.7.1
 )
 
 require (
+	github.com/klauspost/compress v1.16.6 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/richardlehane/mscfb v1.0.4 // indirect
 	github.com/richardlehane/msoleps v1.0.3 // indirect

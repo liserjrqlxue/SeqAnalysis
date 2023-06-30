@@ -13,4 +13,5 @@ var (
 	regC     = regexp.MustCompile(`C`)
 	regG     = regexp.MustCompile(`G`)
 	regT     = regexp.MustCompile(`T`)
+	gz       = regexp.MustCompile(`gz$`)
 )
