@@ -82,6 +82,14 @@ func main() {
 			HitSeqCount: make(map[string]int),
 			ReadsLength: make(map[int]int),
 		}
+		if len(a) > 3 {
+			seqInfo.Fastqs = a[3:]
+		} else {
+			seqInfo.Fastqs = []string{
+				filepath.Join("00.CleanData", seqInfo.Name, seqInfo.Name+"_1.clean.fq.gz"),
+				filepath.Join("00.CleanData", seqInfo.Name, seqInfo.Name+"_2.clean.fq.gz"),
+			}
+		}
 		log.Printf("[%s]:[%s]:[%s]:[%+v]\n", seqInfo.Name, seqInfo.IndexSeq, seqInfo.Seq, seqInfo.Fastqs)
 		seqInfo.Init()
 		seqInfo.CountError4(*verbose)
