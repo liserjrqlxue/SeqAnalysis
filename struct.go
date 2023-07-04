@@ -162,7 +162,6 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 		fmtUtil.Fprintf(outputUnmatched, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", "#Seq", "A", "C", "G", "T", "TargetSeq", "IndexSeq", "PloyA")
 	}
 
-	var row = 1
 	for _, fastq := range seqInfo.Fastqs {
 		log.Printf("load %s", fastq)
 		var (
@@ -195,7 +194,6 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 			if seqHit.MatchString(s) {
 				seqInfo.Stats["RightReadsNum"]++
 				seqInfo.HitSeqCount[tSeq]++
-				row++
 				for i2, c := range []byte(s) {
 					switch c {
 					case 'A':
@@ -220,14 +218,13 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 				} else if len(tSeq) > 1 && !regN.MatchString(tSeq) && len(tSeq) < tarLength {
 					seqInfo.HitSeqCount[tSeq]++
 					seqInfo.Stats["IndexPolyAReadsNum"]++
-					row++
 				} else {
 					//fmt.Printf("[%s]:[%s]:[%+v]\n", s, tSeq, m)
 					seqInfo.Stats["ExcludeReadsNum"]++
 				}
 			} else {
 				seqInfo.Stats["UnmatchedReadsNum"]++
-				if verbose > 0 {
+				if verbose > 1 {
 
 					fmtUtil.Fprintf(
 						outputUnmatched,

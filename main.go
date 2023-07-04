@@ -39,7 +39,7 @@ var (
 	verbose = flag.Int(
 		"v",
 		0,
-		"verbose level",
+		"verbose level\n\t1: more log\n\t2: unmatched.txt",
 	)
 )
 
