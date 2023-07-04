@@ -693,12 +693,6 @@ func (seqInfo *SeqInfo) WriteStatsSheet() {
 			math2.DivisionInt(counts[b], readsCount),     // 单步准确率
 			math.Pow(yieldCoefficient, 1.0/float64(i+1)), // 收率平均准确率
 		}
-		if i == 0 {
-			log.Printf("%+v", rowValue)
-			for b2, i2 := range counts {
-				log.Printf("%c:%d", b2, i2)
-			}
-		}
 
 		readsCount = counts[b]
 
