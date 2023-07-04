@@ -52,7 +52,6 @@ type SeqInfo struct {
 	AlignMut    []byte
 
 	IndexSeq string
-	BarCode  string
 	Fastqs   []string
 
 	HitSeq      []string

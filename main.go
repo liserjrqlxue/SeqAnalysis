@@ -43,11 +43,6 @@ var (
 	)
 )
 
-// global
-var (
-	BarCode = "AGTGCT"
-)
-
 func main() {
 	flag.Parse()
 	if *workDir != "" {
@@ -73,7 +68,6 @@ func main() {
 			Name:        a[0],
 			IndexSeq:    strings.ToUpper(a[1]),
 			Seq:         []byte(strings.ToUpper(a[2])),
-			BarCode:     BarCode,
 			Fastqs:      a[3:],
 			Excel:       filepath.Join(*outputDir, "result", a[0]+".xlsx"),
 			Sheets:      Sheets,
