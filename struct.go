@@ -152,6 +152,8 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 		polyA       = regexp.MustCompile(`(.*?)` + indexSeq + `(.*?)AAAAAAAA`)
 		regIndexSeq = regexp.MustCompile(indexSeq)
 		regTarSeq   = regexp.MustCompile(tarSeq)
+		termA       = 0
+		termFix     = ""
 
 		outputShort     *os.File
 		outputUnmatched *os.File
@@ -160,6 +162,14 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 		outputShort = osUtil.Create(filepath.Join(*outputDir, seqInfo.Name+path+".short.txt"))
 		outputUnmatched = osUtil.Create(filepath.Join(*outputDir, seqInfo.Name+path+".unmatched.txt"))
 		fmtUtil.Fprintf(outputUnmatched, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", "#Seq", "A", "C", "G", "T", "TargetSeq", "IndexSeq", "PloyA")
+	}
+	for i := len(tarSeq) - 1; i > -1; i-- {
+		if tarSeq[i] == 'A' {
+			termA++
+			termFix += "A"
+		} else {
+			break
+		}
 	}
 
 	for _, fastq := range seqInfo.Fastqs {
@@ -191,7 +201,13 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 				continue
 			}
 			var tSeq = tarSeq
-			if seqHit.MatchString(s) {
+			var rcS = ReverseComplement(s)
+
+			if regIndexSeq.MatchString(s) || regIndexSeq.MatchString(rcS) {
+				seqInfo.Stats["IndexReadsNum"]++
+			}
+
+			if seqHit.MatchString(s) || seqHit.MatchString(rcS) {
 				seqInfo.Stats["RightReadsNum"]++
 				seqInfo.HitSeqCount[tSeq]++
 				for i2, c := range []byte(s) {
@@ -210,6 +226,23 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 			} else if polyA.MatchString(s) {
 				var m = polyA.FindStringSubmatch(s)
 				tSeq = m[2]
+				tSeq += termFix
+
+				if len(tSeq) == 0 {
+					tSeq = "X"
+					seqInfo.HitSeqCount[tSeq]++
+					seqInfo.Stats["IndexPolyAReadsNum"]++
+				} else if len(tSeq) > 1 && !regN.MatchString(tSeq) && len(tSeq) < tarLength {
+					seqInfo.HitSeqCount[tSeq]++
+					seqInfo.Stats["IndexPolyAReadsNum"]++
+				} else {
+					//fmt.Printf("[%s]:[%s]:[%+v]\n", s, tSeq, m)
+					seqInfo.Stats["ExcludeReadsNum"]++
+				}
+			} else if polyA.MatchString(rcS) {
+				var m = polyA.FindStringSubmatch(rcS)
+				tSeq = m[2]
+				tSeq += termFix
 
 				if len(tSeq) == 0 {
 					tSeq = "X"
@@ -533,12 +566,17 @@ func (seqInfo *SeqInfo) PrintStats() {
 		math2.DivisionInt(stats["ExcludeReadsNum"], stats["AllReadsNum"])*100,
 	)
 	fmt.Printf(
-		"+AnalyzedReadsNum\t= %d\t%.4f%%\n",
-		stats["AnalyzedReadsNum"],
-		math2.DivisionInt(stats["AnalyzedReadsNum"], stats["AllReadsNum"])*100,
+		"+IndexReadsNum\t\t= %d\t%.4f%%\n",
+		stats["IndexReadsNum"],
+		math2.DivisionInt(stats["IndexReadsNum"], stats["AllReadsNum"])*100,
 	)
 	fmt.Printf(
-		"++SeqHitReadsNum\t= %d\t%.4f%%\n",
+		"+AnalyzedReadsNum\t= %d\t%.4f%%\n",
+		stats["AnalyzedReadsNum"],
+		math2.DivisionInt(stats["AnalyzedReadsNum"], stats["IndexReadsNum"])*100,
+	)
+	fmt.Printf(
+		"++RightReadsNum\t\t= %d\t%.4f%%\n",
 		stats["RightReadsNum"],
 		math2.DivisionInt(stats["RightReadsNum"], stats["AnalyzedReadsNum"])*100,
 	)
