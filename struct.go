@@ -76,12 +76,6 @@ var center = &excelize.Style{
 }
 
 func (seqInfo *SeqInfo) Init() {
-	if seqInfo.Seq == nil {
-		seqInfo.Seq = []byte("CTCTCTCTCTCTCTCTCTCT")
-	}
-	if seqInfo.IndexSeq == "" {
-		seqInfo.IndexSeq = "ACTAGGACGACTCGAATT"
-	}
 	for i := 0; i < len(seqInfo.Seq); i++ {
 		for j := 0; j < 4; j++ {
 			seqInfo.DistributionNum[j] = append(seqInfo.DistributionNum[j], 0)
