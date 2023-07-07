@@ -59,9 +59,16 @@ func main() {
 	}
 	simpleUtil.CheckErr(os.MkdirAll(filepath.Join(*outputDir, "result"), 0755))
 
+	// runtime.GOMAXPROCS(runtime.NumCPU()) * 2)
+
 	var seqList = textUtil.File2Array(*input)
+	chanList = make(chan bool, len(seqList))
 	for _, s := range seqList {
-		SingelRun(s)
+		chanList <- true
+		go SingleRun(s)
+	}
+	for range seqList {
+		chanList <- true
 	}
 
 	if runtime.GOOS == "windows" {

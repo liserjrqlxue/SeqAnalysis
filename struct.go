@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"log"
 	"math"
@@ -544,72 +543,76 @@ func (seqInfo *SeqInfo) UpdateDistributionStats() {
 }
 
 func (seqInfo *SeqInfo) PrintStats() {
-	var stats = seqInfo.Stats
+	var (
+		stats = seqInfo.Stats
+		out   = osUtil.Create(filepath.Join("result", seqInfo.Name+".stats.txt"))
+	)
+	defer simpleUtil.DeferClose(out)
 
-	fmt.Printf(
+	fmtUtil.Fprintf(out,
 		"AllReadsNum\t\t= %d\n",
 		stats["AllReadsNum"],
 	)
-	fmt.Printf(
+	fmtUtil.Fprintf(out,
 		"+ShortReadsNum\t\t= %d\t%7.4f%%\n",
 		stats["ShortReadsNum"],
 		math2.DivisionInt(stats["ShortReadsNum"], stats["AllReadsNum"])*100,
 	)
-	fmt.Printf(
+	fmtUtil.Fprintf(out,
 		"+UnmatchedReadsNum\t= %d\t%7.4f%%\n",
 		stats["UnmatchedReadsNum"],
 		math2.DivisionInt(stats["UnmatchedReadsNum"], stats["AllReadsNum"])*100,
 	)
-	fmt.Printf(
+	fmtUtil.Fprintf(out,
 		"+ExcludeReadsNum\t= %d\t%7.4f%%\n",
 		stats["ExcludeReadsNum"],
 		math2.DivisionInt(stats["ExcludeReadsNum"], stats["AllReadsNum"])*100,
 	)
-	fmt.Printf(
+	fmtUtil.Fprintf(out,
 		"+IndexReadsNum\t\t= %d\t%.4f%%\n",
 		stats["IndexReadsNum"],
 		math2.DivisionInt(stats["IndexReadsNum"], stats["AllReadsNum"])*100,
 	)
-	fmt.Printf(
+	fmtUtil.Fprintf(out,
 		"+AnalyzedReadsNum\t= %d\t%.4f%%\n",
 		stats["AnalyzedReadsNum"],
 		math2.DivisionInt(stats["AnalyzedReadsNum"], stats["IndexReadsNum"])*100,
 	)
-	fmt.Printf(
+	fmtUtil.Fprintf(out,
 		"++RightReadsNum\t\t= %d\t%.4f%%\n",
 		stats["RightReadsNum"],
 		math2.DivisionInt(stats["RightReadsNum"], stats["AnalyzedReadsNum"])*100,
 	)
-	fmt.Printf(
+	fmtUtil.Fprintf(out,
 		"++IndexPolyAReadsNum\t= %d\t%.4f%%\n",
 		stats["IndexPolyAReadsNum"],
 		math2.DivisionInt(stats["IndexPolyAReadsNum"], stats["AnalyzedReadsNum"])*100,
 	)
-	fmt.Printf(
+	fmtUtil.Fprintf(out,
 		"+++ErrorReadsNum\t= %d\n",
 		stats["ErrorReadsNum"],
 	)
-	fmt.Printf(
+	fmtUtil.Fprintf(out,
 		"++++ErrorDelReadsNum\t= %d\t%.4f%%\n",
 		stats["ErrorDelReadsNum"],
 		math2.DivisionInt(stats["ErrorDelReadsNum"], stats["ErrorReadsNum"])*100,
 	)
-	fmt.Printf(
+	fmtUtil.Fprintf(out,
 		"++++ErrorInsReadsNum\t= %d\t%.4f%%\n",
 		stats["ErrorInsReadsNum"],
 		math2.DivisionInt(stats["ErrorInsReadsNum"], stats["ErrorReadsNum"])*100,
 	)
-	fmt.Printf(
+	fmtUtil.Fprintf(out,
 		"++++ErrorMutReadsNum\t= %d\t%7.4f%%\n",
 		stats["ErrorMutReadsNum"],
 		math2.DivisionInt(stats["ErrorMutReadsNum"], stats["ErrorReadsNum"])*100,
 	)
-	fmt.Printf(
+	fmtUtil.Fprintf(out,
 		"++++ErrorOtherReadsNum\t= %d\t%.4f%%\n",
 		stats["ErrorOtherReadsNum"],
 		math2.DivisionInt(stats["ErrorOtherReadsNum"], stats["ErrorReadsNum"])*100,
 	)
-	fmt.Printf(
+	fmtUtil.Fprintf(out,
 		"++AverageBaseAccuracy\t= %7.4f%%\t%d/%d\n",
 		math2.DivisionInt(stats["AccuRightNum"], stats["AccuReadsNum"])*100,
 		stats["AccuRightNum"], stats["AccuReadsNum"],

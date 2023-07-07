@@ -36,7 +36,10 @@ func ReverseComplement(s string) string {
 	return Complement(string(Reverse([]byte(s))))
 }
 
-func SingelRun(s string) {
+func SingleRun(s string) {
+	defer func() {
+		<-chanList
+	}()
 	strings.TrimSuffix(s, "\r")
 	var a = strings.Split(s, "\t")
 

@@ -19,4 +19,5 @@ var (
 var (
 	Sheets    = make(map[string]string)
 	sheetList []string
+	chanList  chan bool
 )
