@@ -1,4 +1,5 @@
 AllReadsNum
+IndexReadsNum
 AnalyzedReadsNum
 靶标
 合成序列
