@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/liserjrqlxue/goUtil/sge"
@@ -95,15 +96,17 @@ func main() {
 		seqInfo.PlotLineACGT("ACGT.html")
 	}
 
-	var cwd = filepath.Base(simpleUtil.HandleError(os.Getwd()).(string))
-	simpleUtil.CheckErr(
-		sge.Run("powershell",
-			"Compress-Archive",
-			"-Path",
-			"result",
-			"-DestinationPath",
-			cwd+".result.zip",
-			"-Force"),
-	)
-	simpleUtil.CheckErr(sge.Run("powershell", "explorer", cwd+".result.zip"))
+	if runtime.GOOS == "windows" {
+		var cwd = filepath.Base(simpleUtil.HandleError(os.Getwd()).(string))
+		simpleUtil.CheckErr(
+			sge.Run("powershell",
+				"Compress-Archive",
+				"-Path",
+				"result",
+				"-DestinationPath",
+				cwd+".result.zip",
+				"-Force"),
+		)
+		simpleUtil.CheckErr(sge.Run("powershell", "explorer", cwd+".result.zip"))
+	}
 }
