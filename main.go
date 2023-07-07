@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/liserjrqlxue/goUtil/sge"
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
 	"github.com/liserjrqlxue/goUtil/textUtil"
 )
@@ -93,4 +94,16 @@ func main() {
 		seqInfo.PrintStats()
 		seqInfo.PlotLineACGT("ACGT.html")
 	}
+
+	var cwd = filepath.Base(simpleUtil.HandleError(os.Getwd()).(string))
+	simpleUtil.CheckErr(
+		sge.Run("powershell",
+			"Compress-Archive",
+			"-Path",
+			"result",
+			"-DestinationPath",
+			cwd+".result.zip",
+			"-Force"),
+	)
+	simpleUtil.CheckErr(sge.Run("powershell", "explorer", cwd+".result.zip"))
 }
