@@ -2,16 +2,14 @@ package main
 
 import (
 	"flag"
+	"github.com/liserjrqlxue/goUtil/sge"
+	"github.com/liserjrqlxue/goUtil/simpleUtil"
+	"github.com/liserjrqlxue/goUtil/textUtil"
 	"log"
 	"os"
 	"path"
 	"path/filepath"
 	"runtime"
-	"strings"
-
-	"github.com/liserjrqlxue/goUtil/sge"
-	"github.com/liserjrqlxue/goUtil/simpleUtil"
-	"github.com/liserjrqlxue/goUtil/textUtil"
 )
 
 // os
@@ -45,6 +43,14 @@ var (
 	)
 )
 
+func init() {
+	var sheetMap, _ = textUtil.File2MapArray(path.Join(etcPath, "sheet.txt"), "\t", nil)
+	for _, m := range sheetMap {
+		Sheets[m["Name"]] = m["SheetName"]
+		sheetList = append(sheetList, m["SheetName"])
+	}
+}
+
 func main() {
 	flag.Parse()
 	if *workDir != "" {
@@ -53,47 +59,9 @@ func main() {
 	}
 	simpleUtil.CheckErr(os.MkdirAll(filepath.Join(*outputDir, "result"), 0755))
 
-	var Sheets = make(map[string]string)
-	var sheetMap, _ = textUtil.File2MapArray(path.Join(etcPath, "sheet.txt"), "\t", nil)
-	var sheetList []string
-	for _, m := range sheetMap {
-		Sheets[m["Name"]] = m["SheetName"]
-		sheetList = append(sheetList, m["SheetName"])
-	}
-
 	var seqList = textUtil.File2Array(*input)
 	for _, s := range seqList {
-		strings.TrimSuffix(s, "\r")
-		var a = strings.Split(s, "\t")
-
-		var seqInfo = &SeqInfo{
-			Name:        a[0],
-			IndexSeq:    strings.ToUpper(a[1]),
-			Seq:         []byte(strings.ToUpper(a[2])),
-			Fastqs:      a[3:],
-			Excel:       filepath.Join(*outputDir, "result", a[0]+".xlsx"),
-			Sheets:      Sheets,
-			SheetList:   sheetList,
-			Stats:       make(map[string]int),
-			HitSeqCount: make(map[string]int),
-			ReadsLength: make(map[int]int),
-		}
-		if len(a) > 3 {
-			seqInfo.Fastqs = a[3:]
-		} else {
-			seqInfo.Fastqs = []string{
-				filepath.Join("00.CleanData", seqInfo.Name, seqInfo.Name+"_1.clean.fq.gz"),
-				filepath.Join("00.CleanData", seqInfo.Name, seqInfo.Name+"_2.clean.fq.gz"),
-			}
-		}
-		log.Printf("[%s]:[%s]:[%s]:[%+v]\n", seqInfo.Name, seqInfo.IndexSeq, seqInfo.Seq, seqInfo.Fastqs)
-		seqInfo.Init()
-		seqInfo.CountError4(*verbose)
-
-		seqInfo.WriteStatsSheet()
-		seqInfo.Save()
-		seqInfo.PrintStats()
-		seqInfo.PlotLineACGT("ACGT.html")
+		SingelRun(s)
 	}
 
 	if runtime.GOOS == "windows" {

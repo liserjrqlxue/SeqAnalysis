@@ -1,6 +1,10 @@
 package main
 
-import "strings"
+import (
+	"log"
+	"path/filepath"
+	"strings"
+)
 
 // from https://forum.golangbridge.org/t/easy-way-for-letter-substitution-reverse-complementary-dna-sequence/20101
 // from https://go.dev/play/p/IXI6PY7XUXN
@@ -30,4 +34,38 @@ func Reverse(r []byte) []byte {
 
 func ReverseComplement(s string) string {
 	return Complement(string(Reverse([]byte(s))))
+}
+
+func SingelRun(s string) {
+	strings.TrimSuffix(s, "\r")
+	var a = strings.Split(s, "\t")
+
+	var seqInfo = &SeqInfo{
+		Name:        a[0],
+		IndexSeq:    strings.ToUpper(a[1]),
+		Seq:         []byte(strings.ToUpper(a[2])),
+		Fastqs:      a[3:],
+		Excel:       filepath.Join(*outputDir, "result", a[0]+".xlsx"),
+		Sheets:      Sheets,
+		SheetList:   sheetList,
+		Stats:       make(map[string]int),
+		HitSeqCount: make(map[string]int),
+		ReadsLength: make(map[int]int),
+	}
+	if len(a) > 3 {
+		seqInfo.Fastqs = a[3:]
+	} else {
+		seqInfo.Fastqs = []string{
+			filepath.Join("00.CleanData", seqInfo.Name, seqInfo.Name+"_1.clean.fq.gz"),
+			filepath.Join("00.CleanData", seqInfo.Name, seqInfo.Name+"_2.clean.fq.gz"),
+		}
+	}
+	log.Printf("[%s]:[%s]:[%s]:[%+v]\n", seqInfo.Name, seqInfo.IndexSeq, seqInfo.Seq, seqInfo.Fastqs)
+	seqInfo.Init()
+	seqInfo.CountError4(*verbose)
+
+	seqInfo.WriteStatsSheet()
+	seqInfo.Save()
+	seqInfo.PrintStats()
+	seqInfo.PlotLineACGT("ACGT.html")
 }

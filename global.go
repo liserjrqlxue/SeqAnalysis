@@ -15,3 +15,8 @@ var (
 	regT     = regexp.MustCompile(`T`)
 	gz       = regexp.MustCompile(`gz$`)
 )
+
+var (
+	Sheets    = make(map[string]string)
+	sheetList []string
+)
