@@ -129,14 +129,11 @@ func (seqInfo *SeqInfo) CountError4(verbose int) {
 	// 1. 统计不同测序结果出现的频数
 	seqInfo.WriteSeqResult(".SeqResult.txt", verbose)
 
-	log.Print("seqInfo.GetHitSeq")
 	seqInfo.GetHitSeq()
 
 	// 2. 与正确合成序列进行比对,统计不同合成结果出现的频数
-	log.Print("seqInfo.WriteSeqResultNum")
 	seqInfo.WriteSeqResultNum()
 
-	log.Print("seqInfo.UpdateDistributionStats")
 	seqInfo.UpdateDistributionStats()
 
 	//seqInfo.PrintStats()
@@ -397,6 +394,7 @@ func (seqInfo *SeqInfo) Align1(key string) bool {
 		}
 	}
 	seqInfo.Align = c
+	//if k >= len(b) && !minus3.Match(c) { // all match
 	if k >= len(b) { // all match
 		SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, count, c})
 		seqInfo.rowDeletion++
@@ -468,6 +466,7 @@ func (seqInfo *SeqInfo) Align2(key string) bool {
 	}
 	seqInfo.AlignInsert = c
 	if k >= len(b)-1 && c[0] != '+' {
+		//if !plus3.Match(c) && !minus3.Match(c) && !m2p2.Match(c) && minus1.Match(c) {
 		if !plus3.Match(c) {
 			if minus1.Match(c) {
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["InsertionDeletion"], 1, seqInfo.rowInsertionDeletion, []interface{}{seqInfo.Seq, key, count, c})
@@ -659,7 +658,12 @@ func (seqInfo *SeqInfo) WriteStatsSheet() {
 		distribution = seqInfo.DistributionFreq
 		readsCount   = stats["AnalyzedReadsNum"]
 		title        []interface{}
+
+		out  = osUtil.Create(filepath.Join("result", seqInfo.Name+".steps.txt"))
+		osar = osUtil.Create(filepath.Join("result", seqInfo.Name+".one.step.accuracy.rate.txt"))
 	)
+	defer simpleUtil.DeferClose(out)
+	defer simpleUtil.DeferClose(osar)
 
 	SetCellStr(xlsx, sheet, 1, 1, seqInfo.Name)
 	MergeCells(xlsx, sheet, 1, rIdx, len(titleTar), rIdx)
@@ -687,9 +691,15 @@ func (seqInfo *SeqInfo) WriteStatsSheet() {
 		title = append(title, s)
 	}
 
+	fmtUtil.FprintStringArray(out, titleTar, "\t")
 	SetRow(xlsx, sheet, 1, rIdx, title)
 	rIdx++
 
+	var (
+		sumDel    = 0
+		countDels = make(map[byte]int)
+		sequence  = seqInfo.IndexSeq[len(seqInfo.IndexSeq)-4:] + string(seqInfo.Seq)
+	)
 	for i, b := range seqInfo.Seq {
 		var counts = make(map[byte]int)
 		for seq, count := range seqInfo.HitSeqCount {
@@ -707,8 +717,22 @@ func (seqInfo *SeqInfo) WriteStatsSheet() {
 
 		var (
 			del              = readsCount - counts['A'] - counts['C'] - counts['G'] - counts['T']
+			del1             = del
 			yieldCoefficient = math2.DivisionInt(counts[b], stats["AnalyzedReadsNum"])
+			ratio            = make(map[byte]float64)
 		)
+
+		if i < len(seqInfo.Seq)-1 && seqInfo.Seq[i+1] != seqInfo.Seq[i] {
+			del1 = counts[seqInfo.Seq[i+1]]
+		}
+		countDels[b] += del1
+
+		ratio['A'] = math2.DivisionInt(counts['A'], readsCount)
+		ratio['T'] = math2.DivisionInt(counts['T'], readsCount)
+		ratio['C'] = math2.DivisionInt(counts['C'], readsCount)
+		ratio['G'] = math2.DivisionInt(counts['G'], readsCount)
+		var ratioDel = math2.DivisionInt(del1, readsCount)
+		var ratioSort = RankByteFloatMap(ratio)
 
 		var rowValue = []interface{}{
 			i + 1,
@@ -724,19 +748,111 @@ func (seqInfo *SeqInfo) WriteStatsSheet() {
 			counts['G'],
 			del,
 			yieldCoefficient, // 收率
-			math2.DivisionInt(counts['A'], readsCount),
-			math2.DivisionInt(counts['T'], readsCount),
-			math2.DivisionInt(counts['C'], readsCount),
-			math2.DivisionInt(counts['G'], readsCount),
-			math2.DivisionInt(counts[b], readsCount),     // 单步准确率
+			ratio['A'],
+			ratio['T'],
+			ratio['C'],
+			ratio['G'],
+			ratio[b], // 单步 准确率
 			math.Pow(yieldCoefficient, 1.0/float64(i+1)), // 收率平均准确率
+			string(ratioSort[0].Key),
+			ratioSort[0].Value,
+			string(ratioSort[1].Key),
+			ratioSort[1].Value,
+			del1,
+			ratioDel,
 		}
 
 		readsCount = counts[b]
 
 		SetRow(xlsx, sheet, 1, rIdx, rowValue)
 		rIdx++
+
+		fmtUtil.Fprintf(
+			osar,
+			"%s\t%s\t%c\t%d\t%f\n",
+			seqInfo.Name,
+			sequence[i:i+4],
+			sequence[i+4],
+			i+1,
+			ratio[b],
+		)
+
+		fmtUtil.Fprintf(
+			out,
+			"%d\t%s\t%f\t%f\t%f\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%s\t%f\t%s\t%f\t%d\t%f\n",
+			rowValue[0],
+			rowValue[1],
+			rowValue[2],
+			rowValue[3],
+			rowValue[4],
+			rowValue[5],
+			rowValue[6],
+			rowValue[7],
+			rowValue[8],
+			rowValue[9],
+			rowValue[10],
+			rowValue[11],
+			rowValue[12],
+			rowValue[13],
+			rowValue[14],
+			rowValue[15],
+			rowValue[16],
+			rowValue[17],
+			rowValue[18],
+			rowValue[19],
+			rowValue[20],
+			rowValue[21],
+			rowValue[22],
+			del1,
+			ratioDel,
+		)
+		sumDel += del1
 	}
+	log.Printf(
+		"Simple Deletion:\t%s\nAll\t%d\t%.0f%%\nA\t%d\t%0.f%%\nT\t%d\t%.0f%%\nC\t%d\t%.0f%%\nG\t%d\t%.0f%%\n",
+		seqInfo.Name,
+		sumDel, math2.DivisionInt(100*sumDel, seqInfo.Stats["ErrorReadsNum"]),
+		countDels['A'], math2.DivisionInt(100*countDels['A'], sumDel),
+		countDels['T'], math2.DivisionInt(100*countDels['T'], sumDel),
+		countDels['C'], math2.DivisionInt(100*countDels['C'], sumDel),
+		countDels['G'], math2.DivisionInt(100*countDels['G'], sumDel),
+	)
 
 	simpleUtil.CheckErr(seqInfo.xlsx.SetRowStyle(sheet, 1, rIdx-1, seqInfo.Style["center"]))
+}
+
+type ByteFloat struct {
+	Key   byte
+	Value float64
+}
+
+type ByteFloatList []ByteFloat
+
+func (l ByteFloatList) Len() int {
+	return len(l)
+
+}
+
+func (l ByteFloatList) Less(i, j int) bool {
+	return l[i].Value < l[j].Value
+}
+
+func (l ByteFloatList) Swap(i, j int) {
+	l[i], l[j] = l[j], l[i]
+}
+
+func RankByteFloatMap(data map[byte]float64) ByteFloatList {
+	var (
+		l = make(ByteFloatList, len(data))
+		i = 0
+	)
+	for b, f := range data {
+		l[i] = ByteFloat{
+			Key:   b,
+			Value: f,
+		}
+		i++
+	}
+	sort.Sort(sort.Reverse(l))
+	return l
 }

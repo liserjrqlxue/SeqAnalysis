@@ -41,6 +41,11 @@ var (
 		0,
 		"verbose level\n\t1: more log\n\t2: unmatched.txt",
 	)
+	zip = flag.Bool(
+		"zip",
+		false,
+		"Compress-Archive to zip, windows only",
+	)
 )
 
 func init() {
@@ -71,7 +76,7 @@ func main() {
 		chanList <- true
 	}
 
-	if runtime.GOOS == "windows" {
+	if *zip && runtime.GOOS == "windows" {
 		var cwd = filepath.Base(simpleUtil.HandleError(os.Getwd()).(string))
 		simpleUtil.CheckErr(
 			sge.Run("powershell",
