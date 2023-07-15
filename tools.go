@@ -37,13 +37,15 @@ func ReverseComplement(s string) string {
 }
 
 func SingleRun(s string) {
+	var seqInfo = new(SeqInfo)
 	defer func() {
+		SeqInfoMap[s] = seqInfo
 		<-chanList
 	}()
 	strings.TrimSuffix(s, "\r")
 	var a = strings.Split(s, "\t")
 
-	var seqInfo = &SeqInfo{
+	seqInfo = &SeqInfo{
 		Name:        a[0],
 		IndexSeq:    strings.ToUpper(a[1]),
 		Seq:         []byte(strings.ToUpper(a[2])),

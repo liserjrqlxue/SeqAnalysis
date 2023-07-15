@@ -22,7 +22,8 @@ var (
 )
 
 var (
-	Sheets    = make(map[string]string)
-	sheetList []string
-	chanList  chan bool
+	Sheets     = make(map[string]string)
+	sheetList  []string
+	chanList   chan bool
+	SeqInfoMap = make(map[string]*SeqInfo)
 )

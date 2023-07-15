@@ -2,14 +2,19 @@ package main
 
 import (
 	"flag"
-	"github.com/liserjrqlxue/goUtil/sge"
-	"github.com/liserjrqlxue/goUtil/simpleUtil"
-	"github.com/liserjrqlxue/goUtil/textUtil"
 	"log"
 	"os"
 	"path"
 	"path/filepath"
 	"runtime"
+
+	"github.com/liserjrqlxue/goUtil/fmtUtil"
+	"github.com/liserjrqlxue/goUtil/math"
+	"github.com/liserjrqlxue/goUtil/osUtil"
+	"github.com/liserjrqlxue/goUtil/sge"
+	"github.com/liserjrqlxue/goUtil/simpleUtil"
+	"github.com/liserjrqlxue/goUtil/textUtil"
+	"github.com/xuri/excelize/v2"
 )
 
 // os
@@ -75,6 +80,63 @@ func main() {
 	for range seqList {
 		chanList <- true
 	}
+
+	var summary = osUtil.Create(filepath.Join("result", "summary.txt"))
+
+	//fmt.Println(strings.Join(textUtil.File2Array(filepath.Join(etcPath, "title.Summary.txt")), "\t"))
+	var summaryTitle = textUtil.File2Array(filepath.Join(etcPath, "title.Summary.txt"))
+	fmtUtil.FprintStringArray(summary, summaryTitle, "\t")
+
+	var summaryXlsx = excelize.NewFile()
+	simpleUtil.CheckErr(summaryXlsx.SetSheetName("Sheet1", "Summary"))
+	for i, s := range summaryTitle {
+		SetCellStr(summaryXlsx, "Summary", 1+i, 1, s)
+	}
+
+	for i, s := range seqList {
+		var (
+			info  = SeqInfoMap[s]
+			stats = info.Stats
+		)
+		var rows = []interface{}{
+			info.Name, info.IndexSeq, info.Seq, len(info.Seq),
+			stats["AllReadsNum"], stats["IndexReadsNum"], stats["AnalyzedReadsNum"], stats["RightReadsNum"],
+			info.YieldCoefficient, info.AverageYieldAccuracy,
+			math.DivisionInt(stats["ErrorReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorDelReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorDel1ReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorDel2ReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorDelDupReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorDel3ReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorInsReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorInsDelReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorMutReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorOtherReadsNum"], stats["AnalyzedReadsNum"]),
+		}
+		SetRow(summaryXlsx, "Summary", 1, 2+i, rows)
+
+		fmtUtil.Fprintf(
+			summary,
+			"%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
+			info.Name, info.IndexSeq, info.Seq, len(info.Seq),
+			stats["AllReadsNum"], stats["IndexReadsNum"], stats["AnalyzedReadsNum"], stats["RightReadsNum"],
+			info.YieldCoefficient, info.AverageYieldAccuracy,
+			math.DivisionInt(stats["ErrorReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorDelReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorDel1ReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorDel2ReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorDelDupReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorDel3ReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorInsReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorInsDelReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorMutReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorOtherReadsNum"], stats["AnalyzedReadsNum"]),
+		)
+	}
+	simpleUtil.CheckErr(summaryXlsx.SaveAs(filepath.Join("result", "summary.xlsx")))
+
+	// close file handle before Compress-Archive
+	simpleUtil.DeferClose(summary)
 
 	if *zip && runtime.GOOS == "windows" {
 		var cwd = filepath.Base(simpleUtil.HandleError(os.Getwd()).(string))

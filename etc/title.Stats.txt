@@ -12,6 +12,7 @@ ErrorDel2ReadsNum
 ErrorDelDupReadsNum
 ErrorDel3ReadsNum
 ErrorInsReadsNum
+ErrorInsDelReadsNum
 ErrorMutReadsNum
 ErrorOtherReadsNum
 AverageBaseAccuracy

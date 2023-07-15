@@ -66,6 +66,14 @@ type SeqInfo struct {
 	C           [151]int
 	G           [151]int
 	T           [151]int
+
+	// summary
+	// 收率
+	YieldCoefficient     float64
+	AverageYieldAccuracy float64
+
+	// One-step accuracy rate
+	OSAR float64
 }
 
 var center = &excelize.Style{
@@ -141,10 +149,10 @@ func (seqInfo *SeqInfo) CountError4(verbose int) {
 
 func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 	var (
-		tarSeq      = string(seqInfo.Seq)
-		indexSeq    = seqInfo.IndexSeq
-		tarLength   = len(tarSeq) + 10
-		seqHit      = regexp.MustCompile(indexSeq + tarSeq)
+		tarSeq    = string(seqInfo.Seq)
+		indexSeq  = seqInfo.IndexSeq
+		tarLength = len(tarSeq) + 10
+		//seqHit      = regexp.MustCompile(indexSeq + tarSeq)
 		polyA       = regexp.MustCompile(`(.*?)` + indexSeq + `(.*?)AAAAAAAA`)
 		regIndexSeq = regexp.MustCompile(indexSeq)
 		regTarSeq   = regexp.MustCompile(tarSeq)
@@ -154,6 +162,9 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 		outputShort     *os.File
 		outputUnmatched *os.File
 	)
+	if tarSeq == "A" {
+		polyA = regexp.MustCompile(`(.*?)` + indexSeq + `(.*?)TTTTTTTT`)
+	}
 	if verbose > 0 {
 		outputShort = osUtil.Create(filepath.Join(*outputDir, seqInfo.Name+path+".short.txt"))
 		outputUnmatched = osUtil.Create(filepath.Join(*outputDir, seqInfo.Name+path+".unmatched.txt"))
@@ -167,6 +178,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 			break
 		}
 	}
+	log.Printf("[%-10s] Fix:[%s]\n", seqInfo.Name, termFix)
 
 	for _, fastq := range seqInfo.Fastqs {
 		log.Printf("load %s", fastq)
@@ -196,55 +208,55 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 				}
 				continue
 			}
-			var tSeq = tarSeq
-			var rcS = ReverseComplement(s)
+			var (
+				tSeq string
+				rcS  = ReverseComplement(s)
+				// regexp match
+				m []string
+			)
 
 			if regIndexSeq.MatchString(s) || regIndexSeq.MatchString(rcS) {
 				seqInfo.Stats["IndexReadsNum"]++
 			}
 
-			if seqHit.MatchString(s) || seqHit.MatchString(rcS) {
-				seqInfo.Stats["RightReadsNum"]++
-				seqInfo.HitSeqCount[tSeq]++
-				for i2, c := range []byte(s) {
-					switch c {
-					case 'A':
-						seqInfo.A[i2]++
-					case 'C':
-						seqInfo.C[i2]++
-					case 'G':
-						seqInfo.G[i2]++
-					case 'T':
-						seqInfo.T[i2]++
-					}
+			//if seqHit.MatchString(s) || seqHit.MatchString(rcS) {
+			//	seqInfo.Stats["RightReadsNum"]++
+			//	seqInfo.HitSeqCount[tSeq]++
+			//	for i2, c := range []byte(s) {
+			//		switch c {
+			//		case 'A':
+			//			seqInfo.A[i2]++
+			//		case 'C':
+			//			seqInfo.C[i2]++
+			//		case 'G':
+			//			seqInfo.G[i2]++
+			//		case 'T':
+			//			seqInfo.T[i2]++
+			//		}
+			//	}
+			//
+			//} else
+			if polyA.MatchString(s) || polyA.MatchString(rcS) {
+				if polyA.MatchString(s) {
+					m = polyA.FindStringSubmatch(s)
+				} else if polyA.MatchString(rcS) {
+					m = polyA.FindStringSubmatch(rcS)
 				}
 
-			} else if polyA.MatchString(s) {
-				var m = polyA.FindStringSubmatch(s)
 				tSeq = m[2]
-				tSeq += termFix
+				if tarSeq != "A" {
+					tSeq += termFix
+				}
 
-				if len(tSeq) == 0 {
+				if tSeq == tarSeq {
+					seqInfo.Stats["RightReadsNum"]++
+					seqInfo.HitSeqCount[tSeq]++
+
+				} else if len(tSeq) == 0 {
 					tSeq = "X"
 					seqInfo.HitSeqCount[tSeq]++
 					seqInfo.Stats["IndexPolyAReadsNum"]++
-				} else if len(tSeq) > 1 && !regN.MatchString(tSeq) && len(tSeq) < tarLength {
-					seqInfo.HitSeqCount[tSeq]++
-					seqInfo.Stats["IndexPolyAReadsNum"]++
-				} else {
-					//fmt.Printf("[%s]:[%s]:[%+v]\n", s, tSeq, m)
-					seqInfo.Stats["ExcludeReadsNum"]++
-				}
-			} else if polyA.MatchString(rcS) {
-				var m = polyA.FindStringSubmatch(rcS)
-				tSeq = m[2]
-				tSeq += termFix
-
-				if len(tSeq) == 0 {
-					tSeq = "X"
-					seqInfo.HitSeqCount[tSeq]++
-					seqInfo.Stats["IndexPolyAReadsNum"]++
-				} else if len(tSeq) > 1 && !regN.MatchString(tSeq) && len(tSeq) < tarLength {
+				} else if !regN.MatchString(tSeq) && len(tSeq) < tarLength {
 					seqInfo.HitSeqCount[tSeq]++
 					seqInfo.Stats["IndexPolyAReadsNum"]++
 				} else {
@@ -471,11 +483,12 @@ func (seqInfo *SeqInfo) Align2(key string) bool {
 			if minus1.Match(c) {
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["InsertionDeletion"], 1, seqInfo.rowInsertionDeletion, []interface{}{seqInfo.Seq, key, count, c})
 				seqInfo.rowInsertionDeletion++
+				seqInfo.Stats["ErrorInsDelReadsNum"] += count
 			} else {
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["Insertion"], 1, seqInfo.rowInsertion, []interface{}{seqInfo.Seq, key, count, c})
 				seqInfo.rowInsertion++
+				seqInfo.Stats["ErrorInsReadsNum"] += count
 			}
-			seqInfo.Stats["ErrorInsReadsNum"] += count
 			var i = 0
 			for _, c1 := range c[1:] {
 				if c1 == '+' {
@@ -526,7 +539,7 @@ func (seqInfo *SeqInfo) Align3(key string) bool {
 }
 
 func (seqInfo *SeqInfo) UpdateDistributionStats() {
-	seqInfo.Stats["ErrorReadsNum"] = seqInfo.Stats["ErrorDelReadsNum"] + seqInfo.Stats["ErrorInsReadsNum"] + seqInfo.Stats["ErrorMutReadsNum"] + seqInfo.Stats["ErrorOtherReadsNum"]
+	seqInfo.Stats["ErrorReadsNum"] = seqInfo.Stats["ErrorDelReadsNum"] + seqInfo.Stats["ErrorInsReadsNum"] + seqInfo.Stats["ErrorInsDelReadsNum"] + seqInfo.Stats["ErrorMutReadsNum"] + seqInfo.Stats["ErrorOtherReadsNum"]
 	seqInfo.Stats["ExcludeOtherReadsNum"] = seqInfo.Stats["RightReadsNum"] + seqInfo.Stats["ErrorReadsNum"] - seqInfo.Stats["ErrorOtherReadsNum"]
 	seqInfo.Stats["AccuReadsNum"] = seqInfo.Stats["ExcludeOtherReadsNum"] * len(seqInfo.Seq)
 
@@ -716,11 +729,11 @@ func (seqInfo *SeqInfo) WriteStatsSheet() {
 		}
 
 		var (
-			del              = readsCount - counts['A'] - counts['C'] - counts['G'] - counts['T']
-			del1             = del
-			yieldCoefficient = math2.DivisionInt(counts[b], stats["AnalyzedReadsNum"])
-			ratio            = make(map[byte]float64)
+			del   = readsCount - counts['A'] - counts['C'] - counts['G'] - counts['T']
+			del1  = del
+			ratio = make(map[byte]float64)
 		)
+		seqInfo.YieldCoefficient = math2.DivisionInt(counts[b], stats["AnalyzedReadsNum"])
 
 		if i < len(seqInfo.Seq)-1 && seqInfo.Seq[i+1] != seqInfo.Seq[i] {
 			del1 = counts[seqInfo.Seq[i+1]]
@@ -731,8 +744,11 @@ func (seqInfo *SeqInfo) WriteStatsSheet() {
 		ratio['T'] = math2.DivisionInt(counts['T'], readsCount)
 		ratio['C'] = math2.DivisionInt(counts['C'], readsCount)
 		ratio['G'] = math2.DivisionInt(counts['G'], readsCount)
+		seqInfo.OSAR = ratio[b]
 		var ratioDel = math2.DivisionInt(del1, readsCount)
 		var ratioSort = RankByteFloatMap(ratio)
+
+		seqInfo.AverageYieldAccuracy = math.Pow(seqInfo.YieldCoefficient, 1.0/float64(i+1))
 
 		var rowValue = []interface{}{
 			i + 1,
@@ -747,13 +763,13 @@ func (seqInfo *SeqInfo) WriteStatsSheet() {
 			counts['C'],
 			counts['G'],
 			del,
-			yieldCoefficient, // 收率
+			seqInfo.YieldCoefficient, // 收率
 			ratio['A'],
 			ratio['T'],
 			ratio['C'],
 			ratio['G'],
-			ratio[b], // 单步 准确率
-			math.Pow(yieldCoefficient, 1.0/float64(i+1)), // 收率平均准确率
+			seqInfo.OSAR,                 // 单步 准确率
+			seqInfo.AverageYieldAccuracy, // 收率平均准确率
 			string(ratioSort[0].Key),
 			ratioSort[0].Value,
 			string(ratioSort[1].Key),
