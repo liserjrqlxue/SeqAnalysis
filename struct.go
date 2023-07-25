@@ -827,6 +827,7 @@ func (seqInfo *SeqInfo) WriteStatsSheet() {
 		)
 		sumDel += del1
 	}
+
 	log.Printf(
 		"Simple Deletion:\t%s\nAll\t%d\t%.0f%%\nA\t%d\t%0.f%%\nT\t%d\t%.0f%%\nC\t%d\t%.0f%%\nG\t%d\t%.0f%%\n",
 		seqInfo.Name,

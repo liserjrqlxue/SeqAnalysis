@@ -73,5 +73,9 @@ func SingleRun(s string, offset int) {
 	seqInfo.WriteStatsSheet()
 	seqInfo.Save()
 	seqInfo.PrintStats()
-	seqInfo.PlotLineACGT("ACGT.html")
+	seqInfo.PlotLineACGT(filepath.Join("result", seqInfo.Name+"ACGT.html"))
+
+	// free HitSeqCount memory
+	seqInfo.HitSeqCount = make(map[string]int)
+	seqInfo.HitSeq = []string{}
 }

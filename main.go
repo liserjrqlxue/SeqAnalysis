@@ -52,6 +52,11 @@ var (
 		0,
 		"verbose level\n\t1: more log\n\t2: unmatched.txt",
 	)
+	thread = flag.Int(
+		"t",
+		0,
+		"thread used, default len(input)",
+	)
 	zip = flag.Bool(
 		"zip",
 		false,
@@ -78,12 +83,15 @@ func main() {
 	// runtime.GOMAXPROCS(runtime.NumCPU()) * 2)
 
 	var seqList = textUtil.File2Array(*input)
-	chanList = make(chan bool, len(seqList))
+	if *thread == 0 {
+		*thread = len(seqList)
+	}
+	chanList = make(chan bool, *thread)
 	for _, s := range seqList {
 		chanList <- true
 		go SingleRun(s, *offset)
 	}
-	for range seqList {
+	for i := 0; i < *thread; i++ {
 		chanList <- true
 	}
 
