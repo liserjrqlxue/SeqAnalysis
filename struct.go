@@ -49,6 +49,7 @@ type SeqInfo struct {
 	Align       []byte
 	AlignInsert []byte
 	AlignMut    []byte
+	Offset      int
 
 	IndexSeq string
 	Fastqs   []string
@@ -243,20 +244,19 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 					m = polyA.FindStringSubmatch(rcS)
 				}
 
-				tSeq = m[2]
+				tSeq = m[2] //[seqInfo.Offset:]
 				if tarSeq != "A" {
 					tSeq += termFix
 				}
 
-				if tSeq == tarSeq {
-					seqInfo.Stats["RightReadsNum"]++
-					seqInfo.HitSeqCount[tSeq]++
-
-				} else if len(tSeq) == 0 {
-					tSeq = "X"
+				if len(tSeq) <= seqInfo.Offset {
+					tSeq += "X"
 					seqInfo.HitSeqCount[tSeq]++
 					seqInfo.Stats["IndexPolyAReadsNum"]++
-				} else if !regN.MatchString(tSeq) && len(tSeq) < tarLength {
+				} else if tSeq[seqInfo.Offset:] == tarSeq[seqInfo.Offset:] {
+					seqInfo.Stats["RightReadsNum"]++
+					seqInfo.HitSeqCount[tSeq]++
+				} else if !regN.MatchString(tSeq[seqInfo.Offset:]) && len(tSeq) < tarLength {
 					seqInfo.HitSeqCount[tSeq]++
 					seqInfo.Stats["IndexPolyAReadsNum"]++
 				} else {
@@ -303,7 +303,7 @@ func (seqInfo *SeqInfo) GetHitSeq() {
 
 func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	for i, key := range seqInfo.HitSeq {
-		if key == string(seqInfo.Seq) {
+		if key[seqInfo.Offset:] == string(seqInfo.Seq[seqInfo.Offset:]) {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key]})
 			seqInfo.rowDeletion++
@@ -397,7 +397,7 @@ func (seqInfo *SeqInfo) Align1(key string) bool {
 
 	var k = 0 // match count to Seq
 	for i := range a {
-		if k < len(b) && a[i] == b[k] {
+		if k < len(b) && (a[i] == b[k] || a[i] == 'N') {
 			c = append(c, b[k])
 			k++
 		} else {
@@ -456,10 +456,10 @@ func (seqInfo *SeqInfo) Align2(key string) bool {
 	}
 	for i := 0; i < maxLen; i++ {
 		if k < maxLen || i < len(a) {
-			if i < len(a) && k < len(b) && a[i] == b[k] { // match to Seq
+			if i < len(a) && k < len(b) && (a[i] == b[k] || a[i] == 'N') { // match to Seq
 				c = append(c, b[k])
 				k += 1
-			} else if i > 0 && i <= len(a) && k < len(b) && a[i-1] == b[k] { // match to Seq -1 bp
+			} else if i > 0 && i <= len(a) && k < len(b) && (a[i-1] == b[k] || a[i-1] == 'N') { // match to Seq -1 bp
 				c = append(c, '+')
 				k += 1
 				i--
@@ -515,7 +515,7 @@ func (seqInfo *SeqInfo) Align3(key string) bool {
 
 	if len(a) == len(b) {
 		for i, s := range a {
-			if i < len(b) && s == b[i] {
+			if i < len(b) && (s == b[i] || s == 'N') {
 				c = append(c, s)
 			} else {
 				k++
@@ -723,16 +723,18 @@ func (seqInfo *SeqInfo) WriteStatsSheet() {
 
 			counts[seq[i]] += count
 
-			if seq[i] != b {
+			if b != 'N' && seq[i] != b {
 				delete(seqInfo.HitSeqCount, seq)
 			}
 		}
 
 		var (
-			del   = readsCount - counts['A'] - counts['C'] - counts['G'] - counts['T']
+			N     = counts['A'] + counts['C'] + counts['G'] + counts['T']
+			del   = readsCount - N
 			del1  = del
 			ratio = make(map[byte]float64)
 		)
+		counts['N'] = N
 		seqInfo.YieldCoefficient = math2.DivisionInt(counts[b], stats["AnalyzedReadsNum"])
 
 		if i < len(seqInfo.Seq)-1 && seqInfo.Seq[i+1] != seqInfo.Seq[i] {
@@ -744,6 +746,7 @@ func (seqInfo *SeqInfo) WriteStatsSheet() {
 		ratio['T'] = math2.DivisionInt(counts['T'], readsCount)
 		ratio['C'] = math2.DivisionInt(counts['C'], readsCount)
 		ratio['G'] = math2.DivisionInt(counts['G'], readsCount)
+		ratio['N'] = math2.DivisionInt(counts['N'], readsCount)
 		seqInfo.OSAR = ratio[b]
 		var ratioDel = math2.DivisionInt(del1, readsCount)
 		var ratioSort = RankByteFloatMap(ratio)

@@ -7,6 +7,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/liserjrqlxue/goUtil/fmtUtil"
 	"github.com/liserjrqlxue/goUtil/math"
@@ -40,6 +41,11 @@ var (
 		"o",
 		".",
 		"output directory",
+	)
+	offset = flag.Int(
+		"c",
+		0,
+		"offset between index and target seq",
 	)
 	verbose = flag.Int(
 		"v",
@@ -75,7 +81,7 @@ func main() {
 	chanList = make(chan bool, len(seqList))
 	for _, s := range seqList {
 		chanList <- true
-		go SingleRun(s)
+		go SingleRun(s, *offset)
 	}
 	for range seqList {
 		chanList <- true
@@ -140,15 +146,18 @@ func main() {
 
 	if *zip && runtime.GOOS == "windows" {
 		var cwd = filepath.Base(simpleUtil.HandleError(os.Getwd()).(string))
-		simpleUtil.CheckErr(
-			sge.Run("powershell",
-				"Compress-Archive",
-				"-Path",
-				"result",
-				"-DestinationPath",
-				cwd+".result.zip",
-				"-Force"),
-		)
-		simpleUtil.CheckErr(sge.Run("powershell", "explorer", cwd+".result.zip"))
+		var args = []string{
+			"Compress-Archive",
+			"-Path",
+			"result",
+			"-DestinationPath",
+			cwd + ".result.zip",
+			"-Force",
+		}
+		log.Println(strings.Join(args, " "))
+		if *zip {
+			simpleUtil.CheckErr(sge.Run("powershell", args...))
+			simpleUtil.CheckErr(sge.Run("powershell", "explorer", cwd+".result.zip"))
+		}
 	}
 }
