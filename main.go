@@ -62,6 +62,11 @@ var (
 		false,
 		"Compress-Archive to zip, windows only",
 	)
+	long = flag.Bool(
+		"long",
+		false,
+		"if too long without polyA",
+	)
 )
 
 func init() {
@@ -152,7 +157,7 @@ func main() {
 	// close file handle before Compress-Archive
 	simpleUtil.DeferClose(summary)
 
-	if *zip && runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" {
 		var cwd = filepath.Base(simpleUtil.HandleError(os.Getwd()).(string))
 		var args = []string{
 			"Compress-Archive",

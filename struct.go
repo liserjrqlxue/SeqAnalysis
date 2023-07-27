@@ -155,7 +155,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 		tarLength = len(tarSeq) + 10
 		//seqHit      = regexp.MustCompile(indexSeq + tarSeq)
 		polyA       = regexp.MustCompile(`(.*?)` + indexSeq + `(.*?)AAAAAAAA`)
-		regIndexSeq = regexp.MustCompile(indexSeq)
+		regIndexSeq = regexp.MustCompile(indexSeq + `(.*?)$`)
 		regTarSeq   = regexp.MustCompile(tarSeq)
 		termA       = 0
 		termFix     = ""
@@ -217,32 +217,44 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 			)
 
 			if regIndexSeq.MatchString(s) || regIndexSeq.MatchString(rcS) {
+				//if regIndexSeq.MatchString(s) {
 				seqInfo.Stats["IndexReadsNum"]++
 			}
 
-			//if seqHit.MatchString(s) || seqHit.MatchString(rcS) {
-			//	seqInfo.Stats["RightReadsNum"]++
-			//	seqInfo.HitSeqCount[tSeq]++
-			//	for i2, c := range []byte(s) {
-			//		switch c {
-			//		case 'A':
-			//			seqInfo.A[i2]++
-			//		case 'C':
-			//			seqInfo.C[i2]++
-			//		case 'G':
-			//			seqInfo.G[i2]++
-			//		case 'T':
-			//			seqInfo.T[i2]++
-			//		}
-			//	}
-			//
-			//} else
+			if regIndexSeq.MatchString(s) {
+				for i2, c := range []byte(s) {
+					switch c {
+					case 'A':
+						seqInfo.A[i2]++
+					case 'C':
+						seqInfo.C[i2]++
+					case 'G':
+						seqInfo.G[i2]++
+					case 'T':
+						seqInfo.T[i2]++
+					}
+				}
+			} else if regIndexSeq.MatchString(rcS) {
+				for i2, c := range []byte(rcS) {
+					switch c {
+					case 'A':
+						seqInfo.A[i2]++
+					case 'C':
+						seqInfo.C[i2]++
+					case 'G':
+						seqInfo.G[i2]++
+					case 'T':
+						seqInfo.T[i2]++
+					}
+				}
+			}
 			if polyA.MatchString(s) || polyA.MatchString(rcS) {
 				if polyA.MatchString(s) {
 					m = polyA.FindStringSubmatch(s)
 				} else if polyA.MatchString(rcS) {
 					m = polyA.FindStringSubmatch(rcS)
 				}
+				//m = polyA.FindStringSubmatch(s)
 
 				tSeq = m[2] //[seqInfo.Offset:]
 				if tarSeq != "A" {
@@ -263,6 +275,41 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 					//fmt.Printf("[%s]:[%s]:[%+v]\n", s, tSeq, m)
 					seqInfo.Stats["ExcludeReadsNum"]++
 				}
+			} else if *long && (regIndexSeq.MatchString(s) || regIndexSeq.MatchString(rcS)) {
+				//m = regIndexSeq.FindStringSubmatch(s)
+				if regIndexSeq.MatchString(s) {
+					m = regIndexSeq.FindStringSubmatch(s)
+				} else if regIndexSeq.MatchString(rcS) {
+					m = regIndexSeq.FindStringSubmatch(rcS)
+				}
+				tSeq = m[1]
+				var cut = len(tSeq)
+				for {
+					if cut > 0 && tSeq[cut-1] == 'A' {
+						cut--
+					} else {
+						break
+					}
+				}
+				tSeq = tSeq[:cut]
+				if tarSeq != "A" {
+					tSeq += termFix
+				}
+				if len(tSeq) <= seqInfo.Offset {
+					tSeq += "X"
+					seqInfo.HitSeqCount[tSeq]++
+					seqInfo.Stats["IndexPolyAReadsNum"]++
+				} else if tSeq[seqInfo.Offset:] == tarSeq[seqInfo.Offset:] {
+					seqInfo.Stats["RightReadsNum"]++
+					seqInfo.HitSeqCount[tSeq]++
+				} else if !regN.MatchString(tSeq[seqInfo.Offset:]) && len(tSeq) < tarLength {
+					seqInfo.HitSeqCount[tSeq]++
+					seqInfo.Stats["IndexPolyAReadsNum"]++
+				} else {
+					//fmt.Printf("[%s]:[%s]:[%+v]\n", s, tSeq, m)
+					seqInfo.Stats["ExcludeReadsNum"]++
+				}
+
 			} else {
 				seqInfo.Stats["UnmatchedReadsNum"]++
 				if verbose > 1 {
@@ -463,14 +510,6 @@ func (seqInfo *SeqInfo) Align2(key string) bool {
 				c = append(c, '+')
 				k += 1
 				i--
-				/*
-					} else if i < len(a) && k < len(b)-1 && a[i] == b[k+1] { // match to next
-						c = append(c, '+', b[k+1])
-						k += 2
-					} else if i < len(a) && k < len(b)-2 && a[i] == b[k+2] { // match to next 2
-						c = append(c, '+', '+', b[k+2])
-						k += 3
-				*/
 			} else {
 				c = append(c, '-')
 			}
@@ -635,6 +674,7 @@ func (seqInfo *SeqInfo) PlotLineACGT(path string) {
 	var (
 		line   = charts.NewLine()
 		xaxis  [151]int
+		yaxis  [151]int
 		output = osUtil.Create(path)
 	)
 	defer simpleUtil.DeferClose(output)
@@ -647,13 +687,15 @@ func (seqInfo *SeqInfo) PlotLineACGT(path string) {
 
 	for i := 0; i < 151; i++ {
 		xaxis[i] = i + 1
+		yaxis[i] = seqInfo.A[i] + seqInfo.C[i] + seqInfo.G[i] + seqInfo.T[i]
 	}
 
 	line.SetXAxis(xaxis).
 		AddSeries("A", generateLineItems(seqInfo.A[:])).
 		AddSeries("C", generateLineItems(seqInfo.C[:])).
 		AddSeries("G", generateLineItems(seqInfo.G[:])).
-		AddSeries("T", generateLineItems(seqInfo.T[:]))
+		AddSeries("T", generateLineItems(seqInfo.T[:])).
+		AddSeries("ALL", generateLineItems(yaxis[:]))
 	// SetSeriesOptions(charts.WithLineChartOpts(opts.LineChart{Smooth: true}))
 	simpleUtil.CheckErr(line.Render(output))
 }
