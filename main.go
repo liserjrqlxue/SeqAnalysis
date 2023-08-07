@@ -83,10 +83,8 @@ var (
 var etcEMFS embed.FS
 
 func init() {
-	var sheetTxt, err = etcEMFS.Open("etc/sheet.txt")
-	if err != nil {
-		sheetTxt = osUtil.Open(path.Join(etcPath, "sheet.txt"))
-	}
+	var sheetTxt, err = Open("etc/sheet.txt", exPath, etcEMFS)
+	simpleUtil.CheckErr(err)
 	var sheetScan = bufio.NewScanner(sheetTxt)
 	var sheetMap, _ = scannerUtil.Scanner2MapArray(sheetScan, "\t", nil)
 	simpleUtil.CheckErr(sheetTxt.Close())
