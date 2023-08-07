@@ -216,8 +216,9 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 				m []string
 			)
 
-			if regIndexSeq.MatchString(s) || regIndexSeq.MatchString(rcS) {
-				//if regIndexSeq.MatchString(s) {
+			if regIndexSeq.MatchString(s) {
+				seqInfo.Stats["IndexReadsNum"]++
+			} else if *rc && regIndexSeq.MatchString(rcS) {
 				seqInfo.Stats["IndexReadsNum"]++
 			}
 
