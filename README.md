@@ -1,15 +1,57 @@
 # SeqAnalysis
 
-简单序列分析统计
+合成序列评估软件
+
+# 使用说明
+
+## 运行环境
+
+### 硬件
+
+CPU 1核，内存受输入数据量影响。
+实际使用也受并行分析影响
+
+### 软件
+
+`Go 1.20` 以上版本 （编译需要，编译后的二进制软件可直接运行不需要其他依赖）
+
+### 系统
+
+因为 `Go` 语言具有跨平台编译支持，而软件本身没有依赖特定系统平台的库文件，所以 `Windows`、`Linux`、`MacOS` 理论上均支持。
+目前已测试的系统平台有 `Windows11` 以及 `WSL` 下 `Ubuntu 20.04.6 LTS`
+
+## 使用说明
+
+### 安装依赖（可选）
+
+**注意**：直接使用对应系统平台可用的预编译软件可跳过本步骤
+
+因为编译需求，需要安装 `Go 1.20` 以上版本 安装方式如下：
+
+1. 去 [Go](https://go.dev/) 官方网站下载对应系统的软件安装包
+
+2. 安装 `Go` 软件
+
+    1. `Windows` 下直接双击msi包安装;`Linux` 下直接解压tar.gz包
+    2. 配置好 `GOROOT`、`GOPATH` 等环境变量，并将 `go` 添加到 `PATH` 查找环境
+    3. 详情参考官网[安装文档](https://go.dev/doc/install)
+
+### 安装软件
+
+1. 获取软件：
+    1. 使用 `git clone https://github.com/liserjrqlxue/SeqAnalysis.git` 获取源码
+    2. 也可以直接通过解压提供的软件包 `SeqAnalysis.zip` 获取源码和编译软件
+2. 进入解压文件夹，使用 `go build` 重新编译编（可选）
+3. 使用 `SeqAnalysis/SeqAnalysis` （`linux`下）或 `SeqAnalysis\SeqAnalysis.exe` （`windows`下）  # 代码逻辑分析
 
 ## `main`
 
 1. 遍历输入 `input.txt` --> `s` = `fastq` + `target sequence` + `index sequence`
-   1. 创建数据结构 `SeqInfo`
-   2. `seqInfo.Init()`
-   3. [`seqInfo.CountError4()`](#seqinfocounterror4)
-   4. 输出统计信息 `output.txt`
-      1. `Summary of s`
+    1. 创建数据结构 `SeqInfo`
+    2. `seqInfo.Init()`
+    3. [`seqInfo.CountError4()`](#seqinfocounterror4)
+    4. 输出统计信息 `output.txt`
+        1. `Summary of s`
       2. `seqInfo.WriteStats(out)`
       3. `seqInfo.WriteDistributionFreq(out)`
 
