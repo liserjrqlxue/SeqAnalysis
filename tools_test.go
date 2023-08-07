@@ -41,8 +41,8 @@ func TestOpen(t *testing.T) {
 
 	// Test case 3: Opening a file using os.Open
 	t.Run("Open file with os.Open", func(t *testing.T) {
-		embedFS := etcEMFS    // initialize your embed.FS here with test data
-		path := "etc/yyy.txt" // specify the path of an existing file
+		embedFS := etcEMFS     // initialize your embed.FS here with test data
+		path := "etc/test.txt" // specify the path of an existing file
 		var f, _ = os.Create(path)
 		f.Close()
 		_, err := Open(path, exPath, embedFS)
