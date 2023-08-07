@@ -1,7 +1,10 @@
 package main
 
 import (
+	"embed"
+	"io"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -42,7 +45,7 @@ func SingleRun(s string, offset int) {
 		SeqInfoMap[s] = seqInfo
 		<-chanList
 	}()
-	strings.TrimSuffix(s, "\r")
+	s = strings.TrimSuffix(s, "\r")
 	var a = strings.Split(s, "\t")
 
 	seqInfo = &SeqInfo{
@@ -78,4 +81,13 @@ func SingleRun(s string, offset int) {
 	// free HitSeqCount memory
 	seqInfo.HitSeqCount = make(map[string]int)
 	seqInfo.HitSeq = []string{}
+}
+
+// Open embed or relative filepath
+func Open(path, exPath string, embedFS embed.FS) (file io.ReadCloser, err error) {
+	file, err = embedFS.Open(path)
+	if err != nil {
+		return os.Open(filepath.Join(exPath, path))
+	}
+	return
 }
