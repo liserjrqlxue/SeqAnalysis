@@ -67,6 +67,11 @@ var (
 		false,
 		"if too long without polyA",
 	)
+	rc = flag.Bool(
+		"rc",
+		false,
+		"if analysis reverse complement",
+	)
 )
 
 func init() {
