@@ -83,7 +83,16 @@ func SingleRun(s string, offset int) {
 	seqInfo.HitSeq = []string{}
 }
 
-// Open embed or relative filepath
+// Open is a function that opens a file from the given path using the embed.FS file system.
+//
+// It takes three parameters:
+//   - path: a string that represents the path of the file to be opened.
+//   - exPath: a string that represents the extra path to be joined with the file path in case the file is not found in the embed.FS file system.
+//   - embedFS: an embed.FS file system that provides access to embedded files.
+//
+// It returns two values:
+//   - file: an io.ReadCloser that represents the opened file.
+//   - err: an error indicating any error that occurred during the file opening process.
 func Open(path, exPath string, embedFS embed.FS) (file io.ReadCloser, err error) {
 	file, err = embedFS.Open(path)
 	if err != nil {
