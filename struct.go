@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"log"
 	"math"
@@ -888,10 +889,18 @@ func (seqInfo *SeqInfo) WriteStatsSheet() {
 	simpleUtil.CheckErr(seqInfo.xlsx.SetRowStyle(sheet, 1, rIdx-1, seqInfo.Style["center"]))
 }
 
+// WriteStatsTxt writes the statistics of SeqInfo to a text file.
+//
+// Parameters:
+// - file: a pointer to an os.File object representing the file to write the statistics to.
+//
+// Return type: none.
 func (info *SeqInfo) WriteStatsTxt(file *os.File) {
-	var stats = info.Stats
-	fmtUtil.Fprintf(
-		file,
+	// Get the statistics from SeqInfo
+	stats := info.Stats
+
+	// Format the statistics into a string
+	statsString := fmt.Sprintf(
 		"%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
 		info.Name, info.IndexSeq, info.Seq, len(info.Seq),
 		stats["AllReadsNum"], stats["IndexReadsNum"], stats["AnalyzedReadsNum"], stats["RightReadsNum"],
@@ -907,6 +916,9 @@ func (info *SeqInfo) WriteStatsTxt(file *os.File) {
 		math2.DivisionInt(stats["ErrorMutReadsNum"], stats["AnalyzedReadsNum"]),
 		math2.DivisionInt(stats["ErrorOtherReadsNum"], stats["AnalyzedReadsNum"]),
 	)
+
+	// Write the statistics string to the file
+	fmtUtil.Fprintf(file, statsString)
 }
 
 type ByteFloat struct {
