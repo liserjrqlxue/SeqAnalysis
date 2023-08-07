@@ -1,9 +1,59 @@
 package main
 
 import (
+	"os"
 	"reflect"
 	"testing"
 )
+
+func TestWriteStatsTxt(t *testing.T) {
+	// Create a temporary file for testing
+	tempFile, err := os.CreateTemp("", "stats.txt")
+	if err != nil {
+		t.Fatalf("Failed to create temporary file: %v", err)
+	}
+	defer os.Remove(tempFile.Name())
+
+	// Create a SeqInfo object for testing
+	info := &SeqInfo{
+		Name:                 "Test",
+		IndexSeq:             "ACGT",
+		Seq:                  []byte("ATCG"),
+		YieldCoefficient:     1.5,
+		AverageYieldAccuracy: 0.9,
+		Stats: map[string]int{
+			"AllReadsNum":         100,
+			"IndexReadsNum":       50,
+			"AnalyzedReadsNum":    80,
+			"RightReadsNum":       75,
+			"ErrorReadsNum":       20,
+			"ErrorDelReadsNum":    10,
+			"ErrorDel1ReadsNum":   5,
+			"ErrorDel2ReadsNum":   3,
+			"ErrorDelDupReadsNum": 2,
+			"ErrorDel3ReadsNum":   1,
+			"ErrorInsReadsNum":    4,
+			"ErrorInsDelReadsNum": 2,
+			"ErrorMutReadsNum":    6,
+			"ErrorOtherReadsNum":  9,
+		},
+	}
+
+	// Call the WriteStatsTxt function
+	info.WriteStatsTxt(tempFile)
+
+	// Read the content of the temporary file
+	content, err := os.ReadFile(tempFile.Name())
+	if err != nil {
+		t.Fatalf("Failed to read temporary file: %v", err)
+	}
+
+	// Assert that the content matches the expected value
+	expectedContent := "Test\tACGT\tATCG\t4\t100\t50\t80\t75\t1.500000\t0.900000\t0.250000\t0.125000\t0.062500\t0.037500\t0.025000\t0.012500\t0.050000\t0.025000\t0.075000\t0.112500\n"
+	if string(content) != expectedContent {
+		t.Errorf("Unexpected content in the file.\nExpected: %s\nActual: %s", expectedContent, string(content))
+	}
+}
 
 func TestByteFloatList_Len(t *testing.T) {
 	// Test when the ByteFloatList is empty
