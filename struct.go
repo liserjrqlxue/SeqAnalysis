@@ -701,6 +701,10 @@ func (seqInfo *SeqInfo) PlotLineACGT(path string) {
 	simpleUtil.CheckErr(line.Render(output))
 }
 
+// WriteStatsSheet writes the statistics sheet for SeqInfo.
+//
+// No parameters.
+// No return values.
 func (seqInfo *SeqInfo) WriteStatsSheet() {
 	var (
 		stats = seqInfo.Stats
@@ -882,6 +886,27 @@ func (seqInfo *SeqInfo) WriteStatsSheet() {
 	)
 
 	simpleUtil.CheckErr(seqInfo.xlsx.SetRowStyle(sheet, 1, rIdx-1, seqInfo.Style["center"]))
+}
+
+func (info *SeqInfo) WriteStatsTxt(file *os.File) {
+	var stats = info.Stats
+	fmtUtil.Fprintf(
+		file,
+		"%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
+		info.Name, info.IndexSeq, info.Seq, len(info.Seq),
+		stats["AllReadsNum"], stats["IndexReadsNum"], stats["AnalyzedReadsNum"], stats["RightReadsNum"],
+		info.YieldCoefficient, info.AverageYieldAccuracy,
+		math2.DivisionInt(stats["ErrorReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["ErrorDelReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["ErrorDel1ReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["ErrorDel2ReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["ErrorDelDupReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["ErrorDel3ReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["ErrorInsReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["ErrorInsDelReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["ErrorMutReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["ErrorOtherReadsNum"], stats["AnalyzedReadsNum"]),
+	)
 }
 
 type ByteFloat struct {

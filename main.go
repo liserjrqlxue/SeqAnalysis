@@ -152,29 +152,14 @@ func main() {
 		}
 		SetRow(summaryXlsx, "Summary", 1, 2+i, rows)
 
-		fmtUtil.Fprintf(
-			summary,
-			"%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
-			info.Name, info.IndexSeq, info.Seq, len(info.Seq),
-			stats["AllReadsNum"], stats["IndexReadsNum"], stats["AnalyzedReadsNum"], stats["RightReadsNum"],
-			info.YieldCoefficient, info.AverageYieldAccuracy,
-			math.DivisionInt(stats["ErrorReadsNum"], stats["AnalyzedReadsNum"]),
-			math.DivisionInt(stats["ErrorDelReadsNum"], stats["AnalyzedReadsNum"]),
-			math.DivisionInt(stats["ErrorDel1ReadsNum"], stats["AnalyzedReadsNum"]),
-			math.DivisionInt(stats["ErrorDel2ReadsNum"], stats["AnalyzedReadsNum"]),
-			math.DivisionInt(stats["ErrorDelDupReadsNum"], stats["AnalyzedReadsNum"]),
-			math.DivisionInt(stats["ErrorDel3ReadsNum"], stats["AnalyzedReadsNum"]),
-			math.DivisionInt(stats["ErrorInsReadsNum"], stats["AnalyzedReadsNum"]),
-			math.DivisionInt(stats["ErrorInsDelReadsNum"], stats["AnalyzedReadsNum"]),
-			math.DivisionInt(stats["ErrorMutReadsNum"], stats["AnalyzedReadsNum"]),
-			math.DivisionInt(stats["ErrorOtherReadsNum"], stats["AnalyzedReadsNum"]),
-		)
+		info.WriteStatsTxt(summary)
 	}
 	simpleUtil.CheckErr(summaryXlsx.SaveAs(filepath.Join("result", "summary.xlsx")))
 
 	// close file handle before Compress-Archive
 	simpleUtil.DeferClose(summary)
 
+	// Compress-Archive to zip file on windows only when *zip is true
 	if runtime.GOOS == "windows" {
 		var cwd = filepath.Base(simpleUtil.HandleError(os.Getwd()).(string))
 		var args = []string{
