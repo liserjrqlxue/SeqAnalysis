@@ -891,19 +891,40 @@ type ByteFloat struct {
 
 type ByteFloatList []ByteFloat
 
+// Len returns the length of the ByteFloatList.
+//
+// It does not take any parameters.
+// Returns an integer representing the length of the ByteFloatList.
 func (l ByteFloatList) Len() int {
 	return len(l)
 
 }
 
+// Less returns whether the element at index i is less than the element at index j in the ByteFloatList.
+//
+// Parameters:
+// - i: the index of the first element to compare
+// - j: the index of the second element to compare
+//
+// Returns:
+// - true if the element at index i is less than the element at index j, false otherwise.
 func (l ByteFloatList) Less(i, j int) bool {
 	return l[i].Value < l[j].Value
 }
 
+// Swap swaps the elements at index i and j in the ByteFloatList.
+//
+// Parameters:
+//
+//	i - the index of the first element to be swapped.
+//	j - the index of the second element to be swapped.
 func (l ByteFloatList) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
 }
 
+// RankByteFloatMap generates a ranked list of ByteFloat values based on the provided map.
+//
+// It takes a map of byte keys and float64 values as input and returns a ByteFloatList.
 func RankByteFloatMap(data map[byte]float64) ByteFloatList {
 	var (
 		l = make(ByteFloatList, len(data))
