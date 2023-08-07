@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"embed"
 	"flag"
 	"log"
 	"os"
@@ -12,6 +14,7 @@ import (
 	"github.com/liserjrqlxue/goUtil/fmtUtil"
 	"github.com/liserjrqlxue/goUtil/math"
 	"github.com/liserjrqlxue/goUtil/osUtil"
+	"github.com/liserjrqlxue/goUtil/scannerUtil"
 	"github.com/liserjrqlxue/goUtil/sge"
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
 	"github.com/liserjrqlxue/goUtil/textUtil"
@@ -74,8 +77,20 @@ var (
 	)
 )
 
+// embed etc
+//
+//go:embed etc/*.txt
+var etcEMFS embed.FS
+
 func init() {
-	var sheetMap, _ = textUtil.File2MapArray(path.Join(etcPath, "sheet.txt"), "\t", nil)
+	var sheetTxt, err = etcEMFS.Open("etc/sheet.txt")
+	if err != nil {
+		sheetTxt = osUtil.Open(path.Join(etcPath, "sheet.txt"))
+	}
+	var sheetScan = bufio.NewScanner(sheetTxt)
+	var sheetMap, _ = scannerUtil.Scanner2MapArray(sheetScan, "\t", nil)
+	simpleUtil.CheckErr(sheetTxt.Close())
+
 	for _, m := range sheetMap {
 		Sheets[m["Name"]] = m["SheetName"]
 		sheetList = append(sheetList, m["SheetName"])
