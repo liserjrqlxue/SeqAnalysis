@@ -153,7 +153,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 	var (
 		tarSeq    = string(seqInfo.Seq)
 		indexSeq  = seqInfo.IndexSeq
-		tarLength = len(tarSeq) + 10
+		tarLength = len(tarSeq) + 50
 		//seqHit      = regexp.MustCompile(indexSeq + tarSeq)
 		polyA       = regexp.MustCompile(`(.*?)` + indexSeq + `(.*?)AAAAAAAA`)
 		regIndexSeq = regexp.MustCompile(indexSeq + `(.*?)$`)
