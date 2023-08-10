@@ -72,7 +72,7 @@ var (
 	)
 	rc = flag.Bool(
 		"rc",
-		false,
+		true,
 		"if analysis reverse complement",
 	)
 )
