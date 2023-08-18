@@ -26,5 +26,11 @@ bak/
 test/
 
 # release
-SeqAnalysis
+util/SeqAnalysis/SeqAnalysis
 SeqAnalysis.zip
+
+# web server
+public
+
+# old
+data\ analysis

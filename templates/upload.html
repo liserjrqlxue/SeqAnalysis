@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Upload Excel File</title>
+</head>
+<body>
+    <h1>Upload an Excel File</h1>
+    <form action="/" method="POST" target= "_blank" enctype="multipart/form-data">
+        <label for="file">Input:</label>
+        <input type="file" name="file" id="file">
+
+        <label for="workdir">Workdir:</label>
+        <input type="text" name="workdir" id="workdir"></input>
+
+        <input type="submit" value="Upload">
+    </form>
+    <ul>
+        <li><a href="public/{{.}}" target="_blank">{{.}}</a></li>
+    </ul>
+</body>
+</html>
