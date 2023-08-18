@@ -27,7 +27,7 @@ func Complement(s string) string {
 }
 
 // Reverse returns its argument string reversed rune-wise left to right.
-// from https://github.com/golang/example/blob/master/stringutil/reverse.go
+// from https://github.com/golang/example/blob/master/stringmain/reverse.go
 func Reverse(r []byte) []byte {
 	for i, j := 0, len(r)-1; i < len(r)/2; i, j = i+1, j-1 {
 		r[i], r[j] = r[j], r[i]
@@ -71,7 +71,7 @@ func SingleRun(s string, offset int) {
 	}
 	log.Printf("[%s]:[%s]:[%s]:[%+v]\n", seqInfo.Name, seqInfo.IndexSeq, seqInfo.Seq, seqInfo.Fastqs)
 	seqInfo.Init()
-	seqInfo.CountError4(*verbose)
+	seqInfo.CountError4(*outputDir, *verbose)
 
 	seqInfo.WriteStatsSheet()
 	seqInfo.Save()

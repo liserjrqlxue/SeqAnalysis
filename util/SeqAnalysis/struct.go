@@ -31,6 +31,9 @@ type SeqInfo struct {
 	Name  string
 	Excel string
 
+	useReverseComplement bool
+	assemblerMode        bool
+
 	xlsx      *excelize.File
 	Sheets    map[string]string
 	SheetList []string
@@ -135,9 +138,9 @@ func (seqInfo *SeqInfo) Save() {
 }
 
 // CountError4 count seq error
-func (seqInfo *SeqInfo) CountError4(verbose int) {
+func (seqInfo *SeqInfo) CountError4(outputDir string, verbose int) {
 	// 1. 统计不同测序结果出现的频数
-	seqInfo.WriteSeqResult(".SeqResult.txt", verbose)
+	seqInfo.WriteSeqResult(".SeqResult.txt", outputDir, verbose)
 
 	seqInfo.GetHitSeq()
 
@@ -149,7 +152,7 @@ func (seqInfo *SeqInfo) CountError4(verbose int) {
 	//seqInfo.PrintStats()
 }
 
-func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
+func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 	var (
 		tarSeq    = string(seqInfo.Seq)
 		indexSeq  = seqInfo.IndexSeq
@@ -168,8 +171,8 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 		polyA = regexp.MustCompile(`(.*?)` + indexSeq + `(.*?)TTTTTTTT`)
 	}
 	if verbose > 0 {
-		outputShort = osUtil.Create(filepath.Join(*outputDir, seqInfo.Name+path+".short.txt"))
-		outputUnmatched = osUtil.Create(filepath.Join(*outputDir, seqInfo.Name+path+".unmatched.txt"))
+		outputShort = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path+".short.txt"))
+		outputUnmatched = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path+".unmatched.txt"))
 		fmtUtil.Fprintf(outputUnmatched, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", "#Seq", "A", "C", "G", "T", "TargetSeq", "IndexSeq", "PloyA")
 	}
 	for i := len(tarSeq) - 1; i > -1; i-- {
@@ -219,7 +222,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 
 			if regIndexSeq.MatchString(s) {
 				seqInfo.Stats["IndexReadsNum"]++
-			} else if *rc && regIndexSeq.MatchString(rcS) {
+			} else if seqInfo.useReverseComplement && regIndexSeq.MatchString(rcS) {
 				seqInfo.Stats["IndexReadsNum"]++
 			}
 
@@ -277,7 +280,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path string, verbose int) {
 					//fmt.Printf("[%s]:[%s]:[%+v]\n", s, tSeq, m)
 					seqInfo.Stats["ExcludeReadsNum"]++
 				}
-			} else if *long && (regIndexSeq.MatchString(s) || regIndexSeq.MatchString(rcS)) {
+			} else if seqInfo.assemblerMode && (regIndexSeq.MatchString(s) || regIndexSeq.MatchString(rcS)) {
 				//m = regIndexSeq.FindStringSubmatch(s)
 				if regIndexSeq.MatchString(s) {
 					m = regIndexSeq.FindStringSubmatch(s)
@@ -693,11 +696,11 @@ func (seqInfo *SeqInfo) PlotLineACGT(path string) {
 	}
 
 	line.SetXAxis(xaxis).
-		AddSeries("A", generateLineItems(seqInfo.A[:])).
-		AddSeries("C", generateLineItems(seqInfo.C[:])).
-		AddSeries("G", generateLineItems(seqInfo.G[:])).
-		AddSeries("T", generateLineItems(seqInfo.T[:])).
-		AddSeries("ALL", generateLineItems(yaxis[:]))
+		AddSeries("A", GenerateLineItems(seqInfo.A[:])).
+		AddSeries("C", GenerateLineItems(seqInfo.C[:])).
+		AddSeries("G", GenerateLineItems(seqInfo.G[:])).
+		AddSeries("T", GenerateLineItems(seqInfo.T[:])).
+		AddSeries("ALL", GenerateLineItems(yaxis[:]))
 	// SetSeriesOptions(charts.WithLineChartOpts(opts.LineChart{Smooth: true}))
 	simpleUtil.CheckErr(line.Render(output))
 }
