@@ -1,23 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width">
-    <title>Upload Excel File</title>
-</head>
-<body>
-    <h1>Upload an Excel File</h1>
-    <form action="/" method="POST" target= "_blank" enctype="multipart/form-data">
-        <label for="file">Input:</label>
-        <input type="file" name="file" id="file">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- UIkit CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/uikit@3.16.24/dist/css/uikit.min.css"
+    />
+    <!-- UIkit JS -->
+    <script src="https://cdn.jsdelivr.net/npm/uikit@3.16.24/dist/js/uikit.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/uikit@3.16.24/dist/js/uikit-icons.min.js"></script>
 
-        <label for="workdir">Workdir:</label>
-        <input type="text" name="workdir" id="workdir"></input>
-
-        <input type="submit" value="Upload">
-    </form>
-    <ul>
-        <li><a href="public/{{.}}" target="_blank">{{.}}</a></li>
-    </ul>
-</body>
+    <title>合成序列评估</title>
+  </head>
+  <body>
+    <div class="uk-panel uk-container">
+      <div class="uk-align-center">
+        <h1 class="uk-text-center">中合合成序列评估</h1>
+        <span class="uk-align-right">
+          <a href="/" class="uk-link-text">返回</a>
+        </span>
+      </div>
+      <hr class="uk-divider-icon" />
+      <div class="uk-align-center uk-card uk-card-large uk-card-hover">
+        <div class="uk-card-title">
+          <h2 class="uk-heading-bullet"><span>输入:</span></h2>
+        </div>
+        <form
+          action="/"
+          method="POST"
+          target="_blank"
+          enctype="multipart/form-data"
+          class="uk-form-horizontal uk-margin"
+        >
+          <div class="uk-card-body">
+            <div class="uk-margin" uk-margin>
+              <label for="file" class="uk-form-label">上传input.txt:</label>
+              <div class="uk-form-controls">
+                <div uk-form-custom="target:true" class="uk-width-1-1">
+                  <input type="file" name="file" id="file" class="uk-input" />
+                  <input
+                    type="txt"
+                    class="uk-input"
+                    placeholder="点击选择文件"
+                    disabled
+                  />
+                </div>
+              </div>
+            </div>
+            <div class="uk-margin">
+              <label for="workdir" class="uk-form-label">Workdir:</label>
+              <div class="uk-form-controls">
+                <input
+                  type="txt"
+                  name="workdir"
+                  id="workdir"
+                  placeholder="输入数据路径"
+                  class="uk-input"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="uk-align-center uk-card-footer">
+            <input
+              type="submit"
+              value="提交"
+              class="uk-input uk-button uk-button-primary uk-width-1-1"
+            />
+          </div>
+        </form>
+      </div>
+      {{if .}}
+      <hr class="uk-divider-icon" />
+      <div class="uk-align-center uk-card uk-card-large uk-card-hover">
+        <div class="uk-card-title">
+          <h2 class="uk-heading-bullet"><span>结果:</span></h2>
+        </div>
+        <div class="uk-card-body">
+          <ul>
+            <li><a href="public/{{.}}" target="_blank">{{.}}</a></li>
+          </ul>
+        </div>
+      </div>
+      {{end}}
+    </div>
+  </body>
 </html>
