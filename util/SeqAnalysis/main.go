@@ -70,11 +70,6 @@ var (
 		false,
 		"if too long without polyA",
 	)
-	rc = flag.Bool(
-		"rc",
-		true,
-		"if analysis reverse complement",
-	)
 )
 
 // embed etc
@@ -112,7 +107,7 @@ func main() {
 	chanList = make(chan bool, *thread)
 	for _, s := range seqList {
 		chanList <- true
-		go SingleRun(s, *offset)
+		go SingleRun(s, *long, *offset)
 	}
 	for i := 0; i < *thread; i++ {
 		chanList <- true
