@@ -39,7 +39,7 @@ func ReverseComplement(s string) string {
 	return Complement(string(Reverse([]byte(s))))
 }
 
-func SingleRun(s string, offset int) {
+func SingleRun(s string, long bool, offset int) {
 	var seqInfo = new(SeqInfo)
 	defer func() {
 		SeqInfoMap[s] = seqInfo
@@ -49,17 +49,18 @@ func SingleRun(s string, offset int) {
 	var a = strings.Split(s, "\t")
 
 	seqInfo = &SeqInfo{
-		Name:        a[0],
-		IndexSeq:    strings.ToUpper(a[1]),
-		Seq:         []byte(strings.ToUpper(a[2])),
-		Offset:      offset,
-		Fastqs:      a[3:],
-		Excel:       filepath.Join(*outputDir, "result", a[0]+".xlsx"),
-		Sheets:      Sheets,
-		SheetList:   sheetList,
-		Stats:       make(map[string]int),
-		HitSeqCount: make(map[string]int),
-		ReadsLength: make(map[int]int),
+		Name:          a[0],
+		IndexSeq:      strings.ToUpper(a[1]),
+		Seq:           []byte(strings.ToUpper(a[2])),
+		Offset:        offset,
+		Fastqs:        a[3:],
+		Excel:         filepath.Join(*outputDir, "result", a[0]+".xlsx"),
+		Sheets:        Sheets,
+		SheetList:     sheetList,
+		Stats:         make(map[string]int),
+		HitSeqCount:   make(map[string]int),
+		ReadsLength:   make(map[int]int),
+		AssemblerMode: long,
 	}
 	if len(a) > 3 {
 		seqInfo.Fastqs = a[3:]

@@ -32,7 +32,7 @@ type SeqInfo struct {
 	Excel string
 
 	useReverseComplement bool
-	assemblerMode        bool
+	AssemblerMode        bool
 
 	xlsx      *excelize.File
 	Sheets    map[string]string
@@ -280,7 +280,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 					//fmt.Printf("[%s]:[%s]:[%+v]\n", s, tSeq, m)
 					seqInfo.Stats["ExcludeReadsNum"]++
 				}
-			} else if seqInfo.assemblerMode && (regIndexSeq.MatchString(s) || regIndexSeq.MatchString(rcS)) {
+			} else if seqInfo.AssemblerMode && (regIndexSeq.MatchString(s) || regIndexSeq.MatchString(rcS)) {
 				//m = regIndexSeq.FindStringSubmatch(s)
 				if regIndexSeq.MatchString(s) {
 					m = regIndexSeq.FindStringSubmatch(s)
