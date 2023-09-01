@@ -39,7 +39,7 @@ func ReverseComplement(s string) string {
 	return Complement(string(Reverse([]byte(s))))
 }
 
-func SingleRun(s string, long bool, offset int) {
+func SingleRun(s, resultDir string, long bool, offset int) {
 	var seqInfo = new(SeqInfo)
 	defer func() {
 		SeqInfoMap[s] = seqInfo
@@ -72,12 +72,12 @@ func SingleRun(s string, long bool, offset int) {
 	}
 	log.Printf("[%s]:[%s]:[%s]:[%+v]\n", seqInfo.Name, seqInfo.IndexSeq, seqInfo.Seq, seqInfo.Fastqs)
 	seqInfo.Init()
-	seqInfo.CountError4(*outputDir, *verbose)
+	seqInfo.CountError4(resultDir, *verbose)
 
-	seqInfo.WriteStatsSheet()
+	seqInfo.WriteStatsSheet(resultDir)
 	seqInfo.Save()
-	seqInfo.PrintStats()
-	seqInfo.PlotLineACGT(filepath.Join("result", seqInfo.Name+"ACGT.html"))
+	seqInfo.PrintStats(resultDir)
+	seqInfo.PlotLineACGT(filepath.Join(resultDir, seqInfo.Name+"ACGT.html"))
 
 	// free HitSeqCount memory
 	seqInfo.HitSeqCount = make(map[string]int)

@@ -598,10 +598,10 @@ func (seqInfo *SeqInfo) UpdateDistributionStats() {
 	}
 }
 
-func (seqInfo *SeqInfo) PrintStats() {
+func (seqInfo *SeqInfo) PrintStats(resultDir string) {
 	var (
 		stats = seqInfo.Stats
-		out   = osUtil.Create(filepath.Join("result", seqInfo.Name+".stats.txt"))
+		out   = osUtil.Create(filepath.Join(resultDir, seqInfo.Name+".stats.txt"))
 	)
 	defer simpleUtil.DeferClose(out)
 
@@ -709,7 +709,7 @@ func (seqInfo *SeqInfo) PlotLineACGT(path string) {
 //
 // No parameters.
 // No return values.
-func (seqInfo *SeqInfo) WriteStatsSheet() {
+func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string) {
 	var (
 		stats = seqInfo.Stats
 		xlsx  = seqInfo.xlsx
@@ -723,8 +723,8 @@ func (seqInfo *SeqInfo) WriteStatsSheet() {
 		readsCount   = stats["AnalyzedReadsNum"]
 		title        []interface{}
 
-		out  = osUtil.Create(filepath.Join("result", seqInfo.Name+".steps.txt"))
-		osar = osUtil.Create(filepath.Join("result", seqInfo.Name+".one.step.accuracy.rate.txt"))
+		out  = osUtil.Create(filepath.Join(resultDir, seqInfo.Name+".steps.txt"))
+		osar = osUtil.Create(filepath.Join(resultDir, seqInfo.Name+".one.step.accuracy.rate.txt"))
 	)
 	defer simpleUtil.DeferClose(out)
 	defer simpleUtil.DeferClose(osar)
