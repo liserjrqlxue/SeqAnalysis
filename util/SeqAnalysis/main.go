@@ -96,6 +96,7 @@ func main() {
 		log.Printf("changes the current working directory to [%s]", *workDir)
 		simpleUtil.CheckErr(os.Chdir(*workDir))
 	}
+	var resultDir = filepath.Join(*outputDir, "result")
 	simpleUtil.CheckErr(os.MkdirAll(filepath.Join(*outputDir, "result"), 0755))
 
 	// runtime.GOMAXPROCS(runtime.NumCPU()) * 2)
@@ -107,13 +108,13 @@ func main() {
 	chanList = make(chan bool, *thread)
 	for _, s := range seqList {
 		chanList <- true
-		go SingleRun(s, *long, *offset)
+		go SingleRun(s, resultDir, *long, *offset)
 	}
 	for i := 0; i < *thread; i++ {
 		chanList <- true
 	}
 
-	var summary = osUtil.Create(filepath.Join("result", "summary.txt"))
+	var summary = osUtil.Create(filepath.Join(resultDir, "summary.txt"))
 
 	//fmt.Println(strings.Join(textUtil.File2Array(filepath.Join(etcPath, "title.Summary.txt")), "\t"))
 	var summaryTitle = textUtil.File2Array(filepath.Join(etcPath, "title.Summary.txt"))
@@ -149,7 +150,7 @@ func main() {
 
 		info.WriteStatsTxt(summary)
 	}
-	simpleUtil.CheckErr(summaryXlsx.SaveAs(filepath.Join("result", "summary.xlsx")))
+	simpleUtil.CheckErr(summaryXlsx.SaveAs(filepath.Join(resultDir, "summary.xlsx")))
 
 	// close file handle before Compress-Archive
 	simpleUtil.DeferClose(summary)
@@ -159,7 +160,7 @@ func main() {
 		var args = []string{
 			"Compress-Archive",
 			"-Path",
-			"result",
+			resultDir,
 			"-DestinationPath",
 			filepath.Join(*outputDir, "result.zip"),
 			"-Force",
@@ -167,7 +168,7 @@ func main() {
 		log.Println(strings.Join(args, " "))
 		if *zip {
 			simpleUtil.CheckErr(sge.Run("powershell", args...))
-			simpleUtil.CheckErr(sge.Run("powershell", "explorer", filepath.Join(*outputDir, "result.zip")))
+			simpleUtil.CheckErr(sge.Run("powershell", "explorer", *outputDir))
 		}
 	}
 }
