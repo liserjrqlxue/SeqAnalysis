@@ -39,7 +39,7 @@ func ReverseComplement(s string) string {
 	return Complement(string(Reverse([]byte(s))))
 }
 
-func SingleRun(s, resultDir string, long bool, offset int) {
+func SingleRun(s, resultDir string, long bool) {
 	var seqInfo = new(SeqInfo)
 	defer func() {
 		SeqInfoMap[s] = seqInfo
@@ -52,7 +52,6 @@ func SingleRun(s, resultDir string, long bool, offset int) {
 		Name:          a[0],
 		IndexSeq:      strings.ToUpper(a[1]),
 		Seq:           []byte(strings.ToUpper(a[2])),
-		Offset:        offset,
 		Fastqs:        a[3:],
 		Excel:         filepath.Join(*outputDir, "result", a[0]+".xlsx"),
 		Sheets:        Sheets,

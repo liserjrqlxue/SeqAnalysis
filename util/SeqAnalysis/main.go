@@ -45,11 +45,6 @@ var (
 		".",
 		"output directory",
 	)
-	offset = flag.Int(
-		"c",
-		0,
-		"offset between index and target seq",
-	)
 	verbose = flag.Int(
 		"v",
 		0,
@@ -108,7 +103,7 @@ func main() {
 	chanList = make(chan bool, *thread)
 	for _, s := range seqList {
 		chanList <- true
-		go SingleRun(s, resultDir, *long, *offset)
+		go SingleRun(s, resultDir, *long)
 	}
 	for i := 0; i < *thread; i++ {
 		chanList <- true

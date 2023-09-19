@@ -53,7 +53,6 @@ type SeqInfo struct {
 	Align       []byte
 	AlignInsert []byte
 	AlignMut    []byte
-	Offset      int
 
 	IndexSeq string
 	Fastqs   []string
@@ -266,14 +265,14 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 					tSeq += termFix
 				}
 
-				if len(tSeq) <= seqInfo.Offset {
+				if len(tSeq) == 0 {
 					tSeq += "X"
 					seqInfo.HitSeqCount[tSeq]++
 					seqInfo.Stats["IndexPolyAReadsNum"]++
-				} else if tSeq[seqInfo.Offset:] == tarSeq[seqInfo.Offset:] {
+				} else if tSeq == tarSeq {
 					seqInfo.Stats["RightReadsNum"]++
 					seqInfo.HitSeqCount[tSeq]++
-				} else if !regN.MatchString(tSeq[seqInfo.Offset:]) && len(tSeq) < tarLength {
+				} else if !regN.MatchString(tSeq) && len(tSeq) < tarLength {
 					seqInfo.HitSeqCount[tSeq]++
 					seqInfo.Stats["IndexPolyAReadsNum"]++
 				} else {
@@ -300,14 +299,14 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				if tarSeq != "A" {
 					tSeq += termFix
 				}
-				if len(tSeq) <= seqInfo.Offset {
+				if len(tSeq) == 0 {
 					tSeq += "X"
 					seqInfo.HitSeqCount[tSeq]++
 					seqInfo.Stats["IndexPolyAReadsNum"]++
-				} else if tSeq[seqInfo.Offset:] == tarSeq[seqInfo.Offset:] {
+				} else if tSeq == tarSeq {
 					seqInfo.Stats["RightReadsNum"]++
 					seqInfo.HitSeqCount[tSeq]++
-				} else if !regN.MatchString(tSeq[seqInfo.Offset:]) && len(tSeq) < tarLength {
+				} else if !regN.MatchString(tSeq) && len(tSeq) < tarLength {
 					seqInfo.HitSeqCount[tSeq]++
 					seqInfo.Stats["IndexPolyAReadsNum"]++
 				} else {
@@ -355,7 +354,7 @@ func (seqInfo *SeqInfo) GetHitSeq() {
 
 func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	for i, key := range seqInfo.HitSeq {
-		if key[seqInfo.Offset:] == string(seqInfo.Seq[seqInfo.Offset:]) {
+		if key == string(seqInfo.Seq) {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key]})
 			seqInfo.rowDeletion++
