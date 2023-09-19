@@ -65,6 +65,11 @@ var (
 		false,
 		"if too long without polyA",
 	)
+	rev = flag.Bool(
+		"rev",
+		false,
+		"reverse synthesis",
+	)
 )
 
 // embed etc
@@ -103,7 +108,7 @@ func main() {
 	chanList = make(chan bool, *thread)
 	for _, s := range seqList {
 		chanList <- true
-		go SingleRun(s, resultDir, *long)
+		go SingleRun(s, resultDir, *long, *rev)
 	}
 	for i := 0; i < *thread; i++ {
 		chanList <- true
