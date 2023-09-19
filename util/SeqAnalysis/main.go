@@ -137,10 +137,13 @@ func main() {
 			info.YieldCoefficient, info.AverageYieldAccuracy,
 			math.DivisionInt(stats["ErrorReadsNum"], stats["AnalyzedReadsNum"]),
 			math.DivisionInt(stats["ErrorDelReadsNum"], stats["AnalyzedReadsNum"]),
+
 			math.DivisionInt(stats["ErrorDel1ReadsNum"], stats["AnalyzedReadsNum"]),
-			math.DivisionInt(stats["ErrorDel2ReadsNum"], stats["AnalyzedReadsNum"]),
 			math.DivisionInt(stats["ErrorDelDupReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorDelDup3ReadsNum"], stats["AnalyzedReadsNum"]),
+			math.DivisionInt(stats["ErrorDel2ReadsNum"], stats["AnalyzedReadsNum"]),
 			math.DivisionInt(stats["ErrorDel3ReadsNum"], stats["AnalyzedReadsNum"]),
+
 			math.DivisionInt(stats["ErrorInsReadsNum"], stats["AnalyzedReadsNum"]),
 			math.DivisionInt(stats["ErrorInsDelReadsNum"], stats["AnalyzedReadsNum"]),
 			math.DivisionInt(stats["ErrorMutReadsNum"], stats["AnalyzedReadsNum"]),

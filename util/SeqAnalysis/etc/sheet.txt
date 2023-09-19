@@ -3,9 +3,10 @@ Stats	Sheet
 BarCode	BarCode
 Deletion	Deletion
 Deletion1	DeletionSingle
-Deletion2	DeletionDouble
-DeletionDup	DeletionDuplicate
-Deletion3	DeletionOther
+DeletionDup	DeletionContinuous2
+DeletionDup3	DeletionContinuous3
+Deletion2	DeletionDiscrete2
+Deletion3	DeletionDiscrete3
 Insertion	Insertion
 InsertionDeletion	InsertionDeletion
 Mutation	Mutation

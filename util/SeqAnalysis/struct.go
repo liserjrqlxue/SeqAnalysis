@@ -104,6 +104,7 @@ func (seqInfo *SeqInfo) Init() {
 	seqInfo.rowDeletion1 = 2
 	seqInfo.rowDeletion2 = 2
 	seqInfo.rowDeletionDup = 2
+	seqInfo.rowDeletionDup3 = 2
 	seqInfo.rowDeletion3 = 2
 	seqInfo.rowInsertion = 2
 	seqInfo.rowInsertionDeletion = 2
@@ -386,31 +387,36 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 
 	var sheet = seqInfo.Sheets["Deletion"]
 	for i := 3; i < seqInfo.rowDeletion; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i))
+		// var countStr = GetCellValue(seqInfo.xlsx, sheet, 3, i)
+		// var count = 0
+		// if countStr != "" {
+		// 	count = stringsUtil.Atoi(countStr, fmt.Sprint("from Deletion:", seqInfo.Name, " ", i))
+		// }
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from Deletion:", seqInfo.Name, " ", i))
 		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["ErrorDelReadsNum"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
 	sheet = seqInfo.Sheets["Deletion1"]
 	for i := 2; i < seqInfo.rowDeletion1; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i))
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from Deletion1:", seqInfo.Name, " ", i, " ", seqInfo.rowDeletion1))
 		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["ErrorDel1ReadsNum"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
 	sheet = seqInfo.Sheets["Deletion2"]
 	for i := 2; i < seqInfo.rowDeletion2; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i))
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from Deletion2:", seqInfo.Name, " ", i))
 		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["ErrorDel2ReadsNum"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
 	sheet = seqInfo.Sheets["Deletion3"]
 	for i := 2; i < seqInfo.rowDeletion3; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i))
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from Deletion3:", seqInfo.Name, " ", i))
 		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["ErrorDel3ReadsNum"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
 	sheet = seqInfo.Sheets["DeletionDup"]
 	for i := 2; i < seqInfo.rowDeletionDup; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i))
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from DeletionDup:", seqInfo.Name, " ", i))
 		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["ErrorDelDupReadsNum"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
@@ -462,13 +468,14 @@ func (seqInfo *SeqInfo) Align1(key string) bool {
 			seqInfo.Stats["ErrorDel3ReadsNum"] += count
 			seqInfo.rowDeletion3++
 		} else if delCount == 2 { // 2个单缺失
-			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion2"], 1, seqInfo.rowDeletion1, []interface{}{seqInfo.Seq, key, count, c})
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion2"], 1, seqInfo.rowDeletion2, []interface{}{seqInfo.Seq, key, count, c})
 			seqInfo.Stats["ErrorDel2ReadsNum"] += count
-			seqInfo.rowDeletion1++
+			seqInfo.rowDeletion2++
 		} else { // 单个缺失
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion1"], 1, seqInfo.rowDeletion1, []interface{}{seqInfo.Seq, key, count, c})
 			seqInfo.Stats["ErrorDel1ReadsNum"] += count
 			seqInfo.rowDeletion1++
+			log.Printf("%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
 		}
 		for i, c1 := range c {
 			if c1 == '-' {
