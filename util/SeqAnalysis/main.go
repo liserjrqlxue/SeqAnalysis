@@ -143,7 +143,7 @@ func main() {
 			math.DivisionInt(stats["ErrorDelDup3ReadsNum"], stats["AnalyzedReadsNum"]),
 			math.DivisionInt(stats["ErrorDel2ReadsNum"], stats["AnalyzedReadsNum"]),
 			math.DivisionInt(stats["ErrorDel3ReadsNum"], stats["AnalyzedReadsNum"]),
-
+			info.DeletionDup3Index + 1,
 			math.DivisionInt(stats["ErrorInsReadsNum"], stats["AnalyzedReadsNum"]),
 			math.DivisionInt(stats["ErrorInsDelReadsNum"], stats["AnalyzedReadsNum"]),
 			math.DivisionInt(stats["ErrorMutReadsNum"], stats["AnalyzedReadsNum"]),

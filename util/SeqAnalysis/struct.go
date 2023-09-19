@@ -50,6 +50,7 @@ type SeqInfo struct {
 	rowInsertionDeletion int
 	rowMutation          int
 	rowOther             int
+	DeletionDup3Index    int
 
 	Seq         []byte
 	Align       []byte
@@ -110,6 +111,7 @@ func (seqInfo *SeqInfo) Init() {
 	seqInfo.rowInsertionDeletion = 2
 	seqInfo.rowMutation = 2
 	seqInfo.rowOther = 2
+	seqInfo.DeletionDup3Index = len(seqInfo.Seq)
 	for i, sheet := range seqInfo.SheetList {
 		if i == 0 {
 			simpleUtil.CheckErr(seqInfo.xlsx.SetSheetName("Sheet1", sheet))
@@ -456,6 +458,11 @@ func (seqInfo *SeqInfo) Align1(key string) bool {
 		SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, count, c})
 		seqInfo.rowDeletion++
 		if minus3.Match(c) { // 连续3缺失
+			var index = minus3.FindIndex(c)
+			if index != nil {
+				seqInfo.DeletionDup3Index = min(seqInfo.DeletionDup3Index, index[0])
+			}
+
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDup3"], 1, seqInfo.rowDeletionDup3, []interface{}{seqInfo.Seq, key, count, c})
 			seqInfo.Stats["ErrorDelDup3ReadsNum"] += count
 			seqInfo.rowDeletionDup3++

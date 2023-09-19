@@ -8,8 +8,9 @@ Accuracy
 ErrorReadsNum
 ErrorDelReadsNum
 ErrorDel1ReadsNum
-ErrorDel2ReadsNum
 ErrorDelDupReadsNum
+ErrorDelDup3ReadsNum
+ErrorDel2ReadsNum
 ErrorDel3ReadsNum
 ErrorInsReadsNum
 ErrorInsDelReadsNum
