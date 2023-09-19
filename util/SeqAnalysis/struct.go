@@ -33,6 +33,7 @@ type SeqInfo struct {
 
 	useReverseComplement bool
 	AssemblerMode        bool
+	Reverse              bool
 
 	xlsx      *excelize.File
 	Sheets    map[string]string
@@ -152,37 +153,29 @@ func (seqInfo *SeqInfo) CountError4(outputDir string, verbose int) {
 }
 
 func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
+	var tarSeq = string(append([]byte{}, seqInfo.Seq...))
+	if seqInfo.Reverse {
+		tarSeq = string(Reverse([]byte(tarSeq)))
+	}
 	var (
-		tarSeq    = string(seqInfo.Seq)
 		indexSeq  = seqInfo.IndexSeq
 		tarLength = len(tarSeq) + 50
 		//seqHit      = regexp.MustCompile(indexSeq + tarSeq)
 		polyA       = regexp.MustCompile(`(.*?)` + indexSeq + `(.*?)AAAAAAAA`)
 		regIndexSeq = regexp.MustCompile(indexSeq + `(.*?)$`)
 		regTarSeq   = regexp.MustCompile(tarSeq)
-		termA       = 0
-		termFix     = ""
 
+		output          = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path))
 		outputShort     *os.File
 		outputUnmatched *os.File
 	)
-	if tarSeq == "A" {
-		polyA = regexp.MustCompile(`(.*?)` + indexSeq + `(.*?)TTTTTTTT`)
-	}
+	defer simpleUtil.DeferClose(output)
+
 	if verbose > 0 {
 		outputShort = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path+".short.txt"))
 		outputUnmatched = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path+".unmatched.txt"))
 		fmtUtil.Fprintf(outputUnmatched, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", "#Seq", "A", "C", "G", "T", "TargetSeq", "IndexSeq", "PloyA")
 	}
-	for i := len(tarSeq) - 1; i > -1; i-- {
-		if tarSeq[i] == 'A' {
-			termA++
-			termFix += "A"
-		} else {
-			break
-		}
-	}
-	log.Printf("[%-10s] Fix:[%s]\n", seqInfo.Name, termFix)
 
 	for _, fastq := range seqInfo.Fastqs {
 		log.Printf("load %s", fastq)
@@ -261,8 +254,9 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				//m = polyA.FindStringSubmatch(s)
 
 				tSeq = m[2] //[seqInfo.Offset:]
-				if tarSeq != "A" {
-					tSeq += termFix
+				fmtUtil.Fprintln(output, tSeq)
+				if seqInfo.Reverse {
+					tSeq = string(Reverse([]byte(tSeq)))
 				}
 
 				if len(tSeq) == 0 {
@@ -287,18 +281,11 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 					m = regIndexSeq.FindStringSubmatch(rcS)
 				}
 				tSeq = m[1]
-				var cut = len(tSeq)
-				for {
-					if cut > 0 && tSeq[cut-1] == 'A' {
-						cut--
-					} else {
-						break
-					}
+				fmtUtil.Fprintln(output, tSeq)
+				if seqInfo.Reverse {
+					tSeq = string(Reverse([]byte(tSeq)))
 				}
-				tSeq = tSeq[:cut]
-				if tarSeq != "A" {
-					tSeq += termFix
-				}
+
 				if len(tSeq) == 0 {
 					tSeq += "X"
 					seqInfo.HitSeqCount[tSeq]++

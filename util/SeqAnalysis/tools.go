@@ -39,7 +39,7 @@ func ReverseComplement(s string) string {
 	return Complement(string(Reverse([]byte(s))))
 }
 
-func SingleRun(s, resultDir string, long bool) {
+func SingleRun(s, resultDir string, long, rev bool) {
 	var seqInfo = new(SeqInfo)
 	defer func() {
 		SeqInfoMap[s] = seqInfo
@@ -60,6 +60,10 @@ func SingleRun(s, resultDir string, long bool) {
 		HitSeqCount:   make(map[string]int),
 		ReadsLength:   make(map[int]int),
 		AssemblerMode: long,
+		Reverse:       rev,
+	}
+	if seqInfo.Reverse {
+		seqInfo.Seq = Reverse(seqInfo.Seq)
 	}
 	if len(a) > 3 {
 		seqInfo.Fastqs = a[3:]
