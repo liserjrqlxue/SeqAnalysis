@@ -7,6 +7,7 @@ var (
 	plus3    = regexp.MustCompile(`\+\+\+`)
 	minus1   = regexp.MustCompile(`-`)
 	minus2   = regexp.MustCompile(`--`)
+	minus3   = regexp.MustCompile(`--`)
 	regPolyA = regexp.MustCompile(`AAAAAAAA`)
 
 	//minus3   = regexp.MustCompile(`---`)

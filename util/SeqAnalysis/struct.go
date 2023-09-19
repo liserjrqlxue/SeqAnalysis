@@ -40,10 +40,11 @@ type SeqInfo struct {
 	SheetList []string
 	Style     map[string]int
 
-	rowDeletion          int
+	rowDeletion          int // 所有缺失
 	rowDeletion1         int
 	rowDeletion2         int
 	rowDeletionDup       int
+	rowDeletionDup3      int
 	rowDeletion3         int
 	rowInsertion         int
 	rowInsertionDeletion int
@@ -448,24 +449,26 @@ func (seqInfo *SeqInfo) Align1(key string) bool {
 	if k >= len(b) { // all match
 		SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, count, c})
 		seqInfo.rowDeletion++
-		if delCount == 1 {
-			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion1"], 1, seqInfo.rowDeletion1, []interface{}{seqInfo.Seq, key, count, c})
-			seqInfo.Stats["ErrorDel1ReadsNum"] += count
-			seqInfo.rowDeletion1++
-		} else if delCount == 2 {
-			if minus2.Match(c) {
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDup"], 1, seqInfo.rowDeletionDup, []interface{}{seqInfo.Seq, key, count, c})
-				seqInfo.Stats["ErrorDelDupReadsNum"] += count
-				seqInfo.rowDeletionDup++
-			} else {
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion2"], 1, seqInfo.rowDeletion2, []interface{}{seqInfo.Seq, key, count, c})
-				seqInfo.Stats["ErrorDel2ReadsNum"] += count
-				seqInfo.rowDeletion2++
-			}
-		} else if delCount >= 3 {
+		if minus3.Match(c) { // 连续3缺失
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDup3"], 1, seqInfo.rowDeletionDup3, []interface{}{seqInfo.Seq, key, count, c})
+			seqInfo.Stats["ErrorDelDup3ReadsNum"] += count
+			seqInfo.rowDeletionDup3++
+		} else if minus2.Match(c) { // 连续2缺失
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDup"], 1, seqInfo.rowDeletionDup, []interface{}{seqInfo.Seq, key, count, c})
+			seqInfo.Stats["ErrorDelDupReadsNum"] += count
+			seqInfo.rowDeletionDup++
+		} else if delCount >= 3 { // 多个单缺失
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion3"], 1, seqInfo.rowDeletion3, []interface{}{seqInfo.Seq, key, count, c})
 			seqInfo.Stats["ErrorDel3ReadsNum"] += count
 			seqInfo.rowDeletion3++
+		} else if delCount == 2 { // 2个单缺失
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion2"], 1, seqInfo.rowDeletion1, []interface{}{seqInfo.Seq, key, count, c})
+			seqInfo.Stats["ErrorDel2ReadsNum"] += count
+			seqInfo.rowDeletion1++
+		} else { // 单个缺失
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion1"], 1, seqInfo.rowDeletion1, []interface{}{seqInfo.Seq, key, count, c})
+			seqInfo.Stats["ErrorDel1ReadsNum"] += count
+			seqInfo.rowDeletion1++
 		}
 		for i, c1 := range c {
 			if c1 == '-' {
