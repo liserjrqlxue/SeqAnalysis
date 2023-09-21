@@ -25,6 +25,7 @@ import (
 var (
 	ex, _   = os.Executable()
 	exPath  = filepath.Dir(ex)
+	binPath = path.Join(exPath, "bin")
 	etcPath = path.Join(exPath, "etc")
 )
 
@@ -167,6 +168,8 @@ func main() {
 
 	// close file handle before Compress-Archive
 	simpleUtil.DeferClose(summary)
+
+	simpleUtil.CheckErr(sge.Run("Rscript", filepath.Join(binPath, "plot.R"), *outputDir))
 
 	// Compress-Archive to zip file on windows only when *zip is true
 	if runtime.GOOS == "windows" {
