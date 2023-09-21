@@ -482,7 +482,6 @@ func (seqInfo *SeqInfo) Align1(key string) bool {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion1"], 1, seqInfo.rowDeletion1, []interface{}{seqInfo.Seq, key, count, c})
 			seqInfo.Stats["ErrorDel1ReadsNum"] += count
 			seqInfo.rowDeletion1++
-			log.Printf("%s\t%s\t%d\t%s\n", seqInfo.Seq, key, count, c)
 		}
 		for i, c1 := range c {
 			if c1 == '-' {
