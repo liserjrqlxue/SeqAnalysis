@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"embed"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/liserjrqlxue/goUtil/fmtUtil"
 	"github.com/liserjrqlxue/goUtil/math"
@@ -164,7 +166,7 @@ func main() {
 
 		info.WriteStatsTxt(summary)
 	}
-	simpleUtil.CheckErr(summaryXlsx.SaveAs(filepath.Join(resultDir, "summary.xlsx")))
+	simpleUtil.CheckErr(summaryXlsx.SaveAs(filepath.Join(resultDir, fmt.Sprintf("summary-%s.xlsx", time.Now().Format("20060102")))))
 
 	// close file handle before Compress-Archive
 	simpleUtil.DeferClose(summary)
