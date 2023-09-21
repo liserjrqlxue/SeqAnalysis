@@ -99,6 +99,11 @@ func main() {
 	var resultDir = filepath.Join(*outputDir, "result")
 	simpleUtil.CheckErr(os.MkdirAll(filepath.Join(*outputDir, "result"), 0755))
 
+	// write info.txt
+	var info = osUtil.Create(filepath.Join(resultDir, "info.txt"))
+	// write title
+	fmtUtil.FprintStringArray(info, []string{"id", "index", "seq", "fq"}, "\t")
+
 	// runtime.GOMAXPROCS(runtime.NumCPU()) * 2)
 
 	var seqList = textUtil.File2Array(*input)
@@ -107,9 +112,14 @@ func main() {
 	}
 	chanList = make(chan bool, *thread)
 	for _, s := range seqList {
+		var stra = strings.Split(s, "\t")
+		fmtUtil.FprintStringArray(info, append(stra[0:3], strings.Join(stra[3:], ",")), "\t")
 		chanList <- true
 		go SingleRun(s, resultDir, *long, *rev)
 	}
+	simpleUtil.CheckErr(info.Close())
+
+	// wait goconcurrency thread to finish
 	for i := 0; i < *thread; i++ {
 		chanList <- true
 	}
