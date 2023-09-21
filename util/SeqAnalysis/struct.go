@@ -157,11 +157,8 @@ func (seqInfo *SeqInfo) CountError4(outputDir string, verbose int) {
 }
 
 func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
-	var tarSeq = string(append([]byte{}, seqInfo.Seq...))
-	if seqInfo.Reverse {
-		tarSeq = string(Reverse([]byte(tarSeq)))
-	}
 	var (
+		tarSeq    = string(seqInfo.Seq)
 		indexSeq  = seqInfo.IndexSeq
 		tarLength = len(tarSeq) + 50
 		//seqHit      = regexp.MustCompile(indexSeq + tarSeq)
@@ -174,6 +171,9 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 		outputUnmatched *os.File
 	)
 	defer simpleUtil.DeferClose(output)
+	if seqInfo.Reverse {
+		regTarSeq = regexp.MustCompile(string(Reverse(append([]byte{}, seqInfo.Seq...))))
+	}
 
 	if verbose > 0 {
 		outputShort = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path+".short.txt"))
