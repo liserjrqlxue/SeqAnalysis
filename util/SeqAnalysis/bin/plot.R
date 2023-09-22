@@ -1,5 +1,6 @@
 # /usr/bin/Rscript
 library(ggplot2)
+library(stringr)
 # use plot_grid
 library(cowplot)
 # 处理中文
@@ -28,6 +29,8 @@ for (path in dir(pattern = "*.one.step.accuracy.rate.txt")) {
 }
 a <- do.call(rbind, data_frames_list)
 colnames(a) <- c("id", "tag1", "tag2", "pos", "rate")
+
+a$lab <- str_split_i(a$id, "[-]", 1)
 
 ## info -> a$seq ---------------------------------------------------------------
 a$seq <- ""
@@ -58,6 +61,40 @@ p <- ggplot(a, aes(as.factor(pos), 1 - rate, group = id, col = id)) +
     facet_wrap(~seq, ncol = 1, scales = "free_y")
 print(p)
 
+p <- ggplot(a, aes(as.factor(pos), 1 - rate, group = id, col = id)) +
+    geom_point() +
+    geom_line() +
+    geom_text(label = a$tag2, aes(y = -0.01)) +
+    theme(text = element_text(size = 20)) +
+    xlab("合成") +
+    ylab("error rate") +
+    facet_wrap(~lab, ncol = 1)
+print(p)
+
+p <- ggplot(a, aes(as.factor(pos), 1 - rate, group = id, col = id)) +
+    geom_point() +
+    geom_line() +
+    geom_text(label = a$tag2, aes(y = -0.01)) +
+    theme(text = element_text(size = 20)) +
+    xlab("合成") +
+    ylab("error rate") +
+    facet_wrap(~lab, ncol = 1, scales = "free_y")
+print(p)
+
+for (lab in unique(a$lab)) {
+    t <- a[a$lab == lab, ]
+    print(lab)
+    p <- ggplot(t, aes(as.factor(pos), 1 - rate, group = id, col = id)) +
+        geom_point() +
+        geom_line() +
+        geom_text(label = t$tag2, aes(y = -0.01)) +
+        theme(text = element_text(size = 20)) +
+        xlab("合成") +
+        ylab("error rate") +
+        ggtitle(lab)
+    print(p)
+}
+
 for (id in unique(a$id)) {
     t <- a[a$id == id, ]
     print(id)
@@ -68,21 +105,12 @@ for (id in unique(a$id)) {
         theme(text = element_text(size = 20)) +
         xlab("合成") +
         ylab("error rate") +
-        ggtitle(id) +
-        facet_wrap(~seq, ncol = 1)
-    print(p)
-
-    p <- ggplot(t, aes(as.factor(pos), 1 - rate, group = id, col = id)) +
-        geom_point() +
-        geom_line() +
-        geom_text(label = t$tag2, aes(y = -0.01)) +
-        theme(text = element_text(size = 20)) +
-        xlab("合成") +
-        ylab("error rate") +
-        ggtitle(id) +
-        facet_wrap(~seq, ncol = 1, scales = "free_y")
+        ggtitle(id)
     print(p)
 }
+
+
+
 
 dev.off()
 ## END -------------------------------------------------------------------------
