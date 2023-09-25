@@ -99,13 +99,32 @@ func main() {
 		log.Printf("changes the current working directory to [%s]", *workDir)
 		simpleUtil.CheckErr(os.Chdir(*workDir))
 	}
+
+	// parse input
+	var inputInfo = ParseInput(*input)
+
+	// pare output directory structure
 	var resultDir = filepath.Join(*outputDir, "result")
 	simpleUtil.CheckErr(os.MkdirAll(filepath.Join(*outputDir, "result"), 0755))
 
 	// write info.txt
 	var info = osUtil.Create(filepath.Join(resultDir, "info.txt"))
+	var infoTitle = []string{"id", "index", "seq", "fq"}
 	// write title
-	fmtUtil.FprintStringArray(info, []string{"id", "index", "seq", "fq"}, "\t")
+	fmtUtil.FprintStringArray(info, infoTitle, "\t")
+
+	for i := range inputInfo {
+		var data = inputInfo[i]
+		fmtUtil.Fprintf(
+			info,
+			"%s\t%s\t%s\t%s\n",
+			data["id"],
+			data["index"],
+			data["seq"],
+			data["fq"],
+		)
+	}
+	simpleUtil.CheckErr(info.Close())
 
 	// runtime.GOMAXPROCS(runtime.NumCPU()) * 2)
 
@@ -117,8 +136,6 @@ func main() {
 	for _, s := range seqList {
 		var seqInfo = NewSeqInfo(s, *long, *rev)
 		SeqInfoMap[s] = seqInfo
-		var stra = strings.Split(s, "\t")
-		fmtUtil.FprintStringArray(info, append(stra[0:3], strings.Join(stra[3:], ",")), "\t")
 		chanList <- true
 		go func() {
 			defer func() {
@@ -127,7 +144,6 @@ func main() {
 			seqInfo.SingleRun(resultDir)
 		}()
 	}
-	simpleUtil.CheckErr(info.Close())
 
 	// wait goconcurrency thread to finish
 	for i := 0; i < *thread; i++ {
