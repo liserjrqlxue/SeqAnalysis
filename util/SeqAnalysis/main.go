@@ -115,10 +115,11 @@ func main() {
 	}
 	chanList = make(chan bool, *thread)
 	for _, s := range seqList {
+		var seqInfo = NewSeqInfo(s, *long, *rev)
 		var stra = strings.Split(s, "\t")
 		fmtUtil.FprintStringArray(info, append(stra[0:3], strings.Join(stra[3:], ",")), "\t")
 		chanList <- true
-		go SingleRun(s, resultDir, *long, *rev)
+		go SingleRun(seqInfo, s, resultDir)
 	}
 	simpleUtil.CheckErr(info.Close())
 
