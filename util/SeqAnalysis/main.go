@@ -155,7 +155,10 @@ func main() {
 	fmtUtil.FprintStringArray(summary, summaryTitle, "\t")
 
 	// write summary.xlsx
-	var summaryXlsx = excelize.NewFile()
+	var (
+		summaryXlsx = excelize.NewFile()
+		summaryPath = filepath.Join(resultDir, fmt.Sprintf("summary-%s-%s.xlsx", filepath.Base(*outputDir), time.Now().Format("20060102")))
+	)
 	simpleUtil.CheckErr(summaryXlsx.SetSheetName("Sheet1", "Summary"))
 	for i, s := range summaryTitle {
 		SetCellStr(summaryXlsx, "Summary", 1+i, 1, s)
@@ -169,11 +172,12 @@ func main() {
 
 		info.WriteStatsTxt(summary)
 	}
-	simpleUtil.CheckErr(summaryXlsx.SaveAs(filepath.Join(resultDir, fmt.Sprintf("summary-%s.xlsx", time.Now().Format("20060102")))))
+	simpleUtil.CheckErr(summaryXlsx.SaveAs(summaryPath))
 
 	// close file handle before Compress-Archive
 	simpleUtil.CheckErr(summary.Close())
 
+	// use Rscript to plot
 	simpleUtil.CheckErr(sge.Run("Rscript", filepath.Join(binPath, "plot.R"), *outputDir))
 
 	// Compress-Archive to zip file on windows only when *zip is true
