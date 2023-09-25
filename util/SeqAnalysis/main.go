@@ -175,18 +175,22 @@ func main() {
 
 	// Compress-Archive to zip file on windows only when *zip is true
 	if runtime.GOOS == "windows" {
+		var resultZip = *outputDir + ".result.zip"
+		if *outputDir == "." {
+			resultZip = "result.zip"
+		}
 		var args = []string{
 			"Compress-Archive",
 			"-Path",
-			resultDir,
+			fmt.Sprintf("\"%s/*.xlsx\",\"%s/*.pdf\"", resultDir, resultDir),
 			"-DestinationPath",
-			filepath.Join(*outputDir, "result.zip"),
+			resultZip,
 			"-Force",
 		}
 		log.Println(strings.Join(args, " "))
 		if *zip {
 			simpleUtil.CheckErr(sge.Run("powershell", args...))
-			simpleUtil.CheckErr(sge.Run("powershell", "explorer", *outputDir))
+			simpleUtil.CheckErr(sge.Run("powershell", "explorer", resultDir))
 		}
 	}
 }
