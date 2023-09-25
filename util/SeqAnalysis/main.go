@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/liserjrqlxue/goUtil/fmtUtil"
-	"github.com/liserjrqlxue/goUtil/math"
 	"github.com/liserjrqlxue/goUtil/osUtil"
 	"github.com/liserjrqlxue/goUtil/scannerUtil"
 	"github.com/liserjrqlxue/goUtil/sge"
@@ -157,36 +156,17 @@ func main() {
 	var summaryTitle = textUtil.File2Array(filepath.Join(etcPath, "title.Summary.txt"))
 	fmtUtil.FprintStringArray(summary, summaryTitle, "\t")
 
+	// write summary.xlsx
 	var summaryXlsx = excelize.NewFile()
 	simpleUtil.CheckErr(summaryXlsx.SetSheetName("Sheet1", "Summary"))
 	for i, s := range summaryTitle {
 		SetCellStr(summaryXlsx, "Summary", 1+i, 1, s)
 	}
-
 	for i := range inputInfo {
 		var (
-			name  = inputInfo[i]["id"]
-			info  = SeqInfoMap[name]
-			stats = info.Stats
+			info = SeqInfoMap[inputInfo[i]["id"]]
+			rows = info.SummaryRow()
 		)
-		var rows = []interface{}{
-			info.Name, info.IndexSeq, info.Seq, len(info.Seq),
-			stats["AllReadsNum"], stats["IndexReadsNum"], stats["AnalyzedReadsNum"], stats["RightReadsNum"],
-			info.YieldCoefficient, info.AverageYieldAccuracy,
-			math.DivisionInt(stats["ErrorReadsNum"], stats["AnalyzedReadsNum"]),
-			math.DivisionInt(stats["ErrorDelReadsNum"], stats["AnalyzedReadsNum"]),
-
-			math.DivisionInt(stats["ErrorDel1ReadsNum"], stats["AnalyzedReadsNum"]),
-			math.DivisionInt(stats["ErrorDelDupReadsNum"], stats["AnalyzedReadsNum"]),
-			math.DivisionInt(stats["ErrorDelDup3ReadsNum"], stats["AnalyzedReadsNum"]),
-			math.DivisionInt(stats["ErrorDel2ReadsNum"], stats["AnalyzedReadsNum"]),
-			math.DivisionInt(stats["ErrorDel3ReadsNum"], stats["AnalyzedReadsNum"]),
-			info.DeletionDup3Index + 1,
-			math.DivisionInt(stats["ErrorInsReadsNum"], stats["AnalyzedReadsNum"]),
-			math.DivisionInt(stats["ErrorInsDelReadsNum"], stats["AnalyzedReadsNum"]),
-			math.DivisionInt(stats["ErrorMutReadsNum"], stats["AnalyzedReadsNum"]),
-			math.DivisionInt(stats["ErrorOtherReadsNum"], stats["AnalyzedReadsNum"]),
-		}
 		SetRow(summaryXlsx, "Summary", 1, 2+i, rows)
 
 		info.WriteStatsTxt(summary)
@@ -194,7 +174,7 @@ func main() {
 	simpleUtil.CheckErr(summaryXlsx.SaveAs(filepath.Join(resultDir, fmt.Sprintf("summary-%s.xlsx", time.Now().Format("20060102")))))
 
 	// close file handle before Compress-Archive
-	simpleUtil.DeferClose(summary)
+	simpleUtil.CheckErr(summary.Close())
 
 	simpleUtil.CheckErr(sge.Run("Rscript", filepath.Join(binPath, "plot.R"), *outputDir))
 
