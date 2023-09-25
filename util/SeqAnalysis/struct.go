@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strings"
 
 	//"compress/gzip"
 	gzip "github.com/klauspost/pgzip"
@@ -83,10 +84,42 @@ type SeqInfo struct {
 	OSAR float64
 }
 
-var center = &excelize.Style{
-	Alignment: &excelize.Alignment{
-		Horizontal: "center",
-	},
+func NewSeqInfo(s string, long, rev bool) *SeqInfo {
+	var seqInfo = new(SeqInfo)
+	defer func() {
+		SeqInfoMap[s] = seqInfo
+		<-chanList
+	}()
+	s = strings.TrimSuffix(s, "\r")
+	var a = strings.Split(s, "\t")
+
+	seqInfo = &SeqInfo{
+		Name:          a[0],
+		IndexSeq:      strings.ToUpper(a[1]),
+		Seq:           []byte(strings.ToUpper(a[2])),
+		Fastqs:        a[3:],
+		Excel:         filepath.Join(*outputDir, "result", a[0]+".xlsx"),
+		Sheets:        Sheets,
+		SheetList:     sheetList,
+		Stats:         make(map[string]int),
+		HitSeqCount:   make(map[string]int),
+		ReadsLength:   make(map[int]int),
+		AssemblerMode: long,
+		Reverse:       rev,
+	}
+	if seqInfo.Reverse {
+		seqInfo.Seq = Reverse(seqInfo.Seq)
+	}
+	if len(a) > 3 {
+		seqInfo.Fastqs = a[3:]
+	} else {
+		seqInfo.Fastqs = []string{
+			filepath.Join("00.CleanData", seqInfo.Name, seqInfo.Name+"_1.clean.fq.gz"),
+			filepath.Join("00.CleanData", seqInfo.Name, seqInfo.Name+"_2.clean.fq.gz"),
+		}
+	}
+	log.Printf("[%s]:[%s]:[%s]:[%+v]\n", seqInfo.Name, seqInfo.IndexSeq, seqInfo.Seq, seqInfo.Fastqs)
+	return seqInfo
 }
 
 func (seqInfo *SeqInfo) Init() {
@@ -99,6 +132,11 @@ func (seqInfo *SeqInfo) Init() {
 
 	seqInfo.xlsx = excelize.NewFile()
 	seqInfo.Style = make(map[string]int)
+	var center = &excelize.Style{
+		Alignment: &excelize.Alignment{
+			Horizontal: "center",
+		},
+	}
 	seqInfo.Style["center"] = simpleUtil.HandleError(seqInfo.xlsx.NewStyle(center)).(int)
 
 	seqInfo.rowDeletion = 2
