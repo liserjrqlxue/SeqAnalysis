@@ -38,9 +38,8 @@ func ReverseComplement(s string) string {
 	return Complement(string(Reverse([]byte(s))))
 }
 
-func SingleRun(seqInfo *SeqInfo, s, resultDir string) {
+func SingleRun(seqInfo *SeqInfo, resultDir string) {
 	defer func() {
-		SeqInfoMap[s] = seqInfo
 		<-chanList
 	}()
 
