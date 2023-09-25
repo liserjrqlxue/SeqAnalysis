@@ -19,7 +19,8 @@ var (
 	regG = regexp.MustCompile(`G`)
 	regT = regexp.MustCompile(`T`)
 
-	gz = regexp.MustCompile(`gz$`)
+	gz     = regexp.MustCompile(`\.gz$`)
+	isXlsx = regexp.MustCompile(`\.xlsx$`)
 )
 
 var (
