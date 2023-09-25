@@ -969,6 +969,29 @@ func (info *SeqInfo) WriteStatsTxt(file *os.File) {
 	fmtUtil.Fprintf(file, statsString)
 }
 
+func (info *SeqInfo) SummaryRow() []interface{} {
+	var stats = info.Stats
+	return []interface{}{
+		info.Name, info.IndexSeq, info.Seq, len(info.Seq),
+		stats["AllReadsNum"], stats["IndexReadsNum"], stats["AnalyzedReadsNum"], stats["RightReadsNum"],
+		info.YieldCoefficient, info.AverageYieldAccuracy,
+		math2.DivisionInt(stats["ErrorReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["ErrorDelReadsNum"], stats["AnalyzedReadsNum"]),
+
+		math2.DivisionInt(stats["ErrorDel1ReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["ErrorDelDupReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["ErrorDelDup3ReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["ErrorDel2ReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["ErrorDel3ReadsNum"], stats["AnalyzedReadsNum"]),
+		info.DeletionDup3Index + 1,
+		math2.DivisionInt(stats["ErrorInsReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["ErrorInsDelReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["ErrorMutReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["ErrorOtherReadsNum"], stats["AnalyzedReadsNum"]),
+	}
+
+}
+
 type ByteFloat struct {
 	Key   byte
 	Value float64
