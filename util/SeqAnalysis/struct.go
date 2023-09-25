@@ -84,21 +84,14 @@ type SeqInfo struct {
 	OSAR float64
 }
 
-func NewSeqInfo(s string, long, rev bool) *SeqInfo {
+func NewSeqInfo(data map[string]string, long, rev bool) *SeqInfo {
 	var seqInfo = new(SeqInfo)
-	defer func() {
-		SeqInfoMap[s] = seqInfo
-		<-chanList
-	}()
-	s = strings.TrimSuffix(s, "\r")
-	var a = strings.Split(s, "\t")
-
 	seqInfo = &SeqInfo{
-		Name:          a[0],
-		IndexSeq:      strings.ToUpper(a[1]),
-		Seq:           []byte(strings.ToUpper(a[2])),
-		Fastqs:        a[3:],
-		Excel:         filepath.Join(*outputDir, "result", a[0]+".xlsx"),
+		Name:          data["id"],
+		IndexSeq:      strings.ToUpper(data["index"]),
+		Seq:           []byte(strings.ToUpper(data["seq"])),
+		Fastqs:        strings.Split(data["fq"], ","),
+		Excel:         filepath.Join(*outputDir, "result", data["id"]+".xlsx"),
 		Sheets:        Sheets,
 		SheetList:     sheetList,
 		Stats:         make(map[string]int),
@@ -110,9 +103,7 @@ func NewSeqInfo(s string, long, rev bool) *SeqInfo {
 	if seqInfo.Reverse {
 		seqInfo.Seq = Reverse(seqInfo.Seq)
 	}
-	if len(a) > 3 {
-		seqInfo.Fastqs = a[3:]
-	} else {
+	if seqInfo.Fastqs[0] == "" {
 		seqInfo.Fastqs = []string{
 			filepath.Join("00.CleanData", seqInfo.Name, seqInfo.Name+"_1.clean.fq.gz"),
 			filepath.Join("00.CleanData", seqInfo.Name, seqInfo.Name+"_2.clean.fq.gz"),
