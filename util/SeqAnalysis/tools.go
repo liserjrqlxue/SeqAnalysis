@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/liserjrqlxue/goUtil/textUtil"
 )
 
 // from https://forum.golangbridge.org/t/easy-way-for-letter-substitution-reverse-complementary-dna-sequence/20101
@@ -52,6 +54,24 @@ func Open(path, exPath string, embedFS embed.FS) (file io.ReadCloser, err error)
 	file, err = embedFS.Open(path)
 	if err != nil {
 		return os.Open(filepath.Join(exPath, path))
+	}
+	return
+}
+
+func ParseInput(input string) (info []map[string]string) {
+	if isXlsx.MatchString(input) {
+		return nil
+	} else {
+		var seqList = textUtil.File2Array(input)
+		for _, s := range seqList {
+			var data = make(map[string]string)
+			var stra = strings.Split(strings.TrimSuffix(s, "\r"), "\t")
+			data["id"] = stra[0]
+			data["index"] = stra[1]
+			data["seq"] = stra[2]
+			data["fq"] = strings.Join(stra[3:], ",")
+			info = append(info, data)
+		}
 	}
 	return
 }
