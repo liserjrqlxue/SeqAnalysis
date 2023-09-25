@@ -4,20 +4,16 @@ import (
 	"bufio"
 	"embed"
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"path"
 	"path/filepath"
-	"time"
 
 	"github.com/liserjrqlxue/goUtil/fmtUtil"
 	"github.com/liserjrqlxue/goUtil/osUtil"
 	"github.com/liserjrqlxue/goUtil/scannerUtil"
 	"github.com/liserjrqlxue/goUtil/sge"
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
-	"github.com/liserjrqlxue/goUtil/textUtil"
-	"github.com/xuri/excelize/v2"
 )
 
 // os
@@ -148,34 +144,11 @@ func main() {
 		chanList <- true
 	}
 
-	var summary = osUtil.Create(filepath.Join(resultDir, "summary.txt"))
-
-	//fmt.Println(strings.Join(textUtil.File2Array(filepath.Join(etcPath, "title.Summary.txt")), "\t"))
-	var summaryTitle = textUtil.File2Array(filepath.Join(etcPath, "title.Summary.txt"))
-	fmtUtil.FprintStringArray(summary, summaryTitle, "\t")
+	// write summary.txt
+	summaryTxt(resultDir, inputInfo)
 
 	// write summary.xlsx
-	var (
-		summaryXlsx = excelize.NewFile()
-		summaryPath = filepath.Join(resultDir, fmt.Sprintf("summary-%s-%s.xlsx", filepath.Base(*outputDir), time.Now().Format("20060102")))
-	)
-	simpleUtil.CheckErr(summaryXlsx.SetSheetName("Sheet1", "Summary"))
-	for i, s := range summaryTitle {
-		SetCellStr(summaryXlsx, "Summary", 1+i, 1, s)
-	}
-	for i := range inputInfo {
-		var (
-			info = SeqInfoMap[inputInfo[i]["id"]]
-			rows = info.SummaryRow()
-		)
-		SetRow(summaryXlsx, "Summary", 1, 2+i, rows)
-
-		info.WriteStatsTxt(summary)
-	}
-	simpleUtil.CheckErr(summaryXlsx.SaveAs(summaryPath))
-
-	// close file handle before Compress-Archive
-	simpleUtil.CheckErr(summary.Close())
+	summaryXlsx(resultDir, inputInfo)
 
 	// use Rscript to plot
 	simpleUtil.CheckErr(sge.Run("Rscript", filepath.Join(binPath, "plot.R"), *outputDir))

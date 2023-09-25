@@ -9,7 +9,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
+	"github.com/liserjrqlxue/goUtil/fmtUtil"
+	"github.com/liserjrqlxue/goUtil/osUtil"
 	"github.com/liserjrqlxue/goUtil/sge"
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
 	"github.com/liserjrqlxue/goUtil/textUtil"
@@ -128,4 +131,45 @@ func Zip(resultDir string) {
 			simpleUtil.CheckErr(sge.Run("powershell", "explorer", resultDir))
 		}
 	}
+}
+
+func summaryTxt(resultDir string, inputInfo []map[string]string) {
+	var summary = osUtil.Create(filepath.Join(resultDir, "summary.txt"))
+
+	//fmt.Println(strings.Join(textUtil.File2Array(filepath.Join(etcPath, "title.Summary.txt")), "\t"))
+	var summaryTitle = textUtil.File2Array(filepath.Join(etcPath, "title.Summary.txt"))
+	fmtUtil.FprintStringArray(summary, summaryTitle, "\t")
+
+	for i := range inputInfo {
+		SeqInfoMap[inputInfo[i]["id"]].WriteStatsTxt(summary)
+	}
+	// close file handle before Compress-Archive
+	simpleUtil.CheckErr(summary.Close())
+}
+
+func summaryXlsx(resultDir string, inputInfo []map[string]string) {
+
+	//fmt.Println(strings.Join(textUtil.File2Array(filepath.Join(etcPath, "title.Summary.txt")), "\t"))
+	var summaryTitle = textUtil.File2Array(filepath.Join(etcPath, "title.Summary.txt"))
+
+	// write summary.xlsx
+	var (
+		summaryXlsx = excelize.NewFile()
+		summaryPath = filepath.Join(resultDir, fmt.Sprintf("summary-%s-%s.xlsx", filepath.Base(*outputDir), time.Now().Format("20060102")))
+	)
+	simpleUtil.CheckErr(summaryXlsx.SetSheetName("Sheet1", "Summary"))
+	// write Title
+	for i, s := range summaryTitle {
+		SetCellStr(summaryXlsx, "Summary", 1+i, 1, s)
+	}
+
+	for i := range inputInfo {
+		var (
+			info = SeqInfoMap[inputInfo[i]["id"]]
+			rows = info.SummaryRow()
+		)
+		SetRow(summaryXlsx, "Summary", 1, 2+i, rows)
+	}
+
+	simpleUtil.CheckErr(summaryXlsx.SaveAs(summaryPath))
 }
