@@ -173,6 +173,20 @@ func (seqInfo *SeqInfo) Init() {
 	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets["Other"], "A", "F", 25))
 }
 
+func (seqInfo *SeqInfo) SingleRun(resultDir string) {
+	seqInfo.Init()
+	seqInfo.CountError4(resultDir, *verbose)
+
+	seqInfo.WriteStatsSheet(resultDir)
+	seqInfo.Save()
+	seqInfo.PrintStats(resultDir)
+	seqInfo.PlotLineACGT(filepath.Join(resultDir, seqInfo.Name+"ACGT.html"))
+
+	// free HitSeqCount memory
+	seqInfo.HitSeqCount = make(map[string]int)
+	seqInfo.HitSeq = []string{}
+}
+
 func (seqInfo *SeqInfo) Save() {
 	log.Printf("seqInfo.xlsx.SaveAs(%s)", seqInfo.Excel)
 

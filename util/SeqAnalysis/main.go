@@ -120,7 +120,12 @@ func main() {
 		var stra = strings.Split(s, "\t")
 		fmtUtil.FprintStringArray(info, append(stra[0:3], strings.Join(stra[3:], ",")), "\t")
 		chanList <- true
-		go SingleRun(seqInfo, resultDir)
+		go func() {
+			defer func() {
+				<-chanList
+			}()
+			seqInfo.SingleRun(resultDir)
+		}()
 	}
 	simpleUtil.CheckErr(info.Close())
 

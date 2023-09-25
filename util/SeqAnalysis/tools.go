@@ -38,24 +38,6 @@ func ReverseComplement(s string) string {
 	return Complement(string(Reverse([]byte(s))))
 }
 
-func SingleRun(seqInfo *SeqInfo, resultDir string) {
-	defer func() {
-		<-chanList
-	}()
-
-	seqInfo.Init()
-	seqInfo.CountError4(resultDir, *verbose)
-
-	seqInfo.WriteStatsSheet(resultDir)
-	seqInfo.Save()
-	seqInfo.PrintStats(resultDir)
-	seqInfo.PlotLineACGT(filepath.Join(resultDir, seqInfo.Name+"ACGT.html"))
-
-	// free HitSeqCount memory
-	seqInfo.HitSeqCount = make(map[string]int)
-	seqInfo.HitSeq = []string{}
-}
-
 // Open is a function that opens a file from the given path using the embed.FS file system.
 //
 // It takes three parameters:
