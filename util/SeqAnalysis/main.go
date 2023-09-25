@@ -100,16 +100,15 @@ func main() {
 		simpleUtil.CheckErr(os.Chdir(*workDir))
 	}
 
-	// parallel options
-	// runtime.GOMAXPROCS(runtime.NumCPU()) * 2)
-	var seqList = textUtil.File2Array(*input)
-	if *thread == 0 {
-		*thread = len(seqList)
-	}
-	chanList = make(chan bool, *thread)
-
 	// parse input
 	var inputInfo = ParseInput(*input)
+
+	// parallel options
+	// runtime.GOMAXPROCS(runtime.NumCPU()) * 2)
+	if *thread == 0 {
+		*thread = len(inputInfo)
+	}
+	chanList = make(chan bool, *thread)
 
 	// pare output directory structure
 	var resultDir = filepath.Join(*outputDir, "result")
@@ -164,9 +163,10 @@ func main() {
 		SetCellStr(summaryXlsx, "Summary", 1+i, 1, s)
 	}
 
-	for i, s := range seqList {
+	for i := range inputInfo {
 		var (
-			info  = SeqInfoMap[s]
+			name  = inputInfo[i]["id"]
+			info  = SeqInfoMap[name]
 			stats = info.Stats
 		)
 		var rows = []interface{}{
