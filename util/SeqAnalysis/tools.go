@@ -13,6 +13,7 @@ import (
 	"github.com/liserjrqlxue/goUtil/sge"
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
 	"github.com/liserjrqlxue/goUtil/textUtil"
+	"github.com/xuri/excelize/v2"
 )
 
 // from https://forum.golangbridge.org/t/easy-way-for-letter-substitution-reverse-complementary-dna-sequence/20101
@@ -63,9 +64,35 @@ func Open(path, exPath string, embedFS embed.FS) (file io.ReadCloser, err error)
 	return
 }
 
+func Rows2Map(rows [][]string) (result []map[string]string) {
+	var title = rows[0]
+	for i, row := range rows {
+		if i == 0 {
+			continue
+		}
+		var data = make(map[string]string)
+		for i, v := range row {
+			data[title[i]] = v
+		}
+		result = append(result, data)
+	}
+	return
+}
+
 func ParseInput(input string) (info []map[string]string) {
 	if isXlsx.MatchString(input) {
-		return nil
+		xlsx, err := excelize.OpenFile(input)
+		simpleUtil.CheckErr(err)
+		rows, err := xlsx.GetRows("Sheet1")
+		simpleUtil.CheckErr(err)
+		info = Rows2Map(rows)
+
+		for _, data := range info {
+			data["id"] = data["样品名称"]
+			data["index"] = data["靶标序列"]
+			data["seq"] = data["合成序列"]
+			data["fq"] = data["路径-R1"] + "," + data["路径-R2"]
+		}
 	} else {
 		var seqList = textUtil.File2Array(input)
 		for _, s := range seqList {
