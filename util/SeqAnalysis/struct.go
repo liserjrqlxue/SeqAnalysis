@@ -103,12 +103,6 @@ func NewSeqInfo(data map[string]string, long, rev bool) *SeqInfo {
 	if seqInfo.Reverse {
 		seqInfo.Seq = Reverse(seqInfo.Seq)
 	}
-	if seqInfo.Fastqs[0] == "" {
-		seqInfo.Fastqs = []string{
-			filepath.Join("00.CleanData", seqInfo.Name, seqInfo.Name+"_1.clean.fq.gz"),
-			filepath.Join("00.CleanData", seqInfo.Name, seqInfo.Name+"_2.clean.fq.gz"),
-		}
-	}
 	log.Printf("[%s]:[%s]:[%s]:[%+v]\n", seqInfo.Name, seqInfo.IndexSeq, seqInfo.Seq, seqInfo.Fastqs)
 	return seqInfo
 }

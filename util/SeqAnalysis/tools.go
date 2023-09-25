@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/liserjrqlxue/goUtil/fmtUtil"
+	math2 "github.com/liserjrqlxue/goUtil/math"
 	"github.com/liserjrqlxue/goUtil/osUtil"
 	"github.com/liserjrqlxue/goUtil/sge"
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
@@ -104,7 +105,14 @@ func ParseInput(input string) (info []map[string]string) {
 			data["id"] = stra[0]
 			data["index"] = stra[1]
 			data["seq"] = stra[2]
-			data["fq"] = strings.Join(stra[3:], ",")
+			if len(stra) > 3 {
+				data["fq"] = strings.Join(stra[3:], ",")
+			} else {
+				data["fq"] =
+					filepath.Join("00.CleanData", stra[0], stra[0]+"_1.clean.fq.gz") +
+						"," +
+						filepath.Join("00.CleanData", stra[0], stra[0]+"_2.clean.fq.gz")
+			}
 			info = append(info, data)
 		}
 	}
@@ -172,4 +180,56 @@ func summaryXlsx(resultDir string, inputInfo []map[string]string) {
 	}
 
 	simpleUtil.CheckErr(summaryXlsx.SaveAs(summaryPath))
+}
+
+func input2summaryXlsx(input, resultDir string) {
+	var summaryXlsx, err = excelize.OpenFile(input)
+	simpleUtil.CheckErr(err)
+	simpleUtil.CheckErr(summaryXlsx.SetSheetName("Sheet1", "Summary"))
+	rows, err := summaryXlsx.GetRows("Summary")
+	simpleUtil.CheckErr(err)
+	title := rows[0]
+	var titleIndex = make(map[string]int)
+	for i := range title {
+		titleIndex[title[i]] = i
+	}
+
+	for i := range rows {
+		if i == 0 {
+			continue
+		}
+		var id = rows[i][titleIndex["F0914-1-1"]]
+		var info = SeqInfoMap[id]
+		var stats = info.Stats
+
+		cellName, err := excelize.CoordinatesToCellName(titleIndex["reads"], i+1)
+		simpleUtil.CheckErr(err)
+		summaryXlsx.SetCellInt("Summary", cellName, stats["AllReadsNum"])
+
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["合成"], i+1)
+		simpleUtil.CheckErr(err)
+		summaryXlsx.SetCellInt("Summary", cellName, stats["RightReadsNum"])
+
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["收率"], i+1)
+		simpleUtil.CheckErr(err)
+		summaryXlsx.SetCellFloat("Summary", cellName, info.YieldCoefficient, 4, 64)
+
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["平均收率"], i+1)
+		simpleUtil.CheckErr(err)
+		summaryXlsx.SetCellFloat("Summary", cellName, info.AverageYieldAccuracy, 4, 64)
+
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["缺1个"], i+1)
+		simpleUtil.CheckErr(err)
+		summaryXlsx.SetCellStr(
+			"Summary",
+			cellName,
+			fmt.Sprintf(
+				"%.4f(%d)",
+				math2.DivisionInt(stats["ErrorDel1ReadsNum"], stats["AnalyzedReadsNum"]),
+				stats["ErrorDel1ReadsNum"],
+			),
+		)
+
+	}
+
 }
