@@ -100,6 +100,14 @@ func main() {
 		simpleUtil.CheckErr(os.Chdir(*workDir))
 	}
 
+	// parallel options
+	// runtime.GOMAXPROCS(runtime.NumCPU()) * 2)
+	var seqList = textUtil.File2Array(*input)
+	if *thread == 0 {
+		*thread = len(seqList)
+	}
+	chanList = make(chan bool, *thread)
+
 	// parse input
 	var inputInfo = ParseInput(*input)
 
@@ -113,6 +121,7 @@ func main() {
 	// write title
 	fmtUtil.FprintStringArray(info, infoTitle, "\t")
 
+	// loop inputInfo for info.txt
 	for i := range inputInfo {
 		var data = inputInfo[i]
 		fmtUtil.Fprintf(
@@ -123,26 +132,19 @@ func main() {
 			data["seq"],
 			data["fq"],
 		)
+		var seqInfo = NewSeqInfo(data, *long, *rev)
+		SeqInfoMap[seqInfo.Name] = seqInfo
 	}
 	simpleUtil.CheckErr(info.Close())
 
-	// runtime.GOMAXPROCS(runtime.NumCPU()) * 2)
-
-	var seqList = textUtil.File2Array(*input)
-	if *thread == 0 {
-		*thread = len(seqList)
-	}
-	chanList = make(chan bool, *thread)
-	for _, s := range seqList {
-		var seqInfo = NewSeqInfo(s, *long, *rev)
-		SeqInfoMap[s] = seqInfo
+	for id := range SeqInfoMap {
 		chanList <- true
-		go func() {
+		go func(id string) {
 			defer func() {
 				<-chanList
 			}()
-			seqInfo.SingleRun(resultDir)
-		}()
+			SeqInfoMap[id].SingleRun(resultDir)
+		}(id)
 	}
 
 	// wait goconcurrency thread to finish
