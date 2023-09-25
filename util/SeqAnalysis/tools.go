@@ -2,11 +2,16 @@ package main
 
 import (
 	"embed"
+	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
+	"github.com/liserjrqlxue/goUtil/sge"
+	"github.com/liserjrqlxue/goUtil/simpleUtil"
 	"github.com/liserjrqlxue/goUtil/textUtil"
 )
 
@@ -74,4 +79,26 @@ func ParseInput(input string) (info []map[string]string) {
 		}
 	}
 	return
+}
+
+func Zip(resultDir string) {
+	if runtime.GOOS == "windows" {
+		var resultZip = *outputDir + ".result.zip"
+		if *outputDir == "." {
+			resultZip = "result.zip"
+		}
+		var args = []string{
+			"Compress-Archive",
+			"-Path",
+			fmt.Sprintf("\"%s/*.xlsx\",\"%s/*.pdf\"", resultDir, resultDir),
+			"-DestinationPath",
+			resultZip,
+			"-Force",
+		}
+		log.Println(strings.Join(args, " "))
+		if *zip {
+			simpleUtil.CheckErr(sge.Run("powershell", args...))
+			simpleUtil.CheckErr(sge.Run("powershell", "explorer", resultDir))
+		}
+	}
 }
