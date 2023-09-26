@@ -206,8 +206,12 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 		output          = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path))
 		outputShort     *os.File
 		outputUnmatched *os.File
+
+		// value weight
+		histogram = make(map[int]int)
 	)
 	defer simpleUtil.DeferClose(output)
+
 	if seqInfo.Reverse {
 		regTarSeq = regexp.MustCompile(string(Reverse(append([]byte{}, seqInfo.Seq...))))
 	}
@@ -296,6 +300,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 
 				tSeq = m[2] //[seqInfo.Offset:]
 				fmtUtil.Fprintln(output, tSeq)
+				histogram[len(tSeq)]++
 				if seqInfo.Reverse {
 					tSeq = string(Reverse([]byte(tSeq)))
 				}
@@ -323,6 +328,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				}
 				tSeq = m[1]
 				fmtUtil.Fprintln(output, tSeq)
+				histogram[len(tSeq)]++
 				if seqInfo.Reverse {
 					tSeq = string(Reverse([]byte(tSeq)))
 				}
@@ -364,6 +370,19 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 		simpleUtil.CheckErr(file.Close())
 	}
 	seqInfo.Stats["AnalyzedReadsNum"] = seqInfo.Stats["RightReadsNum"] + seqInfo.Stats["IndexPolyAReadsNum"]
+
+	// output histgram.txt
+	histogramFile := osUtil.Create(filepath.Join(outputDir, seqInfo.Name+".histogram.txt"))
+	fmtUtil.Fprintln(histogramFile, "length\tweight")
+	var seqLengths []int
+	for k := range histogram {
+		seqLengths = append(seqLengths, k)
+	}
+	sort.Ints(seqLengths)
+	for _, k := range seqLengths {
+		fmtUtil.Fprintf(histogramFile, "%d\t%d\n", k, histogram[k])
+	}
+	simpleUtil.CheckErr(histogramFile.Close())
 
 	if verbose > 0 {
 		simpleUtil.CheckErr(outputShort.Close())
