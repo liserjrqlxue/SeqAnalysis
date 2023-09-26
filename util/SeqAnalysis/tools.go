@@ -163,7 +163,7 @@ func summaryXlsx(resultDir string, inputInfo []map[string]string) {
 	// write summary.xlsx
 	var (
 		summaryXlsx = excelize.NewFile()
-		summaryPath = filepath.Join(resultDir, fmt.Sprintf("summary-%s-%s.xlsx", filepath.Base(*outputDir), time.Now().Format("20060102")))
+		summaryPath = fmt.Sprintf("summary-%s-%s.xlsx", filepath.Base(*outputDir), time.Now().Format("20060102"))
 	)
 	simpleUtil.CheckErr(summaryXlsx.SetSheetName("Sheet1", "Summary"))
 	// write Title
@@ -179,7 +179,15 @@ func summaryXlsx(resultDir string, inputInfo []map[string]string) {
 		SetRow(summaryXlsx, "Summary", 1, 2+i, rows)
 	}
 
+	// get cwd
+	cwd, err := os.Getwd()
+	simpleUtil.CheckErr(err)
+	// change to resultDir
+	simpleUtil.CheckErr(os.Chdir(resultDir))
+	log.Println("SaveAs ", summaryPath)
 	simpleUtil.CheckErr(summaryXlsx.SaveAs(summaryPath))
+	// change back
+	simpleUtil.CheckErr(os.Chdir(cwd))
 }
 
 func input2summaryXlsx(input, resultDir string) {
