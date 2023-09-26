@@ -29,6 +29,7 @@ for (path in dir(pattern = "*.one.step.accuracy.rate.txt")) {
 }
 a <- do.call(rbind, data_frames_list)
 colnames(a) <- c("id", "tag1", "tag2", "pos", "rate")
+a$id <- as.factor(a$id)
 
 a$lab <- str_split_i(a$id, "[-]", 1)
 
@@ -122,12 +123,17 @@ dev.off()
 ## *.SeqResult.txt -> b[name,length] -------------------------------------------
 data_frames_list <- list()
 for (path in dir(pattern = "*.SeqResult.txt")) {
+    message("load ", path)
     df <- data.frame(name = strsplit(path, "[.]")[[1]][1])
-    data <- cbind(
-        df,
-        length = nchar(read.table(path)[, 1])
-    )
-    data_frames_list[[path]] <- data
+    if (file.info(path)$size > 0) {
+        data <- cbind(
+            df,
+            length = nchar(read.table(path)[, 1])
+        )
+        data_frames_list[[path]] <- data
+    } else {
+        message("skip ", path, " for empty!")
+    }
 }
 b <- do.call(rbind, data_frames_list)
 
