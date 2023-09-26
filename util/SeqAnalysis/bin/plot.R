@@ -119,18 +119,13 @@ dev.off()
 # ------------------------------------------------------------------------------
 # 长度分布
 # ------------------------------------------------------------------------------
-
 ## *.SeqResult.txt -> b[name,length] -------------------------------------------
 data_frames_list <- list()
-for (path in dir(pattern = "*.SeqResult.txt")) {
+for (path in dir(pattern = "*.histogram.txt")) {
     message("load ", path)
     df <- data.frame(name = strsplit(path, "[.]")[[1]][1])
     if (file.info(path)$size > 0) {
-        data <- cbind(
-            df,
-            length = nchar(read.table(path)[, 1])
-        )
-        data_frames_list[[path]] <- data
+        data_frames_list[[path]] <- cbind(df,read.table(path,header=T,stringsAsFactors = F))
     } else {
         message("skip ", path, " for empty!")
     }
@@ -141,12 +136,12 @@ b <- do.call(rbind, data_frames_list)
 
 pdf("histogram.pdf", width = 16, height = 9)
 
-p <- ggplot(b, aes(x = length, group = name)) +
+p <- ggplot(b, aes(x = length, group = name, weight=weight)) +
     geom_histogram(binwidth = 1) +
     facet_wrap(~name, scales = "free")
 print(p)
 
-p <- ggplot(b, aes(x = length, group = name)) +
+p <- ggplot(b, aes(x = length, group = name, weight=weight)) +
     geom_histogram(binwidth = 1) +
     scale_y_log10() +
     facet_wrap(~name, scales = "free")
@@ -155,12 +150,12 @@ print(p)
 for (name in unique(b$name)) {
     print(name)
 
-    p1 <- ggplot(b[b$name == name, ], aes(x = length, group = name)) +
+    p1 <- ggplot(b[b$name == name, ], aes(x = length, group = name, weight=weight)) +
         geom_histogram(binwidth = 1) +
         theme(text = element_text(size = 20)) +
         facet_wrap(~name, scales = "free")
 
-    p2 <- ggplot(b[b$name == name, ], aes(x = length, group = name)) +
+    p2 <- ggplot(b[b$name == name, ], aes(x = length, group = name, weight=weight)) +
         geom_histogram(binwidth = 1) +
         scale_y_log10() +
         theme(text = element_text(size = 20)) +
