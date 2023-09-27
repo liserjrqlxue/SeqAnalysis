@@ -166,10 +166,6 @@ func (seqInfo *SeqInfo) SingleRun(resultDir string) {
 	seqInfo.Save()
 	seqInfo.PrintStats(resultDir)
 	seqInfo.PlotLineACGT(filepath.Join(resultDir, seqInfo.Name+"ACGT.html"))
-
-	// free HitSeqCount memory
-	seqInfo.HitSeqCount = make(map[string]int)
-	seqInfo.HitSeq = []string{}
 }
 
 func (seqInfo *SeqInfo) Save() {
@@ -427,6 +423,9 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 		seqInfo.rowOther++
 		seqInfo.Stats["ErrorOtherReadsNum"] += seqInfo.HitSeqCount[key]
 	}
+	// free HitSeq
+	seqInfo.HitSeq = nil
+
 	SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 5, 1,
 		[]interface{}{"总数", seqInfo.Stats["ErrorDelReadsNum"] + seqInfo.Stats["RightReadsNum"]},
 	)
@@ -936,6 +935,8 @@ func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string) {
 		)
 		sumDel += del1
 	}
+	// free seqInfo.HitSeqCount
+	seqInfo.HitSeqCount = nil
 
 	log.Printf(
 		"Simple Deletion:\t%s\nAll\t%d\t%.0f%%\nA\t%d\t%0.f%%\nT\t%d\t%.0f%%\nC\t%d\t%.0f%%\nG\t%d\t%.0f%%\n",
