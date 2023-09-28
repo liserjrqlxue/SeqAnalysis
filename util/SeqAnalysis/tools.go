@@ -234,7 +234,7 @@ func input2summaryXlsx(input, resultDir string) {
 
 		cellName, err = excelize.CoordinatesToCellName(titleIndex["reads"]+1, i+1)
 		simpleUtil.CheckErr(err)
-		excel.SetCellInt("Summary", cellName, stats["AllReadsNum"])
+		excel.SetCellInt("Summary", cellName, stats["AnalyzedReadsNum"])
 
 		cellName, err = excelize.CoordinatesToCellName(titleIndex["正确reads"]+1, i+1)
 		simpleUtil.CheckErr(err)
