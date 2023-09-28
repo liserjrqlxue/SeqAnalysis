@@ -243,27 +243,27 @@ func input2summaryXlsx(input, resultDir string) {
 		if i == 0 {
 			continue
 		}
-		var id = rows[i][titleIndex["F0914-1-1"]]
+		var id = rows[i][titleIndex["样品名称"]]
 		var info = SeqInfoMap[id]
 		var stats = info.Stats
 
-		cellName, err := excelize.CoordinatesToCellName(titleIndex["reads"], i+1)
+		cellName, err := excelize.CoordinatesToCellName(titleIndex["reads"]+1, i+1)
 		simpleUtil.CheckErr(err)
 		summaryXlsx.SetCellInt("Summary", cellName, stats["AllReadsNum"])
 
-		cellName, err = excelize.CoordinatesToCellName(titleIndex["合成"], i+1)
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["合成"]+1, i+1)
 		simpleUtil.CheckErr(err)
 		summaryXlsx.SetCellInt("Summary", cellName, stats["RightReadsNum"])
 
-		cellName, err = excelize.CoordinatesToCellName(titleIndex["收率"], i+1)
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["收率"]+1, i+1)
 		simpleUtil.CheckErr(err)
 		summaryXlsx.SetCellFloat("Summary", cellName, info.YieldCoefficient, 4, 64)
 
-		cellName, err = excelize.CoordinatesToCellName(titleIndex["平均收率"], i+1)
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["平均收率"]+1, i+1)
 		simpleUtil.CheckErr(err)
 		summaryXlsx.SetCellFloat("Summary", cellName, info.AverageYieldAccuracy, 4, 64)
 
-		cellName, err = excelize.CoordinatesToCellName(titleIndex["缺1个"], i+1)
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["缺1个"]+1, i+1)
 		simpleUtil.CheckErr(err)
 		summaryXlsx.SetCellStr(
 			"Summary",
@@ -275,6 +275,107 @@ func input2summaryXlsx(input, resultDir string) {
 			),
 		)
 
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["缺2个（连续）"]+1, i+1)
+		simpleUtil.CheckErr(err)
+		summaryXlsx.SetCellStr(
+			"Summary",
+			cellName,
+			fmt.Sprintf(
+				"%.4f(%d)",
+				math2.DivisionInt(stats["ErrorDelDupReadsNum"], stats["AnalyzedReadsNum"]),
+				stats["ErrorDelDupReadsNum"],
+			),
+		)
+
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["缺3个以上（连续）"]+1, i+1)
+		simpleUtil.CheckErr(err)
+		summaryXlsx.SetCellStr(
+			"Summary",
+			cellName,
+			fmt.Sprintf(
+				"%.4f(%d)",
+				math2.DivisionInt(stats["ErrorDelDup3ReadsNum"], stats["AnalyzedReadsNum"]),
+				stats["ErrorDelDup3ReadsNum"],
+			),
+		)
+
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["缺2个（不连续）"]+1, i+1)
+		simpleUtil.CheckErr(err)
+		summaryXlsx.SetCellStr(
+			"Summary",
+			cellName,
+			fmt.Sprintf(
+				"%.4f(%d)",
+				math2.DivisionInt(stats["ErrorDel2ReadsNum"], stats["AnalyzedReadsNum"]),
+				stats["ErrorDel2ReadsNum"],
+			),
+		)
+
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["缺3个以上（不连续）"]+1, i+1)
+		simpleUtil.CheckErr(err)
+		summaryXlsx.SetCellStr(
+			"Summary",
+			cellName,
+			fmt.Sprintf(
+				"%.4f(%d)",
+				math2.DivisionInt(stats["ErrorDel3ReadsNum"], stats["AnalyzedReadsNum"]),
+				stats["ErrorDel3ReadsNum"],
+			),
+		)
+
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["第一个缺失位置"]+1, i+1)
+		simpleUtil.CheckErr(err)
+		summaryXlsx.SetCellInt("Summary", cellName, info.DeletionDup3Index+1)
+
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["插入"]+1, i+1)
+		simpleUtil.CheckErr(err)
+		summaryXlsx.SetCellStr(
+			"Summary",
+			cellName,
+			fmt.Sprintf(
+				"%.4f(%d)",
+				math2.DivisionInt(stats["ErrorInsReadsNum"], stats["AnalyzedReadsNum"]),
+				stats["ErrorInsReadsNum"],
+			),
+		)
+
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["插入+缺失"]+1, i+1)
+		simpleUtil.CheckErr(err)
+		summaryXlsx.SetCellStr(
+			"Summary",
+			cellName,
+			fmt.Sprintf(
+				"%.4f(%d)",
+				math2.DivisionInt(stats["ErrorInsDelReadsNum"], stats["AnalyzedReadsNum"]),
+				stats["ErrorInsDelReadsNum"],
+			),
+		)
+
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["突变"]+1, i+1)
+		simpleUtil.CheckErr(err)
+		summaryXlsx.SetCellStr(
+			"Summary",
+			cellName,
+			fmt.Sprintf(
+				"%.4f(%d)",
+				math2.DivisionInt(stats["ErrorMutReadsNum"], stats["AnalyzedReadsNum"]),
+				stats["ErrorMutReadsNum"],
+			),
+		)
+
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["其他错误"]+1, i+1)
+		simpleUtil.CheckErr(err)
+		summaryXlsx.SetCellStr(
+			"Summary",
+			cellName,
+			fmt.Sprintf(
+				"%.4f(%d)",
+				math2.DivisionInt(stats["ErrorOtherReadsNum"], stats["AnalyzedReadsNum"]),
+				stats["ErrorOtherReadsNum"],
+			),
+		)
 	}
+
+	simpleUtil.CheckErr(summaryXlsx.SaveAs("summary.xlsx"))
 
 }

@@ -150,6 +150,11 @@ func main() {
 	// write summary.xlsx
 	summaryXlsx(resultDir, inputInfo)
 
+	// update input.xlsx
+	if isXlsx.MatchString(*input) {
+		input2summaryXlsx(*input, resultDir)
+	}
+
 	// use Rscript to plot
 	simpleUtil.CheckErr(sge.Run("Rscript", filepath.Join(binPath, "plot.R"), *outputDir))
 
