@@ -37,8 +37,8 @@ var (
 	)
 	outputDir = flag.String(
 		"o",
-		".",
-		"output directory",
+		"",
+		"output directory, default is sub directory of CWD: [BaseName]+.分析",
 	)
 	verbose = flag.Int(
 		"v",
@@ -98,6 +98,9 @@ func main() {
 	}
 	chanList = make(chan bool, *thread)
 
+	if *outputDir == "" {
+		*outputDir = filepath.Base(simpleUtil.HandleError(os.Getwd()).(string)) + ".分析"
+	}
 	// pare output directory structure
 	var resultDir = filepath.Join(*outputDir, "result")
 	simpleUtil.CheckErr(os.MkdirAll(filepath.Join(*outputDir, "result"), 0755))
