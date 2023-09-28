@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
 	"path/filepath"
 
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
@@ -30,13 +31,17 @@ func main() {
 		flag.Usage()
 		log.Fatal("input excel is nil")
 	}
+	excelDir := filepath.Dir(*excel)
+	excelBase := filepath.Base(*excel)
 
-	if *dir == "" {
-		*dir = filepath.Dir(*excel)
+	if *dir != "" {
+		*dir = simpleUtil.HandleError(filepath.Abs(*dir)).(string)
 	}
-	log.Printf(*dir)
 
-	excelizeFile, err := excelize.OpenFile(*excel)
+	// change to excelDir
+	simpleUtil.CheckErr(os.Chdir(excelDir))
+
+	excelizeFile, err := excelize.OpenFile(excelBase)
 	simpleUtil.CheckErr(err)
 	rows, err := excelizeFile.GetRows("Summary")
 	simpleUtil.CheckErr(err)
