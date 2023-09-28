@@ -148,11 +148,11 @@ func main() {
 	summaryTxt(resultDir, inputInfo)
 
 	// write summary.xlsx
-	summaryXlsx(resultDir, inputInfo)
-
-	// update input.xlsx
 	if isXlsx.MatchString(*input) {
+		// update from input.xlsx
 		input2summaryXlsx(*input, resultDir)
+	} else {
+		summaryXlsx(resultDir, inputInfo)
 	}
 
 	// use Rscript to plot
