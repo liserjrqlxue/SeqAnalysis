@@ -162,15 +162,15 @@ func summaryXlsx(resultDir string, inputInfo []map[string]string) {
 
 	// write summary.xlsx
 	var (
-		summaryXlsx = excelize.NewFile()
+		excel       = excelize.NewFile()
 		summaryPath = fmt.Sprintf("summary-%s-%s.xlsx", filepath.Base(*outputDir), time.Now().Format("20060102"))
 	)
 
 	// Summary Sheet
-	simpleUtil.CheckErr(summaryXlsx.SetSheetName("Sheet1", "Summary"))
+	simpleUtil.CheckErr(excel.SetSheetName("Sheet1", "Summary"))
 	// write Title
 	for i, s := range summaryTitle {
-		SetCellStr(summaryXlsx, "Summary", 1+i, 1, s)
+		SetCellStr(excel, "Summary", 1+i, 1, s)
 	}
 
 	for i := range inputInfo {
@@ -178,7 +178,7 @@ func summaryXlsx(resultDir string, inputInfo []map[string]string) {
 			info = SeqInfoMap[inputInfo[i]["id"]]
 			rows = info.SummaryRow()
 		)
-		SetRow(summaryXlsx, "Summary", 1, 2+i, rows)
+		SetRow(excel, "Summary", 1, 2+i, rows)
 	}
 
 	// get cwd
@@ -187,42 +187,11 @@ func summaryXlsx(resultDir string, inputInfo []map[string]string) {
 	// change to resultDir
 	simpleUtil.CheckErr(os.Chdir(resultDir))
 
-	// 单步准确率
-	simpleUtil.HandleError(summaryXlsx.NewSheet("单步准确率"))
-	summaryXlsx.SetSheetRow("单步准确率", "A1", &[]string{"名字", "合成前4nt", "合成碱基", "合成位置", "单步准确率"})
-
-	var rIdx = 2
-	for i := range inputInfo {
-		id := inputInfo[i]["id"]
-		for _, row := range textUtil.File2Slice(id+".one.step.accuracy.rate.txt", "\t") {
-			cellName, err := excelize.CoordinatesToCellName(1, rIdx)
-			simpleUtil.CheckErr(err)
-			summaryXlsx.SetSheetRow("单步准确率", cellName, &row)
-			rIdx++
-		}
-	}
-
-	// 单步准确率-横排
-	simpleUtil.HandleError(summaryXlsx.NewSheet("单步准确率-横排"))
-	for i := range inputInfo {
-		var rIdx = 1
-		id := inputInfo[i]["id"]
-		cellName, err := excelize.CoordinatesToCellName(1+i*5, rIdx)
-		simpleUtil.CheckErr(err)
-		// write title
-		summaryXlsx.SetSheetRow("单步准确率-横排", cellName, &[]string{"名字", "合成前4nt-" + id, "合成碱基-" + id, "合成位置-" + id, "单步准确率-" + id})
-		rIdx++
-		for _, row := range textUtil.File2Slice(id+".one.step.accuracy.rate.txt", "\t") {
-			cellName, err := excelize.CoordinatesToCellName(1+i*5, rIdx)
-			simpleUtil.CheckErr(err)
-			summaryXlsx.SetSheetRow("单步准确率-横排", cellName, &row)
-			rIdx++
-		}
-	}
+	AddSteps2Sheet(excel, inputInfo)
 
 	// save summary.xlsx
 	log.Println("SaveAs ", summaryPath)
-	simpleUtil.CheckErr(summaryXlsx.SaveAs(summaryPath))
+	simpleUtil.CheckErr(excel.SaveAs(summaryPath))
 	// change back
 	simpleUtil.CheckErr(os.Chdir(cwd))
 }
@@ -378,4 +347,40 @@ func input2summaryXlsx(input, resultDir string) {
 
 	simpleUtil.CheckErr(summaryXlsx.SaveAs("summary.xlsx"))
 
+}
+
+// AddSteps2Sheet Add one.step.accuracy.rate.txt to 单步准确率 sheet
+func AddSteps2Sheet(excel *excelize.File, info []map[string]string) {
+	// 单步准确率
+	simpleUtil.HandleError(excel.NewSheet("单步准确率"))
+	excel.SetSheetRow("单步准确率", "A1", &[]string{"名字", "合成前4nt", "合成碱基", "合成位置", "单步准确率"})
+
+	var rIdx = 2
+	for i := range info {
+		id := info[i]["id"]
+		for _, row := range textUtil.File2Slice(id+".one.step.accuracy.rate.txt", "\t") {
+			cellName, err := excelize.CoordinatesToCellName(1, rIdx)
+			simpleUtil.CheckErr(err)
+			excel.SetSheetRow("单步准确率", cellName, &row)
+			rIdx++
+		}
+	}
+
+	// 单步准确率-横排
+	simpleUtil.HandleError(excel.NewSheet("单步准确率-横排"))
+	for i := range info {
+		var rIdx = 1
+		id := info[i]["id"]
+		cellName, err := excelize.CoordinatesToCellName(1+i*5, rIdx)
+		simpleUtil.CheckErr(err)
+		// write title
+		excel.SetSheetRow("单步准确率-横排", cellName, &[]string{"名字", "合成前4nt-" + id, "合成碱基-" + id, "合成位置-" + id, "单步准确率-" + id})
+		rIdx++
+		for _, row := range textUtil.File2Slice(id+".one.step.accuracy.rate.txt", "\t") {
+			cellName, err := excelize.CoordinatesToCellName(1+i*5, rIdx)
+			simpleUtil.CheckErr(err)
+			excel.SetSheetRow("单步准确率-横排", cellName, &row)
+			rIdx++
+		}
+	}
 }
