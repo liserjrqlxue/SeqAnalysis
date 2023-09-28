@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"embed"
 	"flag"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -26,7 +25,7 @@ var (
 
 // flag
 var (
-	workDir = flag.String(
+	fqDir = flag.String(
 		"w",
 		"",
 		"current working directory",
@@ -88,13 +87,9 @@ func init() {
 
 func main() {
 	flag.Parse()
-	if *workDir != "" {
-		log.Printf("changes the current working directory to [%s]", *workDir)
-		simpleUtil.CheckErr(os.Chdir(*workDir))
-	}
 
 	// parse input
-	var inputInfo = ParseInput(*input)
+	var inputInfo = ParseInput(*input, *fqDir)
 
 	// parallel options
 	// runtime.GOMAXPROCS(runtime.NumCPU()) * 2)

@@ -83,7 +83,7 @@ func Rows2Map(rows [][]string) (result []map[string]string) {
 	return
 }
 
-func ParseInput(input string) (info []map[string]string) {
+func ParseInput(input, fqDir string) (info []map[string]string) {
 	if isXlsx.MatchString(input) {
 		xlsx, err := excelize.OpenFile(input)
 		simpleUtil.CheckErr(err)
@@ -95,6 +95,10 @@ func ParseInput(input string) (info []map[string]string) {
 			data["id"] = data["样品名称"]
 			data["index"] = data["靶标序列"]
 			data["seq"] = data["合成序列"]
+			if fqDir != "" {
+				data["路径-R1"] = filepath.Join(fqDir, data["路径-R1"])
+				data["路径-R2"] = filepath.Join(fqDir, data["路径-R2"])
+			}
 			data["fq"] = data["路径-R1"] + "," + data["路径-R2"]
 		}
 	} else {
@@ -106,12 +110,18 @@ func ParseInput(input string) (info []map[string]string) {
 			data["index"] = stra[1]
 			data["seq"] = stra[2]
 			if len(stra) > 3 {
-				data["fq"] = strings.Join(stra[3:], ",")
+				var fqList = stra[3:]
+				if fqDir != "" {
+					for i := range fqList {
+						fqList[i] = filepath.Join(fqDir, fqList[i])
+					}
+				}
+				data["fq"] = strings.Join(fqList, ",")
 			} else {
 				data["fq"] =
-					filepath.Join("00.CleanData", stra[0], stra[0]+"_1.clean.fq.gz") +
+					filepath.Join(fqDir, "00.CleanData", stra[0], stra[0]+"_1.clean.fq.gz") +
 						"," +
-						filepath.Join("00.CleanData", stra[0], stra[0]+"_2.clean.fq.gz")
+						filepath.Join(fqDir, "00.CleanData", stra[0], stra[0]+"_2.clean.fq.gz")
 			}
 			info = append(info, data)
 		}
