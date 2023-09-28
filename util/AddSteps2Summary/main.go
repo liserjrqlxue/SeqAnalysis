@@ -47,8 +47,7 @@ func main() {
 	simpleUtil.CheckErr(err)
 	data := rows2mapArray(rows)
 
-	_, err = excelizeFile.NewSheet("单步准确率")
-	simpleUtil.CheckErr(err)
+	simpleUtil.HandleError(excelizeFile.NewSheet("单步准确率"))
 	// write title
 	excelizeFile.SetSheetRow("单步准确率", "A1", &[]string{"名字", "合成前4nt", "合成碱基", "合成位置", "单步准确率"})
 
