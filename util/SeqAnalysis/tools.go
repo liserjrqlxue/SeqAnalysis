@@ -221,11 +221,16 @@ func input2summaryXlsx(input, resultDir string) {
 		var stats = info.Stats
 		sampleList = append(sampleList, id)
 
-		cellName, err := excelize.CoordinatesToCellName(titleIndex["reads"]+1, i+1)
+		// 写入内部链接
+		cellName, err := excelize.CoordinatesToCellName(titleIndex["样品名称"]+1, i+1)
+		simpleUtil.CheckErr(err)
+		excel.SetCellHyperLink("Summary", cellName, id+".xlsx", "External")
+
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["reads"]+1, i+1)
 		simpleUtil.CheckErr(err)
 		excel.SetCellInt("Summary", cellName, stats["AllReadsNum"])
 
-		cellName, err = excelize.CoordinatesToCellName(titleIndex["合成"]+1, i+1)
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["正确reads"]+1, i+1)
 		simpleUtil.CheckErr(err)
 		excel.SetCellInt("Summary", cellName, stats["RightReadsNum"])
 
