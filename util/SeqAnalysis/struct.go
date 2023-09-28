@@ -91,7 +91,7 @@ func NewSeqInfo(data map[string]string, long, rev bool) *SeqInfo {
 		IndexSeq:      strings.ToUpper(data["index"]),
 		Seq:           []byte(strings.ToUpper(data["seq"])),
 		Fastqs:        strings.Split(data["fq"], ","),
-		Excel:         filepath.Join(*outputDir, "result", data["id"]+".xlsx"),
+		Excel:         filepath.Join(*outputDir, data["id"]+".xlsx"),
 		Sheets:        Sheets,
 		SheetList:     sheetList,
 		Stats:         make(map[string]int),

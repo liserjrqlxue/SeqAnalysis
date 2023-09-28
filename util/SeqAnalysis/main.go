@@ -102,11 +102,10 @@ func main() {
 		*outputDir = filepath.Base(simpleUtil.HandleError(os.Getwd()).(string)) + ".分析"
 	}
 	// pare output directory structure
-	var resultDir = filepath.Join(*outputDir, "result")
-	simpleUtil.CheckErr(os.MkdirAll(filepath.Join(*outputDir, "result"), 0755))
+	simpleUtil.CheckErr(os.MkdirAll(*outputDir, 0755))
 
 	// write info.txt
-	var info = osUtil.Create(filepath.Join(resultDir, "info.txt"))
+	var info = osUtil.Create(filepath.Join(*outputDir, "info.txt"))
 	var infoTitle = []string{"id", "index", "seq", "fq"}
 	// write title
 	fmtUtil.FprintStringArray(info, infoTitle, "\t")
@@ -133,7 +132,7 @@ func main() {
 			defer func() {
 				<-chanList
 			}()
-			SeqInfoMap[id].SingleRun(resultDir)
+			SeqInfoMap[id].SingleRun(*outputDir)
 		}(id)
 	}
 
@@ -143,19 +142,19 @@ func main() {
 	}
 
 	// write summary.txt
-	summaryTxt(resultDir, inputInfo)
+	summaryTxt(*outputDir, inputInfo)
 
 	// write summary.xlsx
 	if isXlsx.MatchString(*input) {
 		// update from input.xlsx
-		input2summaryXlsx(*input, resultDir)
+		input2summaryXlsx(*input, *outputDir)
 	} else {
-		summaryXlsx(resultDir, inputInfo)
+		summaryXlsx(*outputDir, inputInfo)
 	}
 
 	// use Rscript to plot
 	simpleUtil.CheckErr(sge.Run("Rscript", filepath.Join(binPath, "plot.R"), *outputDir))
 
 	// Compress-Archive to zip file on windows only when *zip is true
-	Zip(resultDir)
+	Zip(*outputDir)
 }

@@ -129,24 +129,20 @@ func ParseInput(input, fqDir string) (info []map[string]string) {
 	return
 }
 
-func Zip(resultDir string) {
+func Zip(dir string) {
 	if runtime.GOOS == "windows" {
-		var resultZip = *outputDir + ".result.zip"
-		if *outputDir == "." {
-			resultZip = "result.zip"
-		}
 		var args = []string{
 			"Compress-Archive",
 			"-Path",
-			fmt.Sprintf("\"%s/*.xlsx\",\"%s/*.pdf\"", resultDir, resultDir),
+			fmt.Sprintf("\"%s/*.xlsx\",\"%s/*.pdf\"", dir, dir),
 			"-DestinationPath",
-			resultZip,
+			dir + ".result.zip",
 			"-Force",
 		}
 		log.Println(strings.Join(args, " "))
 		if *zip {
 			simpleUtil.CheckErr(sge.Run("powershell", args...))
-			simpleUtil.CheckErr(sge.Run("powershell", "explorer", resultDir))
+			simpleUtil.CheckErr(sge.Run("powershell", "explorer", dir))
 		}
 	}
 }

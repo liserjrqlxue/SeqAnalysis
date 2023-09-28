@@ -12,7 +12,6 @@ args <- commandArgs(TRUE)
 work_dir <- args[1]
 
 setwd(work_dir)
-setwd("result")
 
 # load info --------------------------------------------------------------------
 info <- read.table("info.txt", header = TRUE, stringsAsFactors = FALSE)
