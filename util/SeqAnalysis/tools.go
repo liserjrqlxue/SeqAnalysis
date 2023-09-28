@@ -200,10 +200,10 @@ func summaryXlsx(resultDir string, inputInfo []map[string]string) {
 }
 
 func input2summaryXlsx(input, resultDir string) {
-	var summaryXlsx, err = excelize.OpenFile(input)
+	var excel, err = excelize.OpenFile(input)
 	simpleUtil.CheckErr(err)
-	simpleUtil.CheckErr(summaryXlsx.SetSheetName("Sheet1", "Summary"))
-	rows, err := summaryXlsx.GetRows("Summary")
+	simpleUtil.CheckErr(excel.SetSheetName("Sheet1", "Summary"))
+	rows, err := excel.GetRows("Summary")
 	simpleUtil.CheckErr(err)
 	title := rows[0]
 	var titleIndex = make(map[string]int)
@@ -211,6 +211,7 @@ func input2summaryXlsx(input, resultDir string) {
 		titleIndex[title[i]] = i
 	}
 
+	var sampleList []string
 	for i := range rows {
 		if i == 0 {
 			continue
@@ -218,26 +219,27 @@ func input2summaryXlsx(input, resultDir string) {
 		var id = rows[i][titleIndex["样品名称"]]
 		var info = SeqInfoMap[id]
 		var stats = info.Stats
+		sampleList = append(sampleList, id)
 
 		cellName, err := excelize.CoordinatesToCellName(titleIndex["reads"]+1, i+1)
 		simpleUtil.CheckErr(err)
-		summaryXlsx.SetCellInt("Summary", cellName, stats["AllReadsNum"])
+		excel.SetCellInt("Summary", cellName, stats["AllReadsNum"])
 
 		cellName, err = excelize.CoordinatesToCellName(titleIndex["合成"]+1, i+1)
 		simpleUtil.CheckErr(err)
-		summaryXlsx.SetCellInt("Summary", cellName, stats["RightReadsNum"])
+		excel.SetCellInt("Summary", cellName, stats["RightReadsNum"])
 
 		cellName, err = excelize.CoordinatesToCellName(titleIndex["收率"]+1, i+1)
 		simpleUtil.CheckErr(err)
-		summaryXlsx.SetCellFloat("Summary", cellName, info.YieldCoefficient, 4, 64)
+		excel.SetCellFloat("Summary", cellName, info.YieldCoefficient, 4, 64)
 
 		cellName, err = excelize.CoordinatesToCellName(titleIndex["平均收率"]+1, i+1)
 		simpleUtil.CheckErr(err)
-		summaryXlsx.SetCellFloat("Summary", cellName, info.AverageYieldAccuracy, 4, 64)
+		excel.SetCellFloat("Summary", cellName, info.AverageYieldAccuracy, 4, 64)
 
 		cellName, err = excelize.CoordinatesToCellName(titleIndex["缺1个"]+1, i+1)
 		simpleUtil.CheckErr(err)
-		summaryXlsx.SetCellStr(
+		excel.SetCellStr(
 			"Summary",
 			cellName,
 			fmt.Sprintf(
@@ -249,7 +251,7 @@ func input2summaryXlsx(input, resultDir string) {
 
 		cellName, err = excelize.CoordinatesToCellName(titleIndex["缺2个（连续）"]+1, i+1)
 		simpleUtil.CheckErr(err)
-		summaryXlsx.SetCellStr(
+		excel.SetCellStr(
 			"Summary",
 			cellName,
 			fmt.Sprintf(
@@ -261,7 +263,7 @@ func input2summaryXlsx(input, resultDir string) {
 
 		cellName, err = excelize.CoordinatesToCellName(titleIndex["缺3个以上（连续）"]+1, i+1)
 		simpleUtil.CheckErr(err)
-		summaryXlsx.SetCellStr(
+		excel.SetCellStr(
 			"Summary",
 			cellName,
 			fmt.Sprintf(
@@ -273,7 +275,7 @@ func input2summaryXlsx(input, resultDir string) {
 
 		cellName, err = excelize.CoordinatesToCellName(titleIndex["缺2个（不连续）"]+1, i+1)
 		simpleUtil.CheckErr(err)
-		summaryXlsx.SetCellStr(
+		excel.SetCellStr(
 			"Summary",
 			cellName,
 			fmt.Sprintf(
@@ -285,7 +287,7 @@ func input2summaryXlsx(input, resultDir string) {
 
 		cellName, err = excelize.CoordinatesToCellName(titleIndex["缺3个以上（不连续）"]+1, i+1)
 		simpleUtil.CheckErr(err)
-		summaryXlsx.SetCellStr(
+		excel.SetCellStr(
 			"Summary",
 			cellName,
 			fmt.Sprintf(
@@ -297,11 +299,11 @@ func input2summaryXlsx(input, resultDir string) {
 
 		cellName, err = excelize.CoordinatesToCellName(titleIndex["第一个缺失位置"]+1, i+1)
 		simpleUtil.CheckErr(err)
-		summaryXlsx.SetCellInt("Summary", cellName, info.DeletionDup3Index+1)
+		excel.SetCellInt("Summary", cellName, info.DeletionDup3Index+1)
 
 		cellName, err = excelize.CoordinatesToCellName(titleIndex["插入"]+1, i+1)
 		simpleUtil.CheckErr(err)
-		summaryXlsx.SetCellStr(
+		excel.SetCellStr(
 			"Summary",
 			cellName,
 			fmt.Sprintf(
@@ -313,7 +315,7 @@ func input2summaryXlsx(input, resultDir string) {
 
 		cellName, err = excelize.CoordinatesToCellName(titleIndex["插入+缺失"]+1, i+1)
 		simpleUtil.CheckErr(err)
-		summaryXlsx.SetCellStr(
+		excel.SetCellStr(
 			"Summary",
 			cellName,
 			fmt.Sprintf(
@@ -325,7 +327,7 @@ func input2summaryXlsx(input, resultDir string) {
 
 		cellName, err = excelize.CoordinatesToCellName(titleIndex["突变"]+1, i+1)
 		simpleUtil.CheckErr(err)
-		summaryXlsx.SetCellStr(
+		excel.SetCellStr(
 			"Summary",
 			cellName,
 			fmt.Sprintf(
@@ -337,7 +339,7 @@ func input2summaryXlsx(input, resultDir string) {
 
 		cellName, err = excelize.CoordinatesToCellName(titleIndex["其他错误"]+1, i+1)
 		simpleUtil.CheckErr(err)
-		summaryXlsx.SetCellStr(
+		excel.SetCellStr(
 			"Summary",
 			cellName,
 			fmt.Sprintf(
@@ -348,7 +350,20 @@ func input2summaryXlsx(input, resultDir string) {
 		)
 	}
 
-	simpleUtil.CheckErr(summaryXlsx.SaveAs("summary.xlsx"))
+	// get cwd
+	cwd, err := os.Getwd()
+	simpleUtil.CheckErr(err)
+	// change to resultDir
+	simpleUtil.CheckErr(os.Chdir(resultDir))
+
+	AddSteps2Sheet(excel, sampleList)
+
+	var summaryPath = fmt.Sprintf("summary-%s-%s.xlsx", filepath.Base(*outputDir), time.Now().Format("20060102"))
+	// save summary.xlsx
+	log.Println("SaveAs ", summaryPath)
+	simpleUtil.CheckErr(excel.SaveAs(summaryPath))
+	// change back
+	simpleUtil.CheckErr(os.Chdir(cwd))
 
 }
 
