@@ -173,11 +173,14 @@ func summaryXlsx(resultDir string, inputInfo []map[string]string) {
 		SetCellStr(excel, "Summary", 1+i, 1, s)
 	}
 
+	var sampleList []string
 	for i := range inputInfo {
 		var (
-			info = SeqInfoMap[inputInfo[i]["id"]]
+			id   = inputInfo[i]["id"]
+			info = SeqInfoMap[id]
 			rows = info.SummaryRow()
 		)
+		sampleList = append(sampleList, id)
 		SetRow(excel, "Summary", 1, 2+i, rows)
 	}
 
@@ -187,7 +190,7 @@ func summaryXlsx(resultDir string, inputInfo []map[string]string) {
 	// change to resultDir
 	simpleUtil.CheckErr(os.Chdir(resultDir))
 
-	AddSteps2Sheet(excel, inputInfo)
+	AddSteps2Sheet(excel, sampleList)
 
 	// save summary.xlsx
 	log.Println("SaveAs ", summaryPath)
@@ -350,14 +353,14 @@ func input2summaryXlsx(input, resultDir string) {
 }
 
 // AddSteps2Sheet Add one.step.accuracy.rate.txt to 单步准确率 sheet
-func AddSteps2Sheet(excel *excelize.File, info []map[string]string) {
+func AddSteps2Sheet(excel *excelize.File, list []string) {
 	// 单步准确率
 	simpleUtil.HandleError(excel.NewSheet("单步准确率"))
 	excel.SetSheetRow("单步准确率", "A1", &[]string{"名字", "合成前4nt", "合成碱基", "合成位置", "单步准确率"})
 
 	var rIdx = 2
-	for i := range info {
-		id := info[i]["id"]
+	for i := range list {
+		id := list[i]
 		for _, row := range textUtil.File2Slice(id+".one.step.accuracy.rate.txt", "\t") {
 			cellName, err := excelize.CoordinatesToCellName(1, rIdx)
 			simpleUtil.CheckErr(err)
@@ -368,9 +371,9 @@ func AddSteps2Sheet(excel *excelize.File, info []map[string]string) {
 
 	// 单步准确率-横排
 	simpleUtil.HandleError(excel.NewSheet("单步准确率-横排"))
-	for i := range info {
+	for i := range list {
 		var rIdx = 1
-		id := info[i]["id"]
+		id := list[i]
 		cellName, err := excelize.CoordinatesToCellName(1+i*5, rIdx)
 		simpleUtil.CheckErr(err)
 		// write title
