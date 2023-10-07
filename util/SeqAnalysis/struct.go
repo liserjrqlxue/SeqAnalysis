@@ -32,7 +32,7 @@ type SeqInfo struct {
 	Name  string
 	Excel string
 
-	useReverseComplement bool
+	UseReverseComplement bool
 	AssemblerMode        bool
 	Reverse              bool
 
@@ -75,6 +75,7 @@ type SeqInfo struct {
 	G           [151]int
 	T           [151]int
 	DNA         [151]byte
+	DNA2mer     [151]map[string]int
 
 	// summary
 	// 收率
@@ -88,18 +89,19 @@ type SeqInfo struct {
 func NewSeqInfo(data map[string]string, long, rev bool) *SeqInfo {
 	var seqInfo = new(SeqInfo)
 	seqInfo = &SeqInfo{
-		Name:          data["id"],
-		IndexSeq:      strings.ToUpper(data["index"]),
-		Seq:           []byte(strings.ToUpper(data["seq"])),
-		Fastqs:        strings.Split(data["fq"], ","),
-		Excel:         filepath.Join(*outputDir, data["id"]+".xlsx"),
-		Sheets:        Sheets,
-		SheetList:     sheetList,
-		Stats:         make(map[string]int),
-		HitSeqCount:   make(map[string]int),
-		ReadsLength:   make(map[int]int),
-		AssemblerMode: long,
-		Reverse:       rev,
+		Name:                 data["id"],
+		IndexSeq:             strings.ToUpper(data["index"]),
+		Seq:                  []byte(strings.ToUpper(data["seq"])),
+		Fastqs:               strings.Split(data["fq"], ","),
+		Excel:                filepath.Join(*outputDir, data["id"]+".xlsx"),
+		Sheets:               Sheets,
+		SheetList:            sheetList,
+		Stats:                make(map[string]int),
+		HitSeqCount:          make(map[string]int),
+		ReadsLength:          make(map[int]int),
+		AssemblerMode:        long,
+		Reverse:              rev,
+		UseReverseComplement: true,
 	}
 	if seqInfo.Reverse {
 		seqInfo.Seq = Reverse(seqInfo.Seq)
@@ -109,6 +111,9 @@ func NewSeqInfo(data map[string]string, long, rev bool) *SeqInfo {
 }
 
 func (seqInfo *SeqInfo) Init() {
+	for i := 0; i < 151; i++ {
+		seqInfo.DNA2mer[i] = make(map[string]int)
+	}
 	for i := 0; i < len(seqInfo.Seq); i++ {
 		for j := 0; j < 4; j++ {
 			seqInfo.DistributionNum[j] = append(seqInfo.DistributionNum[j], 0)
@@ -254,39 +259,33 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				m []string
 			)
 
+			var byteS []byte
 			if regIndexSeq.MatchString(s) {
+				byteS = []byte(s)
 				seqInfo.Stats["IndexReadsNum"]++
-			} else if seqInfo.useReverseComplement && regIndexSeq.MatchString(rcS) {
+			} else if seqInfo.UseReverseComplement && regIndexSeq.MatchString(rcS) {
+				byteS = []byte(rcS)
 				seqInfo.Stats["IndexReadsNum"]++
 			}
 
-			if regIndexSeq.MatchString(s) {
-				for i2, c := range []byte(s) {
-					switch c {
-					case 'A':
-						seqInfo.A[i2]++
-					case 'C':
-						seqInfo.C[i2]++
-					case 'G':
-						seqInfo.G[i2]++
-					case 'T':
-						seqInfo.T[i2]++
-					}
+			for i2, c := range byteS {
+				var key2mer = []byte{'N', c}
+				if i2 > 0 {
+					key2mer = byteS[i2-1 : i2+1]
 				}
-			} else if regIndexSeq.MatchString(rcS) {
-				for i2, c := range []byte(rcS) {
-					switch c {
-					case 'A':
-						seqInfo.A[i2]++
-					case 'C':
-						seqInfo.C[i2]++
-					case 'G':
-						seqInfo.G[i2]++
-					case 'T':
-						seqInfo.T[i2]++
-					}
+				seqInfo.DNA2mer[i2][string(key2mer)]++
+				switch c {
+				case 'A':
+					seqInfo.A[i2]++
+				case 'C':
+					seqInfo.C[i2]++
+				case 'G':
+					seqInfo.G[i2]++
+				case 'T':
+					seqInfo.T[i2]++
 				}
 			}
+
 			if polyA.MatchString(s) || polyA.MatchString(rcS) {
 				if polyA.MatchString(s) {
 					m = polyA.FindStringSubmatch(s)
@@ -758,9 +757,11 @@ func (seqInfo *SeqInfo) PlotLineACGT(prefix string) {
 		yaxis      [151]int
 		output     = osUtil.Create(prefix + ".ACGT.html")
 		dnaStorge1 = osUtil.Create(prefix + ".dna.1.txt")
+		dnaStorge2 = osUtil.Create(prefix + ".dna.2.txt")
 	)
 	defer simpleUtil.DeferClose(output)
 	defer simpleUtil.DeferClose(dnaStorge1)
+	defer simpleUtil.DeferClose(dnaStorge2)
 
 	line.SetGlobalOptions(
 		charts.WithInitializationOpts(opts.Initialization{Theme: types.ThemeWesteros}),
@@ -778,6 +779,13 @@ func (seqInfo *SeqInfo) PlotLineACGT(prefix string) {
 		"pos", "RefNt", "MaxNt", "percent", "A", "C", "G", "T",
 	)
 
+	fmtUtil.Fprintf(
+		dnaStorge1,
+		"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		"pos", "RefNt", "MaxNt", "percent", "A", "C", "G", "T",
+	)
+
+	var preN = "N"
 	for i := 0; i < 151; i++ {
 		xaxis[i] = i + 1
 		yaxis[i] = seqInfo.A[i] + seqInfo.C[i] + seqInfo.G[i] + seqInfo.T[i]
@@ -790,6 +798,15 @@ func (seqInfo *SeqInfo) PlotLineACGT(prefix string) {
 			dnaStorge1,
 			"%d\t%c\t%c\t%f\t%d\t%d\t%d\t%d\n",
 			i+1, seqInfo.DNA[i], N, percent, seqInfo.A[i], seqInfo.C[i], seqInfo.G[i], seqInfo.T[i],
+		)
+
+		var dna2mer = seqInfo.DNA2mer[i]
+		var N2, percent2 = MaxNt(dna2mer[preN+"A"], dna2mer[preN+"C"], dna2mer[preN+"G"], dna2mer[preN+"T"])
+		preN = string(N2)
+		fmtUtil.Fprintf(
+			dnaStorge2,
+			"%d\t%c\t%c\t%f\t%d\t%d\t%d\t%d\n",
+			i+1, seqInfo.DNA[i], N2, percent2, dna2mer[preN+"A"], dna2mer[preN+"C"], dna2mer[preN+"G"], dna2mer[preN+"T"],
 		)
 	}
 
