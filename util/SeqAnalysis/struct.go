@@ -74,6 +74,7 @@ type SeqInfo struct {
 	C           [151]int
 	G           [151]int
 	T           [151]int
+	DNA         [151]byte
 
 	// summary
 	// 收率
@@ -165,7 +166,7 @@ func (seqInfo *SeqInfo) SingleRun(resultDir string) {
 	seqInfo.WriteStatsSheet(resultDir)
 	seqInfo.Save()
 	seqInfo.PrintStats(resultDir)
-	seqInfo.PlotLineACGT(filepath.Join(resultDir, seqInfo.Name+"ACGT.html"))
+	seqInfo.PlotLineACGT(filepath.Join(resultDir, seqInfo.Name))
 }
 
 func (seqInfo *SeqInfo) Save() {
@@ -732,14 +733,35 @@ func (seqInfo *SeqInfo) PrintStats(resultDir string) {
 	)
 }
 
-func (seqInfo *SeqInfo) PlotLineACGT(path string) {
+func MaxNt(A, C, G, T int) (N byte, percent float64) {
+	var max = A
+	N = 'A'
+	if C > max {
+		max = C
+		N = 'C'
+	}
+	if G > max {
+		max = G
+		N = 'G'
+	}
+	if T > max {
+		max = T
+		N = 'T'
+	}
+	return N, float64(max*100) / float64(A+C+G+T)
+}
+
+func (seqInfo *SeqInfo) PlotLineACGT(prefix string) {
 	var (
-		line   = charts.NewLine()
-		xaxis  [151]int
-		yaxis  [151]int
-		output = osUtil.Create(path)
+		line       = charts.NewLine()
+		xaxis      [151]int
+		yaxis      [151]int
+		output     = osUtil.Create(prefix + ".ACGT.html")
+		dnaStorge1 = osUtil.Create(prefix + ".dna.1.txt")
 	)
 	defer simpleUtil.DeferClose(output)
+	defer simpleUtil.DeferClose(dnaStorge1)
+
 	line.SetGlobalOptions(
 		charts.WithInitializationOpts(opts.Initialization{Theme: types.ThemeWesteros}),
 		charts.WithTitleOpts(opts.Title{
@@ -747,9 +769,28 @@ func (seqInfo *SeqInfo) PlotLineACGT(path string) {
 			Subtitle: "in SE150",
 		}))
 
+	var refNt = append([]byte(seqInfo.IndexSeq), seqInfo.Seq...)
+
+	// print header
+	fmtUtil.Fprintf(
+		dnaStorge1,
+		"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		"pos", "RefNt", "MaxNt", "percent", "A", "C", "G", "T",
+	)
+
 	for i := 0; i < 151; i++ {
 		xaxis[i] = i + 1
 		yaxis[i] = seqInfo.A[i] + seqInfo.C[i] + seqInfo.G[i] + seqInfo.T[i]
+		var N, percent = MaxNt(seqInfo.A[i], seqInfo.C[i], seqInfo.G[i], seqInfo.T[i])
+		seqInfo.DNA[i] = byte('A')
+		if i < len(refNt) {
+			seqInfo.DNA[i] = refNt[i]
+		}
+		fmtUtil.Fprintf(
+			dnaStorge1,
+			"%d\t%c\t%c\t%f\t%d\t%d\t%d\t%d\n",
+			i+1, seqInfo.DNA[i], N, percent, seqInfo.A[i], seqInfo.C[i], seqInfo.G[i], seqInfo.T[i],
+		)
 	}
 
 	line.SetXAxis(xaxis).
