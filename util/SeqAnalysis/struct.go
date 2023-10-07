@@ -111,7 +111,12 @@ func NewSeqInfo(data map[string]string, long, rev bool) *SeqInfo {
 }
 
 func (seqInfo *SeqInfo) Init() {
+	var refNt = append([]byte(seqInfo.IndexSeq), seqInfo.Seq...)
 	for i := 0; i < 151; i++ {
+		seqInfo.DNA[i] = byte('A')
+		if i < len(refNt) {
+			seqInfo.DNA[i] = refNt[i]
+		}
 		seqInfo.DNA2mer[i] = make(map[string]int)
 	}
 	for i := 0; i < len(seqInfo.Seq); i++ {
@@ -770,8 +775,6 @@ func (seqInfo *SeqInfo) PlotLineACGT(prefix string) {
 			Subtitle: "in SE150",
 		}))
 
-	var refNt = append([]byte(seqInfo.IndexSeq), seqInfo.Seq...)
-
 	// print header
 	fmtUtil.Fprintf(
 		dnaStorge1,
@@ -790,10 +793,6 @@ func (seqInfo *SeqInfo) PlotLineACGT(prefix string) {
 		xaxis[i] = i + 1
 		yaxis[i] = seqInfo.A[i] + seqInfo.C[i] + seqInfo.G[i] + seqInfo.T[i]
 		var N, percent = MaxNt(seqInfo.A[i], seqInfo.C[i], seqInfo.G[i], seqInfo.T[i])
-		seqInfo.DNA[i] = byte('A')
-		if i < len(refNt) {
-			seqInfo.DNA[i] = refNt[i]
-		}
 		fmtUtil.Fprintf(
 			dnaStorge1,
 			"%d\t%c\t%c\t%f\t%d\t%d\t%d\t%d\n",
