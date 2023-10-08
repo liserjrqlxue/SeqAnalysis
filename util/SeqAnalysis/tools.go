@@ -232,7 +232,7 @@ func input2summaryXlsx(input, resultDir string) {
 		simpleUtil.CheckErr(err)
 		excel.SetCellHyperLink("Summary", cellName, id+".xlsx", "External")
 
-		cellName, err = excelize.CoordinatesToCellName(titleIndex["reads"]+1, i+1)
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["分析reads"]+1, i+1)
 		simpleUtil.CheckErr(err)
 		excel.SetCellInt("Summary", cellName, stats["AnalyzedReadsNum"])
 
@@ -244,7 +244,7 @@ func input2summaryXlsx(input, resultDir string) {
 		simpleUtil.CheckErr(err)
 		excel.SetCellFloat("Summary", cellName, info.YieldCoefficient, 4, 64)
 
-		cellName, err = excelize.CoordinatesToCellName(titleIndex["平均收率"]+1, i+1)
+		cellName, err = excelize.CoordinatesToCellName(titleIndex["单步准确率"]+1, i+1)
 		simpleUtil.CheckErr(err)
 		excel.SetCellFloat("Summary", cellName, info.AverageYieldAccuracy, 4, 64)
 
