@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"embed"
 	"flag"
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
+	"time"
 
 	"github.com/liserjrqlxue/goUtil/fmtUtil"
 	"github.com/liserjrqlxue/goUtil/osUtil"
@@ -32,8 +34,8 @@ var (
 	)
 	input = flag.String(
 		"i",
-		"input.txt",
-		"input info",
+		"",
+		"input info, default is [YYYYMMDD]-input.xlsx",
 	)
 	outputDir = flag.String(
 		"o",
@@ -88,6 +90,9 @@ func init() {
 func main() {
 	flag.Parse()
 
+	if *input == "" {
+		*input = fmt.Sprintf("%s-input.xlsx", time.Now().Format("20060102"))
+	}
 	// parse input
 	var inputInfo = ParseInput(*input, *fqDir)
 
