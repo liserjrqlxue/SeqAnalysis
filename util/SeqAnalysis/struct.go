@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	//"compress/gzip"
@@ -26,6 +27,10 @@ import (
 	"github.com/liserjrqlxue/goUtil/stringsUtil"
 	"github.com/liserjrqlxue/goUtil/textUtil"
 	"github.com/xuri/excelize/v2"
+)
+
+const (
+	kmerLength = 9
 )
 
 type SeqInfo struct {
@@ -75,7 +80,8 @@ type SeqInfo struct {
 	G           [151]int
 	T           [151]int
 	DNA         [151]byte
-	DNA2mer     [151]map[string]int
+	DNAKmer     [kmerLength][151]map[string]int
+	Kmer        map[string]int
 
 	// summary
 	// 收率
@@ -111,13 +117,17 @@ func NewSeqInfo(data map[string]string, long, rev bool) *SeqInfo {
 }
 
 func (seqInfo *SeqInfo) Init() {
+	seqInfo.Kmer = make(map[string]int)
+
 	var refNt = append([]byte(seqInfo.IndexSeq), seqInfo.Seq...)
 	for i := 0; i < 151; i++ {
 		seqInfo.DNA[i] = byte('A')
 		if i < len(refNt) {
 			seqInfo.DNA[i] = refNt[i]
 		}
-		seqInfo.DNA2mer[i] = make(map[string]int)
+		for j := 0; j < kmerLength; j++ {
+			seqInfo.DNAKmer[j][i] = make(map[string]int)
+		}
 	}
 	for i := 0; i < len(seqInfo.Seq); i++ {
 		for j := 0; j < 4; j++ {
@@ -291,12 +301,17 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				byteS = byteS[:byteSloc[0]]
 			}
 
+			var kmer []byte
 			for i2, c := range byteS {
-				var key2mer = []byte{'N', c}
-				if i2 > 0 {
-					key2mer = byteS[i2-1 : i2+1]
+				kmer = append([]byte{c}, kmer...)
+				for j := 0; j < kmerLength; j++ {
+					var n = min(j+1, len(kmer))
+					var key = string(kmer[:n])
+					seqInfo.DNAKmer[j][i2][key]++
+					if n == kmerLength {
+						seqInfo.Kmer[key]++
+					}
 				}
-				seqInfo.DNA2mer[i2][string(key2mer)]++
 			}
 
 			if polyA.MatchString(s) || polyA.MatchString(rcS) {
@@ -769,12 +784,14 @@ func (seqInfo *SeqInfo) PlotLineACGT(prefix string) {
 		xaxis      [151]int
 		yaxis      [151]int
 		output     = osUtil.Create(prefix + ".ACGT.html")
-		dnaStorge1 = osUtil.Create(prefix + ".dna.1.txt")
-		dnaStorge2 = osUtil.Create(prefix + ".dna.2.txt")
+		dnaStorge  [kmerLength]*os.File
+		kmerOutput = osUtil.Create(prefix + ".kmer.txt")
 	)
+	for j := 0; j < kmerLength; j++ {
+		dnaStorge[j] = osUtil.Create(prefix + ".dna." + strconv.Itoa(j+1) + ".txt")
+	}
 	defer simpleUtil.DeferClose(output)
-	defer simpleUtil.DeferClose(dnaStorge1)
-	defer simpleUtil.DeferClose(dnaStorge2)
+	defer simpleUtil.DeferClose(kmerOutput)
 
 	line.SetGlobalOptions(
 		charts.WithInitializationOpts(opts.Initialization{Theme: types.ThemeWesteros}),
@@ -783,38 +800,66 @@ func (seqInfo *SeqInfo) PlotLineACGT(prefix string) {
 			Subtitle: "in SE150",
 		}))
 
-	// print header
+	// print header for dnaStorge
+	for j := 0; j < kmerLength; j++ {
+		fmtUtil.Fprintf(
+			dnaStorge[j],
+			"pos\tRefNt\tMaxNt\tpercent\tA\tC\tG\tT\n",
+		)
+	}
 	fmtUtil.Fprintf(
-		dnaStorge1,
-		"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-		"pos", "RefNt", "MaxNt", "percent", "A", "C", "G", "T",
+		kmerOutput,
+		"pos\tRefNt\tMaxNt\tpercent\tA\tC\tG\tT\n",
 	)
 
-	fmtUtil.Fprintf(
-		dnaStorge2,
-		"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-		"pos", "RefNt", "MaxNt", "percent", "A", "C", "G", "T",
-	)
-
-	var preN = "N"
+	var kmer [kmerLength + 1][]byte
 	for i := 0; i < 151; i++ {
 		xaxis[i] = i + 1
 		yaxis[i] = seqInfo.A[i] + seqInfo.C[i] + seqInfo.G[i] + seqInfo.T[i]
-		var N, percent = MaxNt(seqInfo.A[i], seqInfo.C[i], seqInfo.G[i], seqInfo.T[i])
-		fmtUtil.Fprintf(
-			dnaStorge1,
-			"%d\t%c\t%c\t%f\t%d\t%d\t%d\t%d\n",
-			i+1, seqInfo.DNA[i], N, percent, seqInfo.A[i], seqInfo.C[i], seqInfo.G[i], seqInfo.T[i],
-		)
 
-		var dna2mer = seqInfo.DNA2mer[i]
-		var N2, percent2 = MaxNt(dna2mer[preN+"A"], dna2mer[preN+"C"], dna2mer[preN+"G"], dna2mer[preN+"T"])
-		preN = string(N2)
-		fmtUtil.Fprintf(
-			dnaStorge2,
-			"%d\t%c\t%c\t%f\t%d\t%d\t%d\t%d\n",
-			i+1, seqInfo.DNA[i], N2, percent2, dna2mer[preN+"A"], dna2mer[preN+"C"], dna2mer[preN+"G"], dna2mer[preN+"T"],
-		)
+		for j := 0; j < kmerLength; j++ {
+			var preKmer = string(kmer[j][:min(j, len(kmer[j]))])
+			var dnaKmer = seqInfo.DNAKmer[j][i]
+			var N, percent = MaxNt(
+				dnaKmer["A"+preKmer],
+				dnaKmer["C"+preKmer],
+				dnaKmer["G"+preKmer],
+				dnaKmer["T"+preKmer],
+			)
+			fmtUtil.Fprintf(
+				dnaStorge[j],
+				"%d\t%c\t%c\t%f\t%d\t%d\t%d\t%d\n",
+				i+1, seqInfo.DNA[i], N, percent, dnaKmer["A"+preKmer], dnaKmer["C"+preKmer], dnaKmer["G"+preKmer], dnaKmer["T"+preKmer],
+			)
+			kmer[j] = append([]byte{N}, kmer[j]...)
+			if j == kmerLength-1 {
+				if i > kmerLength-2 {
+					preKmer = string(kmer[j+1][:kmerLength-1])
+					dnaKmer = seqInfo.Kmer
+					N, percent = MaxNt(
+						dnaKmer["A"+preKmer],
+						dnaKmer["C"+preKmer],
+						dnaKmer["G"+preKmer],
+						dnaKmer["T"+preKmer],
+					)
+				}
+				kmer[j+1] = append([]byte{N}, kmer[j+1]...)
+				fmtUtil.Fprintf(
+					kmerOutput,
+					"%d\t%c\t%c\t%f\t%d\t%d\t%d\t%d\n",
+					i+1, seqInfo.DNA[i], N, percent, dnaKmer["A"+preKmer], dnaKmer["C"+preKmer], dnaKmer["G"+preKmer], dnaKmer["T"+preKmer],
+				)
+			}
+		}
+	}
+
+	for k, v := range seqInfo.Kmer {
+		fmtUtil.Fprintf(kmerOutput, "%s\t%d\n", k, v)
+	}
+
+	// close dnaStorge
+	for j := 0; j < kmerLength; j++ {
+		simpleUtil.CheckErr(dnaStorge[j].Close())
 	}
 
 	line.SetXAxis(xaxis).
@@ -825,6 +870,7 @@ func (seqInfo *SeqInfo) PlotLineACGT(prefix string) {
 		AddSeries("ALL", GenerateLineItems(yaxis[:]))
 	// SetSeriesOptions(charts.WithLineChartOpts(opts.LineChart{Smooth: true}))
 	simpleUtil.CheckErr(line.Render(output))
+	simpleUtil.CheckErr(line.Render(kmerOutput))
 }
 
 // WriteStatsSheet writes the statistics sheet for SeqInfo.
