@@ -207,7 +207,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 		tarLength = len(tarSeq) + 50
 		//seqHit      = regexp.MustCompile(indexSeq + tarSeq)
 		polyA       = regexp.MustCompile(`(.*?)` + indexSeq + `(.*?)AAAAAAAA`)
-		regIndexSeq = regexp.MustCompile(indexSeq + `(.*?)$`)
+		regIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
 		regTarSeq   = regexp.MustCompile(tarSeq)
 
 		output          = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path))
@@ -274,11 +274,6 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 			}
 
 			for i2, c := range byteS {
-				var key2mer = []byte{'N', c}
-				if i2 > 0 {
-					key2mer = byteS[i2-1 : i2+1]
-				}
-				seqInfo.DNA2mer[i2][string(key2mer)]++
 				switch c {
 				case 'A':
 					seqInfo.A[i2]++
@@ -289,6 +284,19 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				case 'T':
 					seqInfo.T[i2]++
 				}
+			}
+
+			var byteSloc = regexp.MustCompile(`AAAAAAAA`).FindIndex(byteS)
+			if byteSloc != nil {
+				byteS = byteS[:byteSloc[0]]
+			}
+
+			for i2, c := range byteS {
+				var key2mer = []byte{'N', c}
+				if i2 > 0 {
+					key2mer = byteS[i2-1 : i2+1]
+				}
+				seqInfo.DNA2mer[i2][string(key2mer)]++
 			}
 
 			if polyA.MatchString(s) || polyA.MatchString(rcS) {
@@ -783,7 +791,7 @@ func (seqInfo *SeqInfo) PlotLineACGT(prefix string) {
 	)
 
 	fmtUtil.Fprintf(
-		dnaStorge1,
+		dnaStorge2,
 		"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 		"pos", "RefNt", "MaxNt", "percent", "A", "C", "G", "T",
 	)
