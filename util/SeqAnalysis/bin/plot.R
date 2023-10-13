@@ -1,4 +1,4 @@
-# /usr/bin/Rscript
+#! /usr/bin/Rscript
 library(ggplot2)
 library(stringr)
 # use plot_grid
