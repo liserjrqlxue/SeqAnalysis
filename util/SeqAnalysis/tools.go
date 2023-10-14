@@ -88,6 +88,9 @@ func ParseInput(input, fqDir string) (info []map[string]string) {
 		xlsx, err := excelize.OpenFile(input)
 		simpleUtil.CheckErr(err)
 		rows, err := xlsx.GetRows("Sheet1")
+		if err != nil {
+			rows, err = xlsx.GetRows("Summary")
+		}
 		simpleUtil.CheckErr(err)
 		info = Rows2Map(rows)
 
