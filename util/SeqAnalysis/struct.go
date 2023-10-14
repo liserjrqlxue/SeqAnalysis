@@ -45,6 +45,7 @@ type SeqInfo struct {
 	Sheets    map[string]string
 	SheetList []string
 	Style     map[string]int
+	del3      *os.File
 
 	rowDeletion          int // 所有缺失
 	rowDeletion1         int
@@ -203,6 +204,7 @@ func (seqInfo *SeqInfo) CountError4(outputDir string, verbose int) {
 	seqInfo.GetHitSeq()
 
 	// 2. 与正确合成序列进行比对,统计不同合成结果出现的频数
+	seqInfo.del3 = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+".del3.txt"))
 	seqInfo.WriteSeqResultNum()
 
 	seqInfo.UpdateDistributionStats()
@@ -453,6 +455,7 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	}
 	// free HitSeq
 	seqInfo.HitSeq = nil
+	simpleUtil.CheckErr(seqInfo.del3.Close())
 
 	SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 5, 1,
 		[]interface{}{"总数", seqInfo.Stats["ErrorDelReadsNum"] + seqInfo.Stats["RightReadsNum"]},
@@ -507,6 +510,8 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	}
 }
 
+var dash = regexp.MustCompile(`-+`)
+
 func (seqInfo *SeqInfo) Align1(key string) bool {
 	var (
 		a = seqInfo.Seq
@@ -549,6 +554,17 @@ func (seqInfo *SeqInfo) Align1(key string) bool {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDup3"], 1, seqInfo.rowDeletionDup3, []interface{}{seqInfo.Seq, key, count, c})
 			seqInfo.Stats["ErrorDelDup3ReadsNum"] += count
 			seqInfo.rowDeletionDup3++
+			var m = dash.FindAllIndex(c, -1)
+			for _, bin := range m {
+				if bin[1]-bin[0] > 2 {
+					fmtUtil.Fprintf(seqInfo.del3, "%d\t%d\t%d", bin[0], bin[1], count)
+					break
+				}
+			}
+			for _, bin := range m {
+				fmtUtil.Fprintf(seqInfo.del3, "\t%d\t%d", bin[0], bin[1])
+			}
+			fmtUtil.Fprintln(seqInfo.del3)
 		} else if minus2.Match(c) { // 连续2缺失
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDup"], 1, seqInfo.rowDeletionDup, []interface{}{seqInfo.Seq, key, count, c})
 			seqInfo.Stats["ErrorDelDupReadsNum"] += count
