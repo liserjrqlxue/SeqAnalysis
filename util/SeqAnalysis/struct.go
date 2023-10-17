@@ -909,10 +909,10 @@ func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string) {
 		title        []interface{}
 
 		out  = osUtil.Create(filepath.Join(resultDir, seqInfo.Name+".steps.txt"))
-		osar = osUtil.Create(filepath.Join(resultDir, seqInfo.Name+".one.step.accuracy.rate.txt"))
+		oser = osUtil.Create(filepath.Join(resultDir, seqInfo.Name+".one.step.error.rate.txt"))
 	)
 	defer simpleUtil.DeferClose(out)
-	defer simpleUtil.DeferClose(osar)
+	defer simpleUtil.DeferClose(oser)
 
 	SetCellStr(xlsx, sheet, 1, 1, seqInfo.Name)
 	MergeCells(xlsx, sheet, 1, rIdx, len(titleTar), rIdx)
@@ -1023,13 +1023,13 @@ func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string) {
 		rIdx++
 
 		fmtUtil.Fprintf(
-			osar,
+			oser,
 			"%s\t%s\t%c\t%d\t%f\n",
 			seqInfo.Name,
 			sequence[i:i+4],
 			sequence[i+4],
 			i+1,
-			ratio[b],
+			(1-ratio[b])*100,
 		)
 
 		fmtUtil.Fprintf(
