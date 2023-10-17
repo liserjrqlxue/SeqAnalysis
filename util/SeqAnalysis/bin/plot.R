@@ -20,9 +20,9 @@ info <- read.table("info.txt", header = TRUE, stringsAsFactors = FALSE)
 # 错误率分布
 # ------------------------------------------------------------------------------
 
-## *.one.step.accuracy.rate.txt -> a[id,pos,rate] ------------------------------
+## *.one.step.error.rate.txt -> a[id,pos,rate] ------------------------------
 data_frames_list <- list()
-for (path in dir(pattern = "*.one.step.accuracy.rate.txt")) {
+for (path in dir(pattern = "*.one.step.error.rate.txt")) {
     data <- read.table(path)
     data_frames_list[[path]] <- data
 }
@@ -41,7 +41,7 @@ for (id in unique(a$id)) {
 ## ErrRate.pdf -----------------------------------------------------------------
 pdf("ErrRate.pdf", width = 16, height = 9)
 
-p <- ggplot(a, aes(as.factor(pos), 1 - rate, group = id, col = id)) +
+p <- ggplot(a, aes(as.factor(pos), rate, group = id, col = id)) +
     geom_point() +
     geom_line() +
     geom_text(label = a$tag2, aes(y = -0.01)) +
@@ -51,7 +51,7 @@ p <- ggplot(a, aes(as.factor(pos), 1 - rate, group = id, col = id)) +
     facet_wrap(~seq, ncol = 1)
 print(p)
 
-p <- ggplot(a, aes(as.factor(pos), 1 - rate, group = id, col = id)) +
+p <- ggplot(a, aes(as.factor(pos), rate, group = id, col = id)) +
     geom_point() +
     geom_line() +
     geom_text(label = a$tag2, aes(y = -0.01)) +
@@ -61,7 +61,7 @@ p <- ggplot(a, aes(as.factor(pos), 1 - rate, group = id, col = id)) +
     facet_wrap(~seq, ncol = 1, scales = "free_y")
 print(p)
 
-p <- ggplot(a, aes(as.factor(pos), 1 - rate, group = id, col = id)) +
+p <- ggplot(a, aes(as.factor(pos), rate, group = id, col = id)) +
     geom_point() +
     geom_line() +
     geom_text(label = a$tag2, aes(y = -0.01)) +
@@ -71,7 +71,7 @@ p <- ggplot(a, aes(as.factor(pos), 1 - rate, group = id, col = id)) +
     facet_wrap(~lab, ncol = 1)
 print(p)
 
-p <- ggplot(a, aes(as.factor(pos), 1 - rate, group = id, col = id)) +
+p <- ggplot(a, aes(as.factor(pos), rate, group = id, col = id)) +
     geom_point() +
     geom_line() +
     geom_text(label = a$tag2, aes(y = -0.01)) +
@@ -84,7 +84,7 @@ print(p)
 for (lab in unique(a$lab)) {
     t <- a[a$lab == lab, ]
     print(lab)
-    p <- ggplot(t, aes(as.factor(pos), 1 - rate, group = id, col = id)) +
+    p <- ggplot(t, aes(as.factor(pos), rate, group = id, col = id)) +
         geom_point() +
         geom_line() +
         geom_text(label = t$tag2, aes(y = -0.01)) +
@@ -98,7 +98,7 @@ for (lab in unique(a$lab)) {
 for (id in unique(a$id)) {
     t <- a[a$id == id, ]
     print(id)
-    p <- ggplot(t, aes(as.factor(pos), 1 - rate, group = id, col = id)) +
+    p <- ggplot(t, aes(as.factor(pos), rate, group = id, col = id)) +
         geom_point() +
         geom_line() +
         geom_text(label = t$tag2, aes(y = -0.01)) +
