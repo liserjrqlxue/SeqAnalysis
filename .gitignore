@@ -25,15 +25,15 @@ go.work
 bak/
 test/
 
+*.zip
+
 # release
-SeqAnalysis
 util/SeqAnalysis/SeqAnalysis
 
 # web server
 public
 
 # old
-data\ analysis
 
 # VSCodeCounter
 .VSCodeCounter
