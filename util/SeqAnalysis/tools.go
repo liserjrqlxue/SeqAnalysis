@@ -383,35 +383,20 @@ func input2summaryXlsx(input, resultDir string) {
 
 // AddSteps2Sheet Add one.step.error.rate.txt to 单步错误率 sheet
 func AddSteps2Sheet(excel *excelize.File, list []string) {
-	// 单步错误率
-	simpleUtil.HandleError(excel.NewSheet("单步错误率"))
-	excel.SetSheetRow("单步错误率", "A1", &[]string{"名字", "合成前4nt", "合成碱基", "合成位置", "单步错误率"})
-
-	var rIdx = 2
-	for i := range list {
-		id := list[i]
-		for _, row := range textUtil.File2Slice(id+".one.step.error.rate.txt", "\t") {
-			cellName, err := excelize.CoordinatesToCellName(1, rIdx)
-			simpleUtil.CheckErr(err)
-			excel.SetSheetRow("单步错误率", cellName, &row)
-			rIdx++
-		}
-	}
-
-	// 单步错误率-横排
-	simpleUtil.HandleError(excel.NewSheet("单步错误率-横排"))
+	var sheetName = "单步错误率-横排"
+	simpleUtil.HandleError(excel.NewSheet(sheetName))
 	for i := range list {
 		var rIdx = 1
 		id := list[i]
 		cellName, err := excelize.CoordinatesToCellName(1+i*5, rIdx)
 		simpleUtil.CheckErr(err)
 		// write title
-		excel.SetSheetRow("单步错误率-横排", cellName, &[]string{"名字", "合成前4nt-" + id, "合成碱基-" + id, "合成位置-" + id, "单步错误率-" + id})
+		excel.SetSheetRow(sheetName, cellName, &[]string{"名字", "合成前4nt-" + id, "合成碱基-" + id, "合成位置-" + id, "单步错误率-" + id})
 		rIdx++
 		for _, row := range textUtil.File2Slice(id+".one.step.error.rate.txt", "\t") {
 			cellName, err := excelize.CoordinatesToCellName(1+i*5, rIdx)
 			simpleUtil.CheckErr(err)
-			excel.SetSheetRow("单步错误率-横排", cellName, &row)
+			excel.SetSheetRow(sheetName, cellName, &row)
 			rIdx++
 		}
 	}
