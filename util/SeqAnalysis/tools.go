@@ -87,9 +87,9 @@ func ParseInput(input, fqDir string) (info []map[string]string) {
 	if isXlsx.MatchString(input) {
 		xlsx, err := excelize.OpenFile(input)
 		simpleUtil.CheckErr(err)
-		rows, err := xlsx.GetRows("Sheet1")
+		rows, err := xlsx.GetRows("Summary")
 		if err != nil {
-			rows, err = xlsx.GetRows("Summary")
+			rows, err = xlsx.GetRows("Sheet1")
 		}
 		simpleUtil.CheckErr(err)
 		info = Rows2Map(rows)
@@ -211,9 +211,13 @@ func summaryXlsx(resultDir string, inputInfo []map[string]string) {
 func input2summaryXlsx(input, resultDir string) {
 	var excel, err = excelize.OpenFile(input)
 	simpleUtil.CheckErr(err)
-	simpleUtil.CheckErr(excel.SetSheetName("Sheet1", "Summary"))
 	rows, err := excel.GetRows("Summary")
-	simpleUtil.CheckErr(err)
+	if err != nil {
+		rows, err = excel.GetRows("Sheet1")
+		simpleUtil.CheckErr(err)
+		simpleUtil.CheckErr(excel.SetSheetName("Sheet1", "Summary"))
+	}
+
 	title := rows[0]
 	var titleIndex = make(map[string]int)
 	for i := range title {
