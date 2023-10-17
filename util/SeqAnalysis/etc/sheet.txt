@@ -2,11 +2,11 @@ Name	SheetName
 Stats	Sheet
 BarCode	BarCode
 Deletion	Deletion
-Deletion1	DeletionSingle
-DeletionDup	DeletionContinuous2
-DeletionDup3	DeletionContinuous3
-Deletion2	DeletionDiscrete2
-Deletion3	DeletionDiscrete3
+DeletionSingle	DeletionSingle
+DeletionContinuous2	DeletionContinuous2
+DeletionContinuous3	DeletionContinuous3
+DeletionDiscrete2	DeletionDiscrete2
+DeletionDiscrete3	DeletionDiscrete3
 Insertion	Insertion
 InsertionDeletion	InsertionDeletion
 Mutation	Mutation

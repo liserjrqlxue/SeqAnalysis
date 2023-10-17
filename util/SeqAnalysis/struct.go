@@ -47,17 +47,19 @@ type SeqInfo struct {
 	Style     map[string]int
 	del3      *os.File
 
-	rowDeletion          int // 所有缺失
-	rowDeletion1         int
-	rowDeletion2         int
-	rowDeletionDup       int
-	rowDeletionDup3      int
-	rowDeletion3         int
-	rowInsertion         int
-	rowInsertionDeletion int
-	rowMutation          int
-	rowOther             int
-	DeletionDup3Index    int
+	// Discrete and continuous
+	rowDeletion            int // 所有缺失
+	rowDeletionSingle      int // 缺1nt
+	rowDeletionDiscrete2   int // 离散缺2nt
+	rowDeletionDiscrete3   int // 离散缺3nt
+	rowDeletionContinuous2 int // 连续缺2nt
+	rowDeletionContinuous3 int // 连续缺3nt
+
+	rowInsertion             int
+	rowInsertionDeletion     int
+	rowMutation              int
+	rowOther                 int
+	DeletionContinuous3Index int
 
 	Seq         []byte
 	Align       []byte
@@ -147,16 +149,16 @@ func (seqInfo *SeqInfo) Init() {
 	seqInfo.Style["center"] = simpleUtil.HandleError(seqInfo.xlsx.NewStyle(center)).(int)
 
 	seqInfo.rowDeletion = 2
-	seqInfo.rowDeletion1 = 2
-	seqInfo.rowDeletion2 = 2
-	seqInfo.rowDeletionDup = 2
-	seqInfo.rowDeletionDup3 = 2
-	seqInfo.rowDeletion3 = 2
+	seqInfo.rowDeletionSingle = 2
+	seqInfo.rowDeletionDiscrete2 = 2
+	seqInfo.rowDeletionContinuous2 = 2
+	seqInfo.rowDeletionContinuous3 = 2
+	seqInfo.rowDeletionDiscrete3 = 2
 	seqInfo.rowInsertion = 2
 	seqInfo.rowInsertionDeletion = 2
 	seqInfo.rowMutation = 2
 	seqInfo.rowOther = 2
-	seqInfo.DeletionDup3Index = len(seqInfo.Seq)
+	seqInfo.DeletionContinuous3Index = len(seqInfo.Seq)
 	for i, sheet := range seqInfo.SheetList {
 		if i == 0 {
 			simpleUtil.CheckErr(seqInfo.xlsx.SetSheetName("Sheet1", sheet))
@@ -458,19 +460,19 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	simpleUtil.CheckErr(seqInfo.del3.Close())
 
 	SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 5, 1,
-		[]interface{}{"总数", seqInfo.Stats["ErrorDelReadsNum"] + seqInfo.Stats["RightReadsNum"]},
+		[]interface{}{"总数", seqInfo.Stats["Deletion"] + seqInfo.Stats["RightReadsNum"]},
 	)
-	SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion1"], 5, 1,
-		[]interface{}{"总数", seqInfo.Stats["ErrorDel1ReadsNum"]},
+	SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionSingle"], 5, 1,
+		[]interface{}{"总数", seqInfo.Stats["DeletionSingle"]},
 	)
-	SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion2"], 5, 1,
-		[]interface{}{"总数", seqInfo.Stats["ErrorDel2ReadsNum"]},
+	SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDiscrete2"], 5, 1,
+		[]interface{}{"总数", seqInfo.Stats["DeletionDiscrete2"]},
 	)
-	SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDup"], 5, 1,
-		[]interface{}{"总数", seqInfo.Stats["ErrorDelDupReadsNum"]},
+	SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous2"], 5, 1,
+		[]interface{}{"总数", seqInfo.Stats["DeletionContinuous2"]},
 	)
-	SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion3"], 5, 1,
-		[]interface{}{"总数", seqInfo.Stats["ErrorDel3ReadsNum"]},
+	SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDiscrete3"], 5, 1,
+		[]interface{}{"总数", seqInfo.Stats["DeletionDiscrete3"]},
 	)
 
 	var sheet = seqInfo.Sheets["Deletion"]
@@ -481,31 +483,31 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 		// 	count = stringsUtil.Atoi(countStr, fmt.Sprint("from Deletion:", seqInfo.Name, " ", i))
 		// }
 		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from Deletion:", seqInfo.Name, " ", i))
-		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["ErrorDelReadsNum"]))
+		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["Deletion"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
-	sheet = seqInfo.Sheets["Deletion1"]
-	for i := 2; i < seqInfo.rowDeletion1; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from Deletion1:", seqInfo.Name, " ", i, " ", seqInfo.rowDeletion1))
-		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["ErrorDel1ReadsNum"]))
+	sheet = seqInfo.Sheets["DeletionSingle"]
+	for i := 2; i < seqInfo.rowDeletionSingle; i++ {
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from DeletionSingle:", seqInfo.Name, " ", i, " ", seqInfo.rowDeletionSingle))
+		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["DeletionSingle"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
-	sheet = seqInfo.Sheets["Deletion2"]
-	for i := 2; i < seqInfo.rowDeletion2; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from Deletion2:", seqInfo.Name, " ", i))
-		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["ErrorDel2ReadsNum"]))
+	sheet = seqInfo.Sheets["DeletionDiscrete2"]
+	for i := 2; i < seqInfo.rowDeletionDiscrete2; i++ {
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from DeletionDiscrete2:", seqInfo.Name, " ", i))
+		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["DeletionDiscrete2"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
-	sheet = seqInfo.Sheets["Deletion3"]
-	for i := 2; i < seqInfo.rowDeletion3; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from Deletion3:", seqInfo.Name, " ", i))
-		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["ErrorDel3ReadsNum"]))
+	sheet = seqInfo.Sheets["DeletionDiscrete3"]
+	for i := 2; i < seqInfo.rowDeletionDiscrete3; i++ {
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from DeletionDiscrete3:", seqInfo.Name, " ", i))
+		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["DeletionDiscrete3"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
-	sheet = seqInfo.Sheets["DeletionDup"]
-	for i := 2; i < seqInfo.rowDeletionDup; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from DeletionDup:", seqInfo.Name, " ", i))
-		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["ErrorDelDupReadsNum"]))
+	sheet = seqInfo.Sheets["DeletionContinuous2"]
+	for i := 2; i < seqInfo.rowDeletionContinuous2; i++ {
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from DeletionContinuous2:", seqInfo.Name, " ", i))
+		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["DeletionContinuous2"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
 }
@@ -526,7 +528,7 @@ func (seqInfo *SeqInfo) Align1(key string) bool {
 		c = append(c, '-')
 		seqInfo.Align = c
 		seqInfo.DistributionNum[0][0] += count
-		seqInfo.Stats["ErrorDelReadsNum"] += count
+		seqInfo.Stats["Deletion"] += count
 		return true
 	}
 
@@ -543,51 +545,73 @@ func (seqInfo *SeqInfo) Align1(key string) bool {
 	seqInfo.Align = c
 	//if k >= len(b) && !minus3.Match(c) { // all match
 	if k >= len(b) { // all match
+		seqInfo.Stats["Deletion"] += count
+
 		SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, count, c})
 		seqInfo.rowDeletion++
-		if minus3.Match(c) { // 连续3缺失
-			var index = minus3.FindIndex(c)
-			if index != nil {
-				seqInfo.DeletionDup3Index = min(seqInfo.DeletionDup3Index, index[0])
-			}
 
-			SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDup3"], 1, seqInfo.rowDeletionDup3, []interface{}{seqInfo.Seq, key, count, c})
-			seqInfo.Stats["ErrorDelDup3ReadsNum"] += count
-			seqInfo.rowDeletionDup3++
-			var m = dash.FindAllIndex(c, -1)
-			for _, bin := range m {
-				if bin[1]-bin[0] > 2 {
-					fmtUtil.Fprintf(seqInfo.del3, "%d\t%d\t%d", bin[0], bin[1], count)
-					break
+		if delCount == 1 { // 单个缺失
+			seqInfo.Stats["DeletionSingle"] += count
+
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionSingle"], 1, seqInfo.rowDeletionSingle, []interface{}{seqInfo.Seq, key, count, c})
+			seqInfo.rowDeletionSingle++
+		} else if delCount == 2 { // 2缺失
+			seqInfo.Stats["Deletion2"] += count
+
+			if minus2.Match(c) { // 连续2缺失
+				seqInfo.Stats["DeletionContinuous2"] += count
+
+				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous2"], 1, seqInfo.rowDeletionContinuous2, []interface{}{seqInfo.Seq, key, count, c})
+				seqInfo.rowDeletionContinuous2++
+			} else { // 离散2缺失
+				seqInfo.Stats["DeletionDiscrete2"] += count
+
+				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDiscrete2"], 1, seqInfo.rowDeletionDiscrete2, []interface{}{seqInfo.Seq, key, count, c})
+				seqInfo.rowDeletionDiscrete2++
+			}
+		} else if delCount >= 3 {
+			seqInfo.Stats["Deletion3"] += count
+
+			if minus3.Match(c) { // 连续3缺失
+				seqInfo.Stats["DeletionContinuous3"] += count
+
+				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous3"], 1, seqInfo.rowDeletionContinuous3, []interface{}{seqInfo.Seq, key, count, c})
+				seqInfo.rowDeletionContinuous3++
+
+				var index = minus3.FindIndex(c)
+				if index != nil {
+					seqInfo.DeletionContinuous3Index = min(seqInfo.DeletionContinuous3Index, index[0])
 				}
+
+				var m = dash.FindAllIndex(c, -1)
+				for _, bin := range m {
+					if bin[1]-bin[0] > 2 {
+						fmtUtil.Fprintf(seqInfo.del3, "%d\t%d\t%d", bin[0], bin[1], count)
+						break
+					}
+				}
+				for _, bin := range m {
+					fmtUtil.Fprintf(seqInfo.del3, "\t%d\t%d", bin[0], bin[1])
+				}
+				fmtUtil.Fprintln(seqInfo.del3)
+			} else if minus2.Match(c) { // 连续2缺失
+				seqInfo.Stats["DeletionContinuous2"] += count
+
+				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous2"], 1, seqInfo.rowDeletionContinuous2, []interface{}{seqInfo.Seq, key, count, c})
+				seqInfo.rowDeletionContinuous2++
+			} else { // 离散3缺失
+				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDiscrete3"], 1, seqInfo.rowDeletionDiscrete3, []interface{}{seqInfo.Seq, key, count, c})
+				seqInfo.Stats["DeletionDiscrete3"] += count
+				seqInfo.rowDeletionDiscrete3++
 			}
-			for _, bin := range m {
-				fmtUtil.Fprintf(seqInfo.del3, "\t%d\t%d", bin[0], bin[1])
-			}
-			fmtUtil.Fprintln(seqInfo.del3)
-		} else if minus2.Match(c) { // 连续2缺失
-			SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDup"], 1, seqInfo.rowDeletionDup, []interface{}{seqInfo.Seq, key, count, c})
-			seqInfo.Stats["ErrorDelDupReadsNum"] += count
-			seqInfo.rowDeletionDup++
-		} else if delCount >= 3 { // 多个单缺失
-			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion3"], 1, seqInfo.rowDeletion3, []interface{}{seqInfo.Seq, key, count, c})
-			seqInfo.Stats["ErrorDel3ReadsNum"] += count
-			seqInfo.rowDeletion3++
-		} else if delCount == 2 { // 2个单缺失
-			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion2"], 1, seqInfo.rowDeletion2, []interface{}{seqInfo.Seq, key, count, c})
-			seqInfo.Stats["ErrorDel2ReadsNum"] += count
-			seqInfo.rowDeletion2++
-		} else { // 单个缺失
-			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion1"], 1, seqInfo.rowDeletion1, []interface{}{seqInfo.Seq, key, count, c})
-			seqInfo.Stats["ErrorDel1ReadsNum"] += count
-			seqInfo.rowDeletion1++
 		}
+
 		for i, c1 := range c {
 			if c1 == '-' {
 				seqInfo.DistributionNum[0][i] += count
 			}
 		}
-		seqInfo.Stats["ErrorDelReadsNum"] += count
+
 		return true
 	}
 	return false
@@ -684,7 +708,7 @@ func (seqInfo *SeqInfo) Align3(key string) bool {
 }
 
 func (seqInfo *SeqInfo) UpdateDistributionStats() {
-	seqInfo.Stats["ErrorReadsNum"] = seqInfo.Stats["ErrorDelReadsNum"] + seqInfo.Stats["ErrorInsReadsNum"] + seqInfo.Stats["ErrorInsDelReadsNum"] + seqInfo.Stats["ErrorMutReadsNum"] + seqInfo.Stats["ErrorOtherReadsNum"]
+	seqInfo.Stats["ErrorReadsNum"] = seqInfo.Stats["Deletion"] + seqInfo.Stats["ErrorInsReadsNum"] + seqInfo.Stats["ErrorInsDelReadsNum"] + seqInfo.Stats["ErrorMutReadsNum"] + seqInfo.Stats["ErrorOtherReadsNum"]
 	seqInfo.Stats["ExcludeOtherReadsNum"] = seqInfo.Stats["RightReadsNum"] + seqInfo.Stats["ErrorReadsNum"] - seqInfo.Stats["ErrorOtherReadsNum"]
 	seqInfo.Stats["AccuReadsNum"] = seqInfo.Stats["ExcludeOtherReadsNum"] * len(seqInfo.Seq)
 
@@ -751,8 +775,8 @@ func (seqInfo *SeqInfo) PrintStats(resultDir string) {
 	)
 	fmtUtil.Fprintf(out,
 		"++++ErrorDelReadsNum\t= %d\t%.4f%%\n",
-		stats["ErrorDelReadsNum"],
-		math2.DivisionInt(stats["ErrorDelReadsNum"], stats["ErrorReadsNum"])*100,
+		stats["Deletion"],
+		math2.DivisionInt(stats["Deletion"], stats["ErrorReadsNum"])*100,
 	)
 	fmtUtil.Fprintf(out,
 		"++++ErrorInsReadsNum\t= %d\t%.4f%%\n",
@@ -1096,11 +1120,11 @@ func (info *SeqInfo) WriteStatsTxt(file *os.File) {
 		stats["AllReadsNum"], stats["IndexReadsNum"], stats["AnalyzedReadsNum"], stats["RightReadsNum"],
 		info.YieldCoefficient, info.AverageYieldAccuracy,
 		math2.DivisionInt(stats["ErrorReadsNum"], stats["AnalyzedReadsNum"]),
-		math2.DivisionInt(stats["ErrorDelReadsNum"], stats["AnalyzedReadsNum"]),
-		math2.DivisionInt(stats["ErrorDel1ReadsNum"], stats["AnalyzedReadsNum"]),
-		math2.DivisionInt(stats["ErrorDel2ReadsNum"], stats["AnalyzedReadsNum"]),
-		math2.DivisionInt(stats["ErrorDelDupReadsNum"], stats["AnalyzedReadsNum"]),
-		math2.DivisionInt(stats["ErrorDel3ReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["Deletion"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["DeletionSingle"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["DeletionDiscrete2"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["DeletionContinuous2"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["DeletionDiscrete3"], stats["AnalyzedReadsNum"]),
 		math2.DivisionInt(stats["ErrorInsReadsNum"], stats["AnalyzedReadsNum"]),
 		math2.DivisionInt(stats["ErrorInsDelReadsNum"], stats["AnalyzedReadsNum"]),
 		math2.DivisionInt(stats["ErrorMutReadsNum"], stats["AnalyzedReadsNum"]),
@@ -1118,14 +1142,14 @@ func (info *SeqInfo) SummaryRow() []interface{} {
 		stats["AllReadsNum"], stats["IndexReadsNum"], stats["AnalyzedReadsNum"], stats["RightReadsNum"],
 		info.YieldCoefficient, info.AverageYieldAccuracy,
 		math2.DivisionInt(stats["ErrorReadsNum"], stats["AnalyzedReadsNum"]),
-		math2.DivisionInt(stats["ErrorDelReadsNum"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["Deletion"], stats["AnalyzedReadsNum"]),
 
-		math2.DivisionInt(stats["ErrorDel1ReadsNum"], stats["AnalyzedReadsNum"]),
-		math2.DivisionInt(stats["ErrorDelDupReadsNum"], stats["AnalyzedReadsNum"]),
-		math2.DivisionInt(stats["ErrorDelDup3ReadsNum"], stats["AnalyzedReadsNum"]),
-		math2.DivisionInt(stats["ErrorDel2ReadsNum"], stats["AnalyzedReadsNum"]),
-		math2.DivisionInt(stats["ErrorDel3ReadsNum"], stats["AnalyzedReadsNum"]),
-		info.DeletionDup3Index + 1,
+		math2.DivisionInt(stats["DeletionSingle"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["DeletionContinuous2"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["DeletionContinuous3"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["DeletionDiscrete2"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["DeletionDiscrete3"], stats["AnalyzedReadsNum"]),
+		info.DeletionContinuous3Index + 1,
 		math2.DivisionInt(stats["ErrorInsReadsNum"], stats["AnalyzedReadsNum"]),
 		math2.DivisionInt(stats["ErrorInsDelReadsNum"], stats["AnalyzedReadsNum"]),
 		math2.DivisionInt(stats["ErrorMutReadsNum"], stats["AnalyzedReadsNum"]),
