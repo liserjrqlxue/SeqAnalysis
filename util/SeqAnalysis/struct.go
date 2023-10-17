@@ -865,6 +865,7 @@ func (seqInfo *SeqInfo) PlotLineACGT(prefix string) {
 					"%d\t%c\t%c\t%f\t%d\t%d\t%d\t%d\n",
 					i+1, seqInfo.DNA[i], N, percent, dnaKmer["A"+preKmer], dnaKmer["C"+preKmer], dnaKmer["G"+preKmer], dnaKmer["T"+preKmer],
 				)
+				dnaKmer[string(N)+preKmer] = 0
 			}
 		}
 	}
