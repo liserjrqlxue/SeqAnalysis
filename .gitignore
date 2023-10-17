@@ -21,6 +21,7 @@ test.txt
 # Go workspace file
 go.work
 
+.vscode/
 .idea/
 bak/
 test/
