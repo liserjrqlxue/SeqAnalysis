@@ -91,18 +91,18 @@ func main() {
 	// parse input
 	var inputInfo = ParseInput(*input, *fqDir)
 
+	if *outputDir == "" {
+		*outputDir = filepath.Base(simpleUtil.HandleError(os.Getwd()).(string)) + ".分析"
+	}
+	// pare output directory structure
+	simpleUtil.CheckErr(os.MkdirAll(*outputDir, 0755))
+
 	// parallel options
 	// runtime.GOMAXPROCS(runtime.NumCPU()) * 2)
 	if *thread == 0 {
 		*thread = len(inputInfo)
 	}
 	chanList = make(chan bool, *thread)
-
-	if *outputDir == "" {
-		*outputDir = filepath.Base(simpleUtil.HandleError(os.Getwd()).(string)) + ".分析"
-	}
-	// pare output directory structure
-	simpleUtil.CheckErr(os.MkdirAll(*outputDir, 0755))
 
 	// write info.txt
 	var info = osUtil.Create(filepath.Join(*outputDir, "info.txt"))
