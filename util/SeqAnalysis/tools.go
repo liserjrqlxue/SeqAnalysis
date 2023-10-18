@@ -249,9 +249,11 @@ func input2summaryXlsx(input, resultDir string) {
 			nrow     = i + 1
 			cellName string
 
-			id    = rows[i][titleIndex["样品名称"]-1]
-			info  = SeqInfoMap[id]
-			stats = info.Stats
+			id           = rows[i][titleIndex["样品名称"]-1]
+			info         = SeqInfoMap[id]
+			stats        = info.Stats
+			pId          = info.ParallelTestID
+			parallelTest = ParallelStatsMap[pId]
 		)
 		sampleList = append(sampleList, id)
 
@@ -267,10 +269,19 @@ func input2summaryXlsx(input, resultDir string) {
 
 		cellName = GetCellName(nrow, "收率", titleIndex)
 		excel.SetCellFloat("Summary", cellName, info.YieldCoefficient, 4, 64)
+		cellName = GetCellName(nrow, "平均收率", titleIndex)
+		excel.SetCellFloat("Summary", cellName, parallelTest.YieldCoefficientMean, 4, 64)
+		cellName = GetCellName(nrow, "收率误差", titleIndex)
+		excel.SetCellFloat("Summary", cellName, parallelTest.YieldCoefficientSD, 4, 64)
 
 		cellName = GetCellName(nrow, "单步准确率", titleIndex)
 		excel.SetCellFloat("Summary", cellName, info.AverageYieldAccuracy, 4, 64)
+		cellName = GetCellName(nrow, "平均准确率", titleIndex)
+		excel.SetCellFloat("Summary", cellName, parallelTest.AverageYieldAccuracyMean, 4, 64)
+		cellName = GetCellName(nrow, "准确率误差", titleIndex)
+		excel.SetCellFloat("Summary", cellName, parallelTest.AverageYieldAccuracySD, 4, 64)
 
+		// 写入统计
 		for _, v := range keysInfo {
 			var (
 				key   = v["key"]
