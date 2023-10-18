@@ -144,6 +144,21 @@ func main() {
 	// write summary.txt
 	summaryTxt(*outputDir, inputInfo)
 
+	// 基于平行的统计
+	for _, seqInfo := range SeqInfoMap {
+		var id = seqInfo.ParallelTestID
+		var p, ok = ParallelStatsMap[id]
+		if !ok {
+			p = &ParallelTest{}
+			ParallelStatsMap[id] = p
+		}
+		p.YieldCoefficient = append(p.YieldCoefficient, seqInfo.YieldCoefficient)
+		p.AverageYieldAccuracy = append(p.AverageYieldAccuracy, seqInfo.AverageYieldAccuracy)
+	}
+	for _, p := range ParallelStatsMap {
+		p.Calculater()
+	}
+
 	// write summary.xlsx
 	if isXlsx.MatchString(*input) {
 		// update from input.xlsx
