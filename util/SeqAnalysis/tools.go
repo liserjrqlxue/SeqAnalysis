@@ -218,12 +218,30 @@ func input2summaryXlsx(input, resultDir string) {
 		simpleUtil.CheckErr(excel.SetSheetName("Sheet1", "Summary"))
 	}
 
+	var keysInfo, _ = textUtil.File2MapArray(
+		filepath.Join(etcPath, "统计字段.txt"), "\t", nil,
+	)
+
 	var titleIndex = make(map[string]int)
 	var sampleList []string
 	for i := range rows {
 		if i == 0 {
 			for j, v := range rows[i] {
 				titleIndex[v] = j + 1
+			}
+			for _, v := range keysInfo {
+				var title = v["summary_title"]
+				var _, ok = titleIndex[title]
+				if !ok {
+					var cellName = GetCellName(1, title, titleIndex)
+					excel.SetCellStr("Summary", cellName, title)
+				}
+				title += "/个数"
+				_, ok = titleIndex[title]
+				if !ok {
+					var cellName = GetCellName(1, title, titleIndex)
+					excel.SetCellStr("Summary", cellName, title)
+				}
 			}
 			continue
 		}
@@ -253,107 +271,20 @@ func input2summaryXlsx(input, resultDir string) {
 		cellName = GetCellName(nrow, "单步准确率", titleIndex)
 		excel.SetCellFloat("Summary", cellName, info.AverageYieldAccuracy, 4, 64)
 
-		cellName = GetCellName(nrow, "缺1个", titleIndex)
-		excel.SetCellFloat(
-			"Summary", cellName,
-			math2.DivisionInt(stats["DeletionSingle"], stats["AnalyzedReadsNum"]),
-			4, 64,
-		)
-		cellName = GetCellName(nrow, "缺1个/个数", titleIndex)
-		excel.SetCellInt("Summary", cellName, stats["DeletionSingle"])
-
-		cellName = GetCellName(nrow, "缺2个", titleIndex)
-		excel.SetCellFloat(
-			"Summary", cellName,
-			math2.DivisionInt(stats["Deletion2"], stats["AnalyzedReadsNum"]),
-			4, 64,
-		)
-		cellName = GetCellName(nrow, "缺2个/个数", titleIndex)
-		excel.SetCellInt("Summary", cellName, stats["Deletion2"])
-
-		cellName = GetCellName(nrow, "缺3个", titleIndex)
-		excel.SetCellFloat(
-			"Summary", cellName,
-			math2.DivisionInt(stats["Deletion3"], stats["AnalyzedReadsNum"]),
-			4, 64,
-		)
-		cellName = GetCellName(nrow, "缺3个/个数", titleIndex)
-		excel.SetCellInt("Summary", cellName, stats["Deletion3"])
-
-		cellName = GetCellName(nrow, "缺2个（连续）", titleIndex)
-		excel.SetCellFloat(
-			"Summary", cellName,
-			math2.DivisionInt(stats["DeletionContinuous2"], stats["AnalyzedReadsNum"]),
-			4, 64,
-		)
-		cellName = GetCellName(nrow, "缺2个（连续）/个数", titleIndex)
-		excel.SetCellInt("Summary", cellName, stats["DeletionContinuous2"])
-
-		cellName = GetCellName(nrow, "缺3个（连续）", titleIndex)
-		excel.SetCellFloat(
-			"Summary", cellName,
-			math2.DivisionInt(stats["DeletionContinuous3"], stats["AnalyzedReadsNum"]),
-			4, 64,
-		)
-		cellName = GetCellName(nrow, "缺3个（连续）/个数", titleIndex)
-		excel.SetCellInt("Summary", cellName, stats["DeletionContinuous3"])
-
-		cellName = GetCellName(nrow, "缺2个（不连续）", titleIndex)
-		excel.SetCellFloat(
-			"Summary", cellName,
-			math2.DivisionInt(stats["DeletionDiscrete2"], stats["AnalyzedReadsNum"]),
-			4, 64,
-		)
-		cellName = GetCellName(nrow, "缺2个（不连续）/个数", titleIndex)
-		excel.SetCellInt("Summary", cellName, stats["DeletionDiscrete2"])
-
-		cellName = GetCellName(nrow, "缺3个（不连续）", titleIndex)
-		excel.SetCellFloat(
-			"Summary", cellName,
-			math2.DivisionInt(stats["DeletionDiscrete3"], stats["AnalyzedReadsNum"]),
-			4, 64,
-		)
-		cellName = GetCellName(nrow, "缺3个（不连续）/个数", titleIndex)
-		excel.SetCellInt("Summary", cellName, stats["DeletionDiscrete3"])
-
-		cellName = GetCellName(nrow, "第一个缺失位置", titleIndex)
-		excel.SetCellInt("Summary", cellName, info.DeletionContinuous3Index+1)
-
-		cellName = GetCellName(nrow, "插入", titleIndex)
-		excel.SetCellFloat(
-			"Summary", cellName,
-			math2.DivisionInt(stats["ErrorInsReadsNum"], stats["AnalyzedReadsNum"]),
-			4, 64,
-		)
-		cellName = GetCellName(nrow, "插入/个数", titleIndex)
-		excel.SetCellInt("Summary", cellName, stats["ErrorInsReadsNum"])
-
-		cellName = GetCellName(nrow, "插入+缺失", titleIndex)
-		excel.SetCellFloat(
-			"Summary", cellName,
-			math2.DivisionInt(stats["ErrorInsDelReadsNum"], stats["AnalyzedReadsNum"]),
-			4, 64,
-		)
-		cellName = GetCellName(nrow, "插入+缺失/个数", titleIndex)
-		excel.SetCellInt("Summary", cellName, stats["ErrorInsDelReadsNum"])
-
-		cellName = GetCellName(nrow, "突变", titleIndex)
-		excel.SetCellFloat(
-			"Summary", cellName,
-			math2.DivisionInt(stats["ErrorMutReadsNum"], stats["AnalyzedReadsNum"]),
-			4, 64,
-		)
-		cellName = GetCellName(nrow, "突变/个数", titleIndex)
-		excel.SetCellInt("Summary", cellName, stats["ErrorMutReadsNum"])
-
-		cellName = GetCellName(nrow, "其他错误", titleIndex)
-		excel.SetCellFloat(
-			"Summary", cellName,
-			math2.DivisionInt(stats["ErrorOtherReadsNum"], stats["AnalyzedReadsNum"]),
-			4, 64,
-		)
-		cellName = GetCellName(nrow, "其他错误/个数", titleIndex)
-		excel.SetCellInt("Summary", cellName, stats["ErrorOtherReadsNum"])
+		for _, v := range keysInfo {
+			var (
+				key   = v["key"]
+				title = v["summary_title"]
+			)
+			cellName = GetCellName(nrow, title, titleIndex)
+			excel.SetCellFloat(
+				"Summary", cellName,
+				math2.DivisionInt(stats[key], stats["AnalyzedReadsNum"]),
+				4, 64,
+			)
+			cellName = GetCellName(nrow, title+"/个数", titleIndex)
+			excel.SetCellInt("Summary", cellName, stats[key])
+		}
 	}
 
 	// get cwd
