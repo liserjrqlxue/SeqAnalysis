@@ -24,8 +24,9 @@ var (
 )
 
 var (
-	Sheets     = make(map[string]string)
-	sheetList  []string
-	chanList   chan bool
-	SeqInfoMap = make(map[string]*SeqInfo)
+	Sheets           = make(map[string]string)
+	sheetList        []string
+	chanList         chan bool
+	SeqInfoMap       = make(map[string]*SeqInfo)
+	ParallelStatsMap = make(map[string]*ParallelTest)
 )

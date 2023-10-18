@@ -33,9 +33,30 @@ const (
 	kmerLength = 9
 )
 
+type ParallelTest struct {
+	ID string
+
+	// 收率
+	YieldCoefficient     []float64
+	YieldCoefficientMean float64
+	YieldCoefficientSD   float64
+
+	// 单步准确率
+	// One-step accuracy rate
+	AverageYieldAccuracy     []float64
+	AverageYieldAccuracyMean float64
+	AverageYieldAccuracySD   float64
+}
+
+func (p *ParallelTest) Calculater() {
+	p.YieldCoefficientMean, p.YieldCoefficientSD = math2.MeanStdDev(p.YieldCoefficient)
+	p.AverageYieldAccuracyMean, p.AverageYieldAccuracySD = math2.MeanStdDev(p.AverageYieldAccuracy)
+}
+
 type SeqInfo struct {
-	Name  string
-	Excel string
+	Name           string
+	ParallelTestID string
+	Excel          string
 
 	UseReverseComplement bool
 	AssemblerMode        bool
@@ -99,6 +120,7 @@ func NewSeqInfo(data map[string]string, long, rev bool) *SeqInfo {
 	var seqInfo = new(SeqInfo)
 	seqInfo = &SeqInfo{
 		Name:                 data["id"],
+		ParallelTestID:       data["平行"],
 		IndexSeq:             strings.ToUpper(data["index"]),
 		Seq:                  []byte(strings.ToUpper(data["seq"])),
 		Fastqs:               strings.Split(data["fq"], ","),
