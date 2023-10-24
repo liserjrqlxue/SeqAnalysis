@@ -67,6 +67,7 @@ type SeqInfo struct {
 	SheetList []string
 	Style     map[string]int
 	del3      *os.File
+	del1      *os.File
 
 	// Discrete and continuous
 	rowDeletion            int // 所有缺失
@@ -229,6 +230,7 @@ func (seqInfo *SeqInfo) CountError4(outputDir string, verbose int) {
 
 	// 2. 与正确合成序列进行比对,统计不同合成结果出现的频数
 	seqInfo.del3 = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+".del3.txt"))
+	seqInfo.del1 = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+".del1.txt"))
 	seqInfo.WriteSeqResultNum()
 
 	seqInfo.UpdateDistributionStats()
@@ -242,7 +244,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 		indexSeq  = seqInfo.IndexSeq
 		tarLength = len(tarSeq) + 50
 		//seqHit      = regexp.MustCompile(indexSeq + tarSeq)
-		polyA       = regexp.MustCompile(`(.*?)` + indexSeq + `(.*?)AAAAAAAA`)
+		polyA       = regexp.MustCompile(`^` + indexSeq + `(.*?)AAAAAAAA`)
 		regIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
 		regTarSeq   = regexp.MustCompile(tarSeq)
 
@@ -253,6 +255,11 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 		// value weight
 		histogram = make(map[int]int)
 	)
+	if indexSeq == "" {
+		polyA = regexp.MustCompile(`^(.*?)AAAAAAAA`)
+		regIndexSeq = regexp.MustCompile(`^(.*?)AAAAAAAA`)
+		seqInfo.UseReverseComplement = false
+	}
 	defer simpleUtil.DeferClose(output)
 
 	if seqInfo.Reverse {
@@ -299,6 +306,9 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				// regexp match
 				m []string
 			)
+			if indexSeq == "" {
+				rcS = s
+			}
 
 			var byteS []byte
 			if regIndexSeq.MatchString(s) {
@@ -348,7 +358,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				}
 				//m = polyA.FindStringSubmatch(s)
 
-				tSeq = m[2] //[seqInfo.Offset:]
+				tSeq = m[1] //[seqInfo.Offset:]
 				fmtUtil.Fprintln(output, tSeq)
 				histogram[len(tSeq)]++
 				if seqInfo.Reverse {
@@ -480,6 +490,7 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	// free HitSeq
 	seqInfo.HitSeq = nil
 	simpleUtil.CheckErr(seqInfo.del3.Close())
+	simpleUtil.CheckErr(seqInfo.del1.Close())
 
 	SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 5, 1,
 		[]interface{}{"总数", seqInfo.Stats["Deletion"] + seqInfo.Stats["RightReadsNum"]},
@@ -577,6 +588,18 @@ func (seqInfo *SeqInfo) Align1(key string) bool {
 
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionSingle"], 1, seqInfo.rowDeletionSingle, []interface{}{seqInfo.Seq, key, count, c})
 			seqInfo.rowDeletionSingle++
+
+			var m = minus1.FindIndex(c)
+			if m != nil {
+				if m[0] == 0 {
+					fmtUtil.Fprintf(seqInfo.del1, "%d\t%d\t%d\t%c\t%c\t%c\n", m[0], m[1], count, '^', a[m[1]-1], c[m[1]])
+				} else if m[1] == len(c) {
+					fmtUtil.Fprintf(seqInfo.del1, "%d\t%d\t%d\t%c\t%c\t%c\n", m[0], m[1], count, c[m[0]-1], a[m[1]-1], '$')
+				} else {
+					fmtUtil.Fprintf(seqInfo.del1, "%d\t%d\t%d\t%c\t%c\t%c\n", m[0], m[1], count, c[m[0]-1], a[m[1]-1], c[m[1]])
+				}
+			}
+
 		} else if delCount == 2 { // 2缺失
 			seqInfo.Stats["Deletion2"] += count
 
@@ -993,7 +1016,8 @@ func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string) {
 	var (
 		sumDel    = 0
 		countDels = make(map[byte]int)
-		sequence  = seqInfo.IndexSeq[len(seqInfo.IndexSeq)-4:] + string(seqInfo.Seq)
+		index     = max(0, len(seqInfo.IndexSeq)-4)
+		sequence  = seqInfo.IndexSeq[index:] + string(seqInfo.Seq)
 	)
 	for i, b := range seqInfo.Seq {
 		var counts = make(map[byte]int)
@@ -1068,12 +1092,13 @@ func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string) {
 		SetRow(xlsx, sheet, 1, rIdx, rowValue)
 		rIdx++
 
+		var indexEnd = min(len(sequence)-1, i+4)
 		fmtUtil.Fprintf(
 			oser,
 			"%s\t%s\t%c\t%d\t%f\n",
 			seqInfo.Name,
-			sequence[i:i+4],
-			sequence[i+4],
+			sequence[i:indexEnd],
+			sequence[indexEnd],
 			i+1,
 			(1-ratio[b])*100,
 		)
