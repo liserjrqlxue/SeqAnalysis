@@ -14,7 +14,12 @@ work_dir <- args[1]
 setwd(work_dir)
 
 # load info --------------------------------------------------------------------
-info <- read.table("info.txt", header = TRUE, stringsAsFactors = FALSE)
+info <- read.table(
+    "info.txt",
+    header = TRUE,
+    stringsAsFactors = FALSE,
+    sep = "\t",
+)
 
 # ------------------------------------------------------------------------------
 # 错误率分布
@@ -23,7 +28,7 @@ info <- read.table("info.txt", header = TRUE, stringsAsFactors = FALSE)
 ## *.one.step.error.rate.txt -> a[id,pos,rate] ------------------------------
 data_frames_list <- list()
 for (path in dir(pattern = "*.one.step.error.rate.txt")) {
-    data <- read.table(path)
+    data <- read.table(path, sep = "\t")
     data_frames_list[[path]] <- data
 }
 a <- do.call(rbind, data_frames_list)
@@ -124,7 +129,8 @@ for (path in dir(pattern = "*.histogram.txt")) {
     message("load ", path)
     df <- data.frame(name = strsplit(path, "[.]")[[1]][1])
     if (file.info(path)$size > 0) {
-        data_frames_list[[path]] <- cbind(df,read.table(path,header=T,stringsAsFactors = F))
+        data_frames_list[[path]] <-
+            cbind(df, read.table(path, header = TRUE, stringsAsFactors = FALSE))
     } else {
         message("skip ", path, " for empty!")
     }
@@ -135,12 +141,12 @@ b <- do.call(rbind, data_frames_list)
 
 pdf("histogram.pdf", width = 16, height = 9)
 
-p <- ggplot(b, aes(x = length, group = name, weight=weight)) +
+p <- ggplot(b, aes(x = length, group = name, weight = weight)) +
     geom_histogram(binwidth = 1) +
     facet_wrap(~name, scales = "free")
 print(p)
 
-p <- ggplot(b, aes(x = length, group = name, weight=weight)) +
+p <- ggplot(b, aes(x = length, group = name, weight = weight)) +
     geom_histogram(binwidth = 1) +
     scale_y_log10() +
     facet_wrap(~name, scales = "free")
@@ -149,12 +155,20 @@ print(p)
 for (name in unique(b$name)) {
     print(name)
 
-    p1 <- ggplot(b[b$name == name, ], aes(x = length, group = name, weight=weight)) +
+    p1 <-
+        ggplot(
+            b[b$name == name, ],
+            aes(x = length, group = name, weight = weight),
+        ) +
         geom_histogram(binwidth = 1) +
         theme(text = element_text(size = 20)) +
         facet_wrap(~name, scales = "free")
 
-    p2 <- ggplot(b[b$name == name, ], aes(x = length, group = name, weight=weight)) +
+    p2 <-
+        ggplot(
+            b[b$name == name, ],
+            aes(x = length, group = name, weight = weight),
+        ) +
         geom_histogram(binwidth = 1) +
         scale_y_log10() +
         theme(text = element_text(size = 20)) +
