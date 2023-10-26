@@ -1016,9 +1016,14 @@ func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string) {
 	var (
 		sumDel    = 0
 		countDels = make(map[byte]int)
-		index     = max(0, len(seqInfo.IndexSeq)-4)
-		sequence  = seqInfo.IndexSeq[index:] + string(seqInfo.Seq)
+		sequence  string
 	)
+	if seqInfo.Reverse {
+		sequence = "AAAA" + string(seqInfo.Seq)
+
+	} else {
+		sequence = seqInfo.IndexSeq[len(seqInfo.IndexSeq)-4:] + string(seqInfo.Seq)
+	}
 	for i, b := range seqInfo.Seq {
 		var counts = make(map[byte]int)
 		for seq, count := range seqInfo.HitSeqCount {
@@ -1092,13 +1097,12 @@ func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string) {
 		SetRow(xlsx, sheet, 1, rIdx, rowValue)
 		rIdx++
 
-		var indexEnd = min(len(sequence)-1, i+4)
 		fmtUtil.Fprintf(
 			oser,
 			"%s\t%s\t%c\t%d\t%f\n",
 			seqInfo.Name,
-			sequence[i:indexEnd],
-			sequence[indexEnd],
+			sequence[i:i+4],
+			sequence[i+4],
 			i+1,
 			(1-ratio[b])*100,
 		)
