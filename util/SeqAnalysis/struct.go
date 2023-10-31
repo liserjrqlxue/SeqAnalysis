@@ -273,6 +273,9 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 	}
 
 	for _, fastq := range seqInfo.Fastqs {
+		if fastq == "" {
+			continue
+		}
 		log.Printf("load %s", fastq)
 		var (
 			file    = osUtil.Open(fastq)
@@ -320,15 +323,17 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 			}
 
 			for i2, c := range byteS {
-				switch c {
-				case 'A':
-					seqInfo.A[i2]++
-				case 'C':
-					seqInfo.C[i2]++
-				case 'G':
-					seqInfo.G[i2]++
-				case 'T':
-					seqInfo.T[i2]++
+				if i2 < 151 {
+					switch c {
+					case 'A':
+						seqInfo.A[i2]++
+					case 'C':
+						seqInfo.C[i2]++
+					case 'G':
+						seqInfo.G[i2]++
+					case 'T':
+						seqInfo.T[i2]++
+					}
 				}
 			}
 
@@ -339,13 +344,16 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 
 			var kmer []byte
 			for i2, c := range byteS {
-				kmer = append([]byte{c}, kmer...)
-				for j := 0; j < kmerLength; j++ {
-					var n = min(j+1, len(kmer))
-					var key = string(kmer[:n])
-					seqInfo.DNAKmer[j][i2][key]++
-					if n == kmerLength {
-						seqInfo.Kmer[key]++
+				if i2 < 151 {
+
+					kmer = append([]byte{c}, kmer...)
+					for j := 0; j < kmerLength; j++ {
+						var n = min(j+1, len(kmer))
+						var key = string(kmer[:n])
+						seqInfo.DNAKmer[j][i2][key]++
+						if n == kmerLength {
+							seqInfo.Kmer[key]++
+						}
 					}
 				}
 			}

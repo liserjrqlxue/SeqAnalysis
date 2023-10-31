@@ -99,8 +99,12 @@ func ParseInput(input, fqDir string) (info []map[string]string) {
 			data["index"] = data["靶标序列"]
 			data["seq"] = data["合成序列"]
 			if fqDir != "" {
-				data["路径-R1"] = filepath.Join(fqDir, data["路径-R1"])
-				data["路径-R2"] = filepath.Join(fqDir, data["路径-R2"])
+				if data["路径-R1"] != "" {
+					data["路径-R1"] = filepath.Join(fqDir, data["路径-R1"])
+				}
+				if data["路径-R2"] != "" {
+					data["路径-R2"] = filepath.Join(fqDir, data["路径-R2"])
+				}
 			}
 			data["fq"] = data["路径-R1"] + "," + data["路径-R2"]
 		}
