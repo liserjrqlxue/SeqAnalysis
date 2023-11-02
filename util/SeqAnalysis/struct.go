@@ -100,12 +100,12 @@ type SeqInfo struct {
 
 	// fastq
 	ReadsLength map[int]int
-	A           [151]int
-	C           [151]int
-	G           [151]int
-	T           [151]int
-	DNA         [151]byte
-	DNAKmer     [kmerLength][151]map[string]int
+	A           [300]int
+	C           [300]int
+	G           [300]int
+	T           [300]int
+	DNA         [300]byte
+	DNAKmer     [kmerLength][300]map[string]int
 	Kmer        map[string]int
 
 	// summary
@@ -146,7 +146,7 @@ func (seqInfo *SeqInfo) Init() {
 	seqInfo.Kmer = make(map[string]int)
 
 	var refNt = append([]byte(seqInfo.IndexSeq), seqInfo.Seq...)
-	for i := 0; i < 151; i++ {
+	for i := 0; i < 300; i++ {
 		seqInfo.DNA[i] = byte('A')
 		if i < len(refNt) {
 			seqInfo.DNA[i] = refNt[i]
@@ -323,7 +323,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 			}
 
 			for i2, c := range byteS {
-				if i2 < 151 {
+				if i2 < 300 {
 					switch c {
 					case 'A':
 						seqInfo.A[i2]++
@@ -344,7 +344,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 
 			var kmer []byte
 			for i2, c := range byteS {
-				if i2 < 151 {
+				if i2 < 300 {
 
 					kmer = append([]byte{c}, kmer...)
 					for j := 0; j < kmerLength; j++ {
@@ -874,8 +874,8 @@ func MaxNt(A, C, G, T int) (N byte, percent float64) {
 func (seqInfo *SeqInfo) PlotLineACGT(prefix string) {
 	var (
 		line       = charts.NewLine()
-		xaxis      [151]int
-		yaxis      [151]int
+		xaxis      [300]int
+		yaxis      [300]int
 		output     = osUtil.Create(prefix + ".ACGT.html")
 		dnaStorge  [kmerLength]*os.File
 		kmerOutput = osUtil.Create(prefix + ".kmer.txt")
@@ -906,7 +906,7 @@ func (seqInfo *SeqInfo) PlotLineACGT(prefix string) {
 	)
 
 	var kmer [kmerLength + 1][]byte
-	for i := 0; i < 151; i++ {
+	for i := 0; i < 300; i++ {
 		xaxis[i] = i + 1
 		yaxis[i] = seqInfo.A[i] + seqInfo.C[i] + seqInfo.G[i] + seqInfo.T[i]
 
