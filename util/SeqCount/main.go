@@ -25,15 +25,21 @@ var (
 		20,
 		"top N sequences",
 	)
+	startPos = flag.Int(
+		"s",
+		0,
+		"start positon",
+	)
+	endPos = flag.Int(
+		"e",
+		0,
+		"end position",
+	)
 )
 
 // global
 var (
-	counts    = make(map[string]int)
-	seqList   = make(map[int][]string)
-	countList []int
-	seq       []string
-	count     []int
+	counts = make(map[string]int)
 
 	gz = regexp.MustCompile(`gz$`)
 )
@@ -43,33 +49,26 @@ func main() {
 	var fqList = flag.Args()
 
 	for _, fq := range fqList {
-		fqCount(fq)
+		fqCount(fq, *startPos, *endPos)
 	}
 
-	for k, v := range counts {
-		countList = append(countList, v)
-		seqList[v] = append(seqList[v], k)
+	var keys = make([]string, 0, len(counts))
+	for k := range counts {
+		keys = append(keys, k)
 	}
 
-	sort.Sort(sort.Reverse(sort.IntSlice(countList)))
+	sort.SliceStable(keys, func(i, j int) bool { return counts[keys[i]] > counts[keys[j]] })
 
-	for _, v := range countList[:*headCount] {
-		for _, k := range seqList[v] {
-			seq = append(seq, k)
-			count = append(count, v)
-		}
-	}
-
-	if len(seq) < *headCount {
-		*headCount = len(seq)
+	if len(counts) < *headCount {
+		*headCount = len(counts)
 	}
 
 	for i := 0; i < *headCount; i++ {
-		fmt.Printf("%d\t%s\n", count[i], seq[i])
+		fmt.Printf("%d\t%s\n", counts[keys[i]], keys[i])
 	}
 }
 
-func fqCount(fastq string) {
+func fqCount(fastq string, start, end int) {
 	var (
 		file    = osUtil.Open(fastq)
 		scanner *bufio.Scanner
@@ -86,6 +85,7 @@ func fqCount(fastq string) {
 		if i%4 != 1 {
 			continue
 		}
-		counts[line]++
+		var key = line[start:end]
+		counts[key]++
 	}
 }
