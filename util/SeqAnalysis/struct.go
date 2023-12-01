@@ -240,9 +240,8 @@ func (seqInfo *SeqInfo) CountError4(outputDir string, verbose int) {
 
 func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 	var (
-		tarSeq    = string(seqInfo.Seq)
-		indexSeq  = seqInfo.IndexSeq
-		tarLength = len(tarSeq) + 50
+		tarSeq   = string(seqInfo.Seq)
+		indexSeq = seqInfo.IndexSeq
 		//seqHit      = regexp.MustCompile(indexSeq + tarSeq)
 		polyA       = regexp.MustCompile(`^` + indexSeq + `(.*?)AAAAAAAA`)
 		regIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
@@ -380,7 +379,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				} else if tSeq == tarSeq {
 					seqInfo.Stats["RightReadsNum"]++
 					seqInfo.HitSeqCount[tSeq]++
-				} else if !regN.MatchString(tSeq) && len(tSeq) < tarLength {
+				} else if !regN.MatchString(tSeq) {
 					seqInfo.HitSeqCount[tSeq]++
 					seqInfo.Stats["IndexPolyAReadsNum"]++
 				} else {
@@ -408,7 +407,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				} else if tSeq == tarSeq {
 					seqInfo.Stats["RightReadsNum"]++
 					seqInfo.HitSeqCount[tSeq]++
-				} else if !regN.MatchString(tSeq) && len(tSeq) < tarLength {
+				} else if !regN.MatchString(tSeq) {
 					seqInfo.HitSeqCount[tSeq]++
 					seqInfo.Stats["IndexPolyAReadsNum"]++
 				} else {
@@ -554,6 +553,8 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 }
 
 var dash = regexp.MustCompile(`-+`)
+var dash3 = regexp.MustCompile(`---+`)
+var dashEnd = regexp.MustCompile(`-$`)
 
 func (seqInfo *SeqInfo) Align1(key string) bool {
 	var (
@@ -636,17 +637,46 @@ func (seqInfo *SeqInfo) Align1(key string) bool {
 					seqInfo.DeletionContinuous3Index = min(seqInfo.DeletionContinuous3Index, index[0])
 				}
 
-				var m = dash.FindAllIndex(c, -1)
-				for _, bin := range m {
-					if bin[1]-bin[0] > 2 {
-						fmtUtil.Fprintf(seqInfo.del3, "%d\t%d\t%d", bin[0], bin[1], count)
-						break
+				// 输出所有连续3缺失的位置，用于统计断点分布
+				var m = dash3.FindAllIndex(c, -1)
+				if len(m) > 0 && dashEnd.Match(c) {
+					for i := range m {
+						var end = m[i][0]
+						var seq = string(a)
+						if end < 2 {
+							var indexSeq = seqInfo.IndexSeq
+							seq = string(indexSeq[len(indexSeq)-2:]) + seq
+							end += 2
+						}
+						fmtUtil.Fprintf(seqInfo.del3, "%d\t%d\t%s\t%s\t%s\t%s\t%s\n", end, count, seq[end-2:end], seq[end:end+2], b, c, a)
 					}
 				}
-				for _, bin := range m {
-					fmtUtil.Fprintf(seqInfo.del3, "\t%d\t%d", bin[0], bin[1])
-				}
-				fmtUtil.Fprintln(seqInfo.del3)
+
+				// 输出连续3缺失的位置，用于画示意图
+				// var m = dash.FindAllIndex(c, -1)
+				// for _, bin := range m {
+				// 	if bin[1]-bin[0] > 2 {
+				// 		fmtUtil.Fprintf(seqInfo.del3, "%d\t%d\t%d", bin[0], bin[1], count)
+				// 		break
+				// 	}
+				// }
+				// for _, bin := range m {
+				// 	fmtUtil.Fprintf(seqInfo.del3, "\t%d\t%d", bin[0], bin[1])
+				// }
+				// fmtUtil.Fprintln(seqInfo.del3)
+
+				// 输出末尾缺失的位置，用于统计断点分布
+				// var m = dash.FindAllIndex(c, -1)
+				// if len(m) == 1 && dashEnd.Match(c) {
+				// 	var end = m[0][0]
+				// 	var seq = string(a)
+				// 	if end < 2 {
+				// 		var indexSeq = seqInfo.IndexSeq
+				// 		seq = string(indexSeq[len(indexSeq)-2:]) + seq
+				// 		end += 2
+				// 	}
+				// 	fmtUtil.Fprintf(seqInfo.del3, "%d\t%d\t%s\t%s\t%s\t%s\t%s\n", end, count, seq[end-2:end], seq[end:end+2], b, c, a)
+				// }
 			} else if minus2.Match(c) { // 连续2缺失
 				seqInfo.Stats["DeletionContinuous2"] += count
 
@@ -1152,7 +1182,7 @@ func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string) {
 	log.Printf(
 		"Simple Deletion:\t%s\nAll\t%d\t%.0f%%\nA\t%d\t%0.f%%\nT\t%d\t%.0f%%\nC\t%d\t%.0f%%\nG\t%d\t%.0f%%\n",
 		seqInfo.Name,
-		sumDel, math2.DivisionInt(100*sumDel, seqInfo.Stats["ErrorReadsNum"]),
+		sumDel, math2.DivisionInt(100*sumDel, seqInfo.Stats["ErrorReadsNum"]) ,.?
 		countDels['A'], math2.DivisionInt(100*countDels['A'], sumDel),
 		countDels['T'], math2.DivisionInt(100*countDels['T'], sumDel),
 		countDels['C'], math2.DivisionInt(100*countDels['C'], sumDel),
@@ -1180,7 +1210,8 @@ func (info *SeqInfo) WriteStatsTxt(file *os.File) {
 		info.YieldCoefficient, info.AverageYieldAccuracy,
 		math2.DivisionInt(stats["ErrorReadsNum"], stats["AnalyzedReadsNum"]),
 		math2.DivisionInt(stats["Deletion"], stats["AnalyzedReadsNum"]),
-		math2.DivisionInt(stats["DeletionSingle"], stats["AnalyzedReadsNum"]),
+		math2.DivisionInt(stats["DeletionSingle"], stats["AnalyzedReadsNum"])1	
+
 		math2.DivisionInt(stats["DeletionDiscrete2"], stats["AnalyzedReadsNum"]),
 		math2.DivisionInt(stats["DeletionContinuous2"], stats["AnalyzedReadsNum"]),
 		math2.DivisionInt(stats["DeletionDiscrete3"], stats["AnalyzedReadsNum"]),
