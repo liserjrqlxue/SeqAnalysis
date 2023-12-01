@@ -552,7 +552,7 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	}
 }
 
-var dash = regexp.MustCompile(`-+`)
+// var dash = regexp.MustCompile(`-+`)
 var dash3 = regexp.MustCompile(`---+`)
 var dashEnd = regexp.MustCompile(`-$`)
 
@@ -1182,7 +1182,7 @@ func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string) {
 	log.Printf(
 		"Simple Deletion:\t%s\nAll\t%d\t%.0f%%\nA\t%d\t%0.f%%\nT\t%d\t%.0f%%\nC\t%d\t%.0f%%\nG\t%d\t%.0f%%\n",
 		seqInfo.Name,
-		sumDel, math2.DivisionInt(100*sumDel, seqInfo.Stats["ErrorReadsNum"]) ,.?
+		sumDel, math2.DivisionInt(100*sumDel, seqInfo.Stats["ErrorReadsNum"]),
 		countDels['A'], math2.DivisionInt(100*countDels['A'], sumDel),
 		countDels['T'], math2.DivisionInt(100*countDels['T'], sumDel),
 		countDels['C'], math2.DivisionInt(100*countDels['C'], sumDel),
@@ -1210,7 +1210,7 @@ func (info *SeqInfo) WriteStatsTxt(file *os.File) {
 		info.YieldCoefficient, info.AverageYieldAccuracy,
 		math2.DivisionInt(stats["ErrorReadsNum"], stats["AnalyzedReadsNum"]),
 		math2.DivisionInt(stats["Deletion"], stats["AnalyzedReadsNum"]),
-		math2.DivisionInt(stats["DeletionSingle"], stats["AnalyzedReadsNum"])1	
+		math2.DivisionInt(stats["DeletionSingle"], stats["AnalyzedReadsNum"]),
 
 		math2.DivisionInt(stats["DeletionDiscrete2"], stats["AnalyzedReadsNum"]),
 		math2.DivisionInt(stats["DeletionContinuous2"], stats["AnalyzedReadsNum"]),
