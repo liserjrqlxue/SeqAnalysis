@@ -135,6 +135,9 @@ func NewSeqInfo(data map[string]string, long, rev bool) *SeqInfo {
 		Reverse:              rev,
 		UseReverseComplement: true,
 	}
+	// support N
+	seqInfo.IndexSeq = strings.Replace(seqInfo.IndexSeq, "N", ".", -1)
+
 	if seqInfo.Reverse {
 		seqInfo.Seq = Reverse(seqInfo.Seq)
 	}
