@@ -262,6 +262,10 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 		regIndexSeq = regexp.MustCompile(`^(.*?)AAAAAAAA`)
 		seqInfo.UseReverseComplement = false
 	}
+	if tarSeq == "A" {
+		polyA = regexp.MustCompile(`^` + indexSeq + `(.*?)TTTTTTTT`)
+		regIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
+	}
 	defer simpleUtil.DeferClose(output)
 
 	if seqInfo.Reverse {
@@ -298,13 +302,13 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 			seqInfo.ReadsLength[len(s)]++
 
 			seqInfo.Stats["AllReadsNum"]++
-			if len(s) < 50 {
-				seqInfo.Stats["ShortReadsNum"]++
-				if verbose > 0 {
-					fmtUtil.Fprintf(outputShort, "%s\t%d\n", s, len(s))
-				}
-				continue
-			}
+			// if len(s) < 50 {
+			// 	seqInfo.Stats["ShortReadsNum"]++
+			// 	if verbose > 0 {
+			// 		fmtUtil.Fprintf(outputShort, "%s\t%d\n", s, len(s))
+			// 	}
+			// 	continue
+			// }
 			var (
 				tSeq string
 				rcS  = ReverseComplement(s)
@@ -499,6 +503,19 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	}
 	// free HitSeq
 	seqInfo.HitSeq = nil
+	// 输出所有连续3缺失的位置，用于统计断点分布
+	for i := 0; i <= len(seqInfo.Seq)-2; i++ {
+		var (
+			end = i
+			seq = string(seqInfo.Seq)
+		)
+		if end < 2 {
+			var indexSeq = seqInfo.IndexSeq
+			seq = string(indexSeq[len(indexSeq)-2:]) + seq
+			end += 2
+		}
+		fmtUtil.Fprintf(seqInfo.del3, "%d\t%d\t%s\t%s\t%s\t%s\t%s\n", i, 0, seq[end-2:end], seq[end:end+2], "", "", "")
+	}
 	simpleUtil.CheckErr(seqInfo.del3.Close())
 	simpleUtil.CheckErr(seqInfo.del1.Close())
 
