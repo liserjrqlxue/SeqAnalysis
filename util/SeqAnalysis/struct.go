@@ -659,7 +659,7 @@ func (seqInfo *SeqInfo) Align1(key string) bool {
 
 				// 输出所有连续3缺失的位置，用于统计断点分布
 				var m = dash3.FindAllIndex(c, -1)
-				if len(m) > 0 && dashEnd.Match(c) {
+				if dashEnd.Match(c) {
 					for i := range m {
 						var end = m[i][0]
 						var seq = string(a)
