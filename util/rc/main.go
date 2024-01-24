@@ -1,13 +1,14 @@
 package main
 
 import (
-	"SeqAnalysis/util"
 	"bufio"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"strings"
+
+	"SeqAnalysis/util"
 
 	"github.com/liserjrqlxue/goUtil/osUtil"
 )
