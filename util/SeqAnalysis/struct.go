@@ -83,7 +83,7 @@ type SeqInfo struct {
 	rowOther                 int
 	DeletionContinuous3Index int
 
-	Seq         []byte
+	Seq         []byte // Target Synthesis Seq
 	Align       []byte
 	AlignInsert []byte
 	AlignMut    []byte
@@ -503,19 +503,8 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	}
 	// free HitSeq
 	seqInfo.HitSeq = nil
-	// 输出所有连续3缺失的位置，用于统计断点分布
-	for i := 0; i <= len(seqInfo.Seq)-2; i++ {
-		var (
-			end = i
-			seq = string(seqInfo.Seq)
-		)
-		if end < 2 {
-			var indexSeq = seqInfo.IndexSeq
-			seq = string(indexSeq[len(indexSeq)-2:]) + seq
-			end += 2
-		}
-		fmtUtil.Fprintf(seqInfo.del3, "%d\t%d\t%s\t%s\t%s\t%s\t%s\n", i, 0, seq[end-2:end], seq[end:end+2], "", "", "")
-	}
+
+	WriteUpperDownNIL(seqInfo.del3, seqInfo.IndexSeq, string(seqInfo.Seq), 3)
 	simpleUtil.CheckErr(seqInfo.del3.Close())
 	simpleUtil.CheckErr(seqInfo.del1.Close())
 
@@ -576,100 +565,91 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 var dash3 = regexp.MustCompile(`---+`)
 var dashEnd = regexp.MustCompile(`-$`)
 
-func (seqInfo *SeqInfo) Align1(key string) bool {
+func (seqInfo *SeqInfo) Align1(sequencingSeqStr string) bool {
 	var (
-		a = seqInfo.Seq
-		b = []byte(key)
-		c []byte
+		targetSynthesisSeq  = seqInfo.Seq
+		sequencingSeq       = []byte(sequencingSeqStr)
+		sequencingAlignment []byte
 
-		count    = seqInfo.HitSeqCount[key]
+		count    = seqInfo.HitSeqCount[sequencingSeqStr]
 		delCount = 0
 	)
 
-	if len(a) == 1 && len(b) == 1 && b[0] == 'X' {
-		c = append(c, '-')
-		seqInfo.Align = c
+	if len(targetSynthesisSeq) == 1 && len(sequencingSeq) == 1 && sequencingSeq[0] == 'X' {
+		sequencingAlignment = append(sequencingAlignment, '-')
+		seqInfo.Align = sequencingAlignment
 		seqInfo.DistributionNum[0][0] += count
 		seqInfo.Stats["Deletion"] += count
 		return true
 	}
 
 	var k = 0 // match count to Seq
-	for i := range a {
-		if k < len(b) && (a[i] == b[k] || a[i] == 'N') {
-			c = append(c, b[k])
+	for i := range targetSynthesisSeq {
+		if k < len(sequencingSeq) && (targetSynthesisSeq[i] == sequencingSeq[k] || targetSynthesisSeq[i] == 'N') {
+			sequencingAlignment = append(sequencingAlignment, sequencingSeq[k])
 			k++
 		} else {
-			c = append(c, '-')
+			sequencingAlignment = append(sequencingAlignment, '-')
 			delCount++
 		}
 	}
-	seqInfo.Align = c
+	seqInfo.Align = sequencingAlignment
 	//if k >= len(b) && !minus3.Match(c) { // all match
-	if k >= len(b) { // all match
+	if k >= len(sequencingSeq) { // all match
 		seqInfo.Stats["Deletion"] += count
 
-		SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, count, c})
+		SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
 		seqInfo.rowDeletion++
 
 		if delCount == 1 { // 单个缺失
 			seqInfo.Stats["DeletionSingle"] += count
 
-			SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionSingle"], 1, seqInfo.rowDeletionSingle, []interface{}{seqInfo.Seq, key, count, c})
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionSingle"], 1, seqInfo.rowDeletionSingle, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
 			seqInfo.rowDeletionSingle++
 
-			var m = minus1.FindIndex(c)
+			var m = minus1.FindIndex(sequencingAlignment)
 			if m != nil {
 				if m[0] == 0 {
-					fmtUtil.Fprintf(seqInfo.del1, "%d\t%d\t%d\t%c\t%c\t%c\n", m[0], m[1], count, '^', a[m[1]-1], c[m[1]])
-				} else if m[1] == len(c) {
-					fmtUtil.Fprintf(seqInfo.del1, "%d\t%d\t%d\t%c\t%c\t%c\n", m[0], m[1], count, c[m[0]-1], a[m[1]-1], '$')
+					fmtUtil.Fprintf(seqInfo.del1, "%d\t%d\t%d\t%c\t%c\t%c\n", m[0], m[1], count, '^', targetSynthesisSeq[m[1]-1], sequencingAlignment[m[1]])
+				} else if m[1] == len(sequencingAlignment) {
+					fmtUtil.Fprintf(seqInfo.del1, "%d\t%d\t%d\t%c\t%c\t%c\n", m[0], m[1], count, sequencingAlignment[m[0]-1], targetSynthesisSeq[m[1]-1], '$')
 				} else {
-					fmtUtil.Fprintf(seqInfo.del1, "%d\t%d\t%d\t%c\t%c\t%c\n", m[0], m[1], count, c[m[0]-1], a[m[1]-1], c[m[1]])
+					fmtUtil.Fprintf(seqInfo.del1, "%d\t%d\t%d\t%c\t%c\t%c\n", m[0], m[1], count, sequencingAlignment[m[0]-1], targetSynthesisSeq[m[1]-1], sequencingAlignment[m[1]])
 				}
 			}
 
 		} else if delCount == 2 { // 2缺失
 			seqInfo.Stats["Deletion2"] += count
 
-			if minus2.Match(c) { // 连续2缺失
+			if minus2.Match(sequencingAlignment) { // 连续2缺失
 				seqInfo.Stats["DeletionContinuous2"] += count
 
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous2"], 1, seqInfo.rowDeletionContinuous2, []interface{}{seqInfo.Seq, key, count, c})
+				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous2"], 1, seqInfo.rowDeletionContinuous2, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
 				seqInfo.rowDeletionContinuous2++
 			} else { // 离散2缺失
 				seqInfo.Stats["DeletionDiscrete2"] += count
 
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDiscrete2"], 1, seqInfo.rowDeletionDiscrete2, []interface{}{seqInfo.Seq, key, count, c})
+				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDiscrete2"], 1, seqInfo.rowDeletionDiscrete2, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
 				seqInfo.rowDeletionDiscrete2++
 			}
 		} else if delCount >= 3 {
 			seqInfo.Stats["Deletion3"] += count
 
-			if minus3.Match(c) { // 连续3缺失
+			if minus3.Match(sequencingAlignment) { // 连续3缺失
 				seqInfo.Stats["DeletionContinuous3"] += count
 
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous3"], 1, seqInfo.rowDeletionContinuous3, []interface{}{seqInfo.Seq, key, count, c})
+				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous3"], 1, seqInfo.rowDeletionContinuous3, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
 				seqInfo.rowDeletionContinuous3++
 
-				var index = minus3.FindIndex(c)
+				var index = minus3.FindIndex(sequencingAlignment)
 				if index != nil {
 					seqInfo.DeletionContinuous3Index = min(seqInfo.DeletionContinuous3Index, index[0])
 				}
 
 				// 输出所有连续3缺失的位置，用于统计断点分布
-				var m = dash3.FindAllIndex(c, -1)
-				if dashEnd.Match(c) {
-					for i := range m {
-						var end = m[i][0]
-						var seq = string(a)
-						if end < 2 {
-							var indexSeq = seqInfo.IndexSeq
-							seq = string(indexSeq[len(indexSeq)-2:]) + seq
-							end += 2
-						}
-						fmtUtil.Fprintf(seqInfo.del3, "%d\t%d\t%s\t%s\t%s\t%s\t%s\n", end, count, seq[end-2:end], seq[end:end+2], b, c, a)
-					}
+				var m = dash3.FindAllIndex(sequencingAlignment, -1)
+				if dashEnd.Match(sequencingAlignment) {
+					WriteUpperDown(seqInfo.del3, seqInfo.IndexSeq, string(targetSynthesisSeq), 3, count, m)
 				}
 
 				// 输出连续3缺失的位置，用于画示意图
@@ -697,19 +677,19 @@ func (seqInfo *SeqInfo) Align1(key string) bool {
 				// 	}
 				// 	fmtUtil.Fprintf(seqInfo.del3, "%d\t%d\t%s\t%s\t%s\t%s\t%s\n", end, count, seq[end-2:end], seq[end:end+2], b, c, a)
 				// }
-			} else if minus2.Match(c) { // 连续2缺失
+			} else if minus2.Match(sequencingAlignment) { // 连续2缺失
 				seqInfo.Stats["DeletionContinuous2"] += count
 
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous2"], 1, seqInfo.rowDeletionContinuous2, []interface{}{seqInfo.Seq, key, count, c})
+				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous2"], 1, seqInfo.rowDeletionContinuous2, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
 				seqInfo.rowDeletionContinuous2++
 			} else { // 离散3缺失
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDiscrete3"], 1, seqInfo.rowDeletionDiscrete3, []interface{}{seqInfo.Seq, key, count, c})
+				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDiscrete3"], 1, seqInfo.rowDeletionDiscrete3, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
 				seqInfo.Stats["DeletionDiscrete3"] += count
 				seqInfo.rowDeletionDiscrete3++
 			}
 		}
 
-		for i, c1 := range c {
+		for i, c1 := range sequencingAlignment {
 			if c1 == '-' {
 				seqInfo.DistributionNum[0][i] += count
 			}

@@ -349,3 +349,21 @@ func AddSteps2Sheet(excel *excelize.File, list []string) {
 		}
 	}
 }
+
+// write upper and down
+func WriteUpperDown(out *os.File, indexSeq, refSeq string, offset, count int, m [][]int) {
+	refSeq = indexSeq[len(indexSeq)-offset:] + refSeq
+	for i := range m {
+		var end = m[i][0]
+		fmtUtil.Fprintf(out, "%d\t%d\t%s\t%s\n", end, count, refSeq[end:end+offset], refSeq[end+offset:end+offset*2])
+	}
+}
+
+func WriteUpperDownNIL(out *os.File, indexSeq, refSeq string, offset int) {
+	// fill with 0
+	refSeq = indexSeq[len(indexSeq)-offset:] + refSeq
+	var n = len(refSeq) - offset*2
+	for end := 0; end <= n; end++ {
+		fmtUtil.Fprintf(out, "%d\t%d\t%s\t%s\n", end, 0, refSeq[end:end+offset], refSeq[end+offset:end+offset*2])
+	}
+}
