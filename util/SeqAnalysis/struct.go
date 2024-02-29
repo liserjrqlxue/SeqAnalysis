@@ -389,24 +389,8 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				tSeq := submatch[1] //[seqInfo.Offset:]
 				fmtUtil.Fprintln(output, tSeq)
 				histogram[len(tSeq)]++
-				if seqInfo.Reverse {
-					tSeq = string(Reverse([]byte(tSeq)))
-				}
 
-				if len(tSeq) == 0 {
-					tSeq += "X"
-					seqInfo.HitSeqCount[tSeq]++
-					seqInfo.Stats["IndexPolyAReadsNum"]++
-				} else if tSeq == tarSeq {
-					seqInfo.Stats["RightReadsNum"]++
-					seqInfo.HitSeqCount[tSeq]++
-				} else if !regN.MatchString(tSeq) {
-					seqInfo.HitSeqCount[tSeq]++
-					seqInfo.Stats["IndexPolyAReadsNum"]++
-				} else {
-					//fmt.Printf("[%s]:[%s]:[%+v]\n", s, tSeq, m)
-					seqInfo.Stats["ExcludeReadsNum"]++
-				}
+				seqInfo.UpdateHitSeqCount(tarSeq, tSeq)
 			}
 		}
 		simpleUtil.CheckErr(file.Close())
@@ -418,6 +402,27 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 	// output histgram.txt
 	WriteHistogram(filepath.Join(outputDir, seqInfo.Name+".histogram.txt"), histogram)
 
+}
+
+func (seqInfo *SeqInfo) UpdateHitSeqCount(tarSeq, seq string) {
+	if seqInfo.Reverse {
+		seq = string(Reverse([]byte(seq)))
+	}
+
+	if len(seq) == 0 {
+		seq += "X"
+		seqInfo.HitSeqCount[seq]++
+		seqInfo.Stats["IndexPolyAReadsNum"]++
+	} else if seq == tarSeq {
+		seqInfo.Stats["RightReadsNum"]++
+		seqInfo.HitSeqCount[seq]++
+	} else if !regN.MatchString(seq) {
+		seqInfo.HitSeqCount[seq]++
+		seqInfo.Stats["IndexPolyAReadsNum"]++
+	} else {
+		//fmt.Printf("[%s]:[%s]:[%+v]\n", s, tSeq, m)
+		seqInfo.Stats["ExcludeReadsNum"]++
+	}
 }
 
 func (seqInfo *SeqInfo) UpdateACGT(seq []byte) {
