@@ -217,6 +217,7 @@ func (seqInfo *SeqInfo) SingleRun(resultDir string) {
 	seqInfo.Save()
 	seqInfo.PrintStats(resultDir)
 	seqInfo.PlotLineACGT(filepath.Join(resultDir, seqInfo.Name))
+	seqInfo.WriteKmer(filepath.Join(resultDir, seqInfo.Name))
 }
 
 func (seqInfo *SeqInfo) Save() {
@@ -905,18 +906,12 @@ func MaxNt(A, C, G, T int) (N byte, percent float64) {
 
 func (seqInfo *SeqInfo) PlotLineACGT(prefix string) {
 	var (
-		line       = charts.NewLine()
-		xaxis      [300]int
-		yaxis      [300]int
-		output     = osUtil.Create(prefix + ".ACGT.html")
-		dnaStorge  [kmerLength]*os.File
-		kmerOutput = osUtil.Create(prefix + ".kmer.txt")
+		line   = charts.NewLine()
+		xaxis  [300]int
+		yaxis  [300]int
+		output = osUtil.Create(prefix + ".ACGT.html")
 	)
-	for j := 0; j < kmerLength; j++ {
-		dnaStorge[j] = osUtil.Create(prefix + ".dna." + strconv.Itoa(j+1) + ".txt")
-	}
 	defer simpleUtil.DeferClose(output)
-	defer simpleUtil.DeferClose(kmerOutput)
 
 	line.SetGlobalOptions(
 		charts.WithInitializationOpts(opts.Initialization{Theme: types.ThemeWesteros}),
@@ -924,6 +919,31 @@ func (seqInfo *SeqInfo) PlotLineACGT(prefix string) {
 			Title:    "A C G T Distribution",
 			Subtitle: "in SE150",
 		}))
+
+	for i := 0; i < 300; i++ {
+		xaxis[i] = i + 1
+		yaxis[i] = seqInfo.A[i] + seqInfo.C[i] + seqInfo.G[i] + seqInfo.T[i]
+	}
+
+	line.SetXAxis(xaxis).
+		AddSeries("A", GenerateLineItems(seqInfo.A[:])).
+		AddSeries("C", GenerateLineItems(seqInfo.C[:])).
+		AddSeries("G", GenerateLineItems(seqInfo.G[:])).
+		AddSeries("T", GenerateLineItems(seqInfo.T[:])).
+		AddSeries("ALL", GenerateLineItems(yaxis[:]))
+	// SetSeriesOptions(charts.WithLineChartOpts(opts.LineChart{Smooth: true}))
+	simpleUtil.CheckErr(line.Render(output))
+}
+
+func (seqInfo *SeqInfo) WriteKmer(prefix string) {
+	var (
+		dnaStorge  [kmerLength]*os.File
+		kmerOutput = osUtil.Create(prefix + ".kmer.txt")
+	)
+	for j := 0; j < kmerLength; j++ {
+		dnaStorge[j] = osUtil.Create(prefix + ".dna." + strconv.Itoa(j+1) + ".txt")
+	}
+	defer simpleUtil.DeferClose(kmerOutput)
 
 	// print header for dnaStorge
 	for j := 0; j < kmerLength; j++ {
@@ -939,9 +959,6 @@ func (seqInfo *SeqInfo) PlotLineACGT(prefix string) {
 
 	var kmer [kmerLength + 1][]byte
 	for i := 0; i < 300; i++ {
-		xaxis[i] = i + 1
-		yaxis[i] = seqInfo.A[i] + seqInfo.C[i] + seqInfo.G[i] + seqInfo.T[i]
-
 		for j := 0; j < kmerLength; j++ {
 			var preKmer = string(kmer[j][:min(j, len(kmer[j]))])
 			var dnaKmer = seqInfo.DNAKmer[j][i]
@@ -987,16 +1004,6 @@ func (seqInfo *SeqInfo) PlotLineACGT(prefix string) {
 	for j := 0; j < kmerLength; j++ {
 		simpleUtil.CheckErr(dnaStorge[j].Close())
 	}
-
-	line.SetXAxis(xaxis).
-		AddSeries("A", GenerateLineItems(seqInfo.A[:])).
-		AddSeries("C", GenerateLineItems(seqInfo.C[:])).
-		AddSeries("G", GenerateLineItems(seqInfo.G[:])).
-		AddSeries("T", GenerateLineItems(seqInfo.T[:])).
-		AddSeries("ALL", GenerateLineItems(yaxis[:]))
-	// SetSeriesOptions(charts.WithLineChartOpts(opts.LineChart{Smooth: true}))
-	simpleUtil.CheckErr(line.Render(output))
-	simpleUtil.CheckErr(line.Render(kmerOutput))
 }
 
 // WriteStatsSheet writes the statistics sheet for SeqInfo.
