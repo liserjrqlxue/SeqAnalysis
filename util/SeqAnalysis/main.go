@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"embed"
 	"flag"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
+	"sync"
 
 	"github.com/liserjrqlxue/goUtil/fmtUtil"
 	"github.com/liserjrqlxue/goUtil/osUtil"
@@ -98,7 +100,7 @@ func main() {
 	simpleUtil.CheckErr(os.MkdirAll(*outputDir, 0755))
 
 	// parallel options
-	// runtime.GOMAXPROCS(runtime.NumCPU()) * 2)
+	// runtime.GOMAXPROCS(runtime.NumCPU() * 2)
 	if *thread == 0 {
 		*thread = len(inputInfo)
 	}
@@ -126,20 +128,21 @@ func main() {
 	}
 	simpleUtil.CheckErr(info.Close())
 
+	var wg sync.WaitGroup
 	for id := range SeqInfoMap {
 		chanList <- true
 		go func(id string) {
 			defer func() {
+				wg.Done()
 				<-chanList
 			}()
+			slog.Info("SingleRun", "id", id)
 			SeqInfoMap[id].SingleRun(*outputDir)
 		}(id)
 	}
 
 	// wait goconcurrency thread to finish
-	for i := 0; i < *thread; i++ {
-		chanList <- true
-	}
+	wg.Wait()
 
 	// write summary.txt
 	summaryTxt(*outputDir, inputInfo)
