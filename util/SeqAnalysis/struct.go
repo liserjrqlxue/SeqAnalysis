@@ -120,7 +120,7 @@ type SeqInfo struct {
 	OSAR float64
 }
 
-func NewSeqInfo(data map[string]string, long, rev, useKmer bool) *SeqInfo {
+func NewSeqInfo(data map[string]string, long, rev, useRC, useKmer bool) *SeqInfo {
 	var seqInfo = new(SeqInfo)
 	seqInfo = &SeqInfo{
 		Name:                 data["id"],
@@ -136,7 +136,7 @@ func NewSeqInfo(data map[string]string, long, rev, useKmer bool) *SeqInfo {
 		ReadsLength:          make(map[int]int),
 		AssemblerMode:        long,
 		Reverse:              rev,
-		UseReverseComplement: true,
+		UseReverseComplement: useRC,
 		UseKmer:              useKmer,
 	}
 	// support N
@@ -322,12 +322,12 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 			// }
 			var (
 				tSeq string
-				rcS  = ReverseComplement(s)
+				rcS  = s
 				// regexp match
 				m []string
 			)
-			if indexSeq == "" {
-				rcS = s
+			if indexSeq != "" && seqInfo.UseReverseComplement {
+				rcS = ReverseComplement(s)
 			}
 
 			var byteS []byte
@@ -436,7 +436,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				}
 
 			} else {
-				seqInfo.Stats["UnmatchedReadsNum"]++
+				// seqInfo.Stats["UnmatchedReadsNum"]++
 				if verbose > 1 {
 
 					fmtUtil.Fprintf(
@@ -835,11 +835,11 @@ func (seqInfo *SeqInfo) PrintStats(resultDir string) {
 		stats["ShortReadsNum"],
 		math2.DivisionInt(stats["ShortReadsNum"], stats["AllReadsNum"])*100,
 	)
-	fmtUtil.Fprintf(out,
-		"+UnmatchedReadsNum\t= %d\t%7.4f%%\n",
-		stats["UnmatchedReadsNum"],
-		math2.DivisionInt(stats["UnmatchedReadsNum"], stats["AllReadsNum"])*100,
-	)
+	// fmtUtil.Fprintf(out,
+	// 	"+UnmatchedReadsNum\t= %d\t%7.4f%%\n",
+	// 	stats["UnmatchedReadsNum"],
+	// 	math2.DivisionInt(stats["UnmatchedReadsNum"], stats["AllReadsNum"])*100,
+	// )
 	fmtUtil.Fprintf(out,
 		"+ExcludeReadsNum\t= %d\t%7.4f%%\n",
 		stats["ExcludeReadsNum"],
