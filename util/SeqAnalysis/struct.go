@@ -106,8 +106,10 @@ type SeqInfo struct {
 	G           [300]int
 	T           [300]int
 	DNA         [300]byte
-	DNAKmer     [kmerLength][300]map[string]int
-	Kmer        map[string]int
+
+	UseKmer bool
+	DNAKmer [kmerLength][300]map[string]int
+	Kmer    map[string]int
 
 	// summary
 	// 收率
@@ -118,7 +120,7 @@ type SeqInfo struct {
 	OSAR float64
 }
 
-func NewSeqInfo(data map[string]string, long, rev bool) *SeqInfo {
+func NewSeqInfo(data map[string]string, long, rev, useKmer bool) *SeqInfo {
 	var seqInfo = new(SeqInfo)
 	seqInfo = &SeqInfo{
 		Name:                 data["id"],
@@ -135,6 +137,7 @@ func NewSeqInfo(data map[string]string, long, rev bool) *SeqInfo {
 		AssemblerMode:        long,
 		Reverse:              rev,
 		UseReverseComplement: true,
+		UseKmer:              useKmer,
 	}
 	// support N
 	seqInfo.IndexSeq = strings.Replace(seqInfo.IndexSeq, "N", ".", -1)
@@ -216,8 +219,12 @@ func (seqInfo *SeqInfo) SingleRun(resultDir string) {
 	seqInfo.WriteStatsSheet(resultDir)
 	seqInfo.Save()
 	seqInfo.PrintStats(resultDir)
-	seqInfo.PlotLineACGT(filepath.Join(resultDir, seqInfo.Name))
-	seqInfo.WriteKmer(filepath.Join(resultDir, seqInfo.Name))
+
+	prefix := filepath.Join(resultDir, seqInfo.Name)
+	seqInfo.PlotLineACGT(prefix)
+	if seqInfo.UseKmer {
+		seqInfo.WriteKmer(prefix)
+	}
 }
 
 func (seqInfo *SeqInfo) Save() {
@@ -351,17 +358,19 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				byteS = byteS[:byteSloc[0]]
 			}
 
-			var kmer []byte
-			for i2, c := range byteS {
-				if i2 < 300 {
+			if seqInfo.UseKmer {
+				var kmer []byte
+				for i2, c := range byteS {
+					if i2 < 300 {
 
-					kmer = append([]byte{c}, kmer...)
-					for j := 0; j < kmerLength; j++ {
-						var n = min(j+1, len(kmer))
-						var key = string(kmer[:n])
-						seqInfo.DNAKmer[j][i2][key]++
-						if n == kmerLength {
-							seqInfo.Kmer[key]++
+						kmer = append([]byte{c}, kmer...)
+						for j := 0; j < kmerLength; j++ {
+							var n = min(j+1, len(kmer))
+							var key = string(kmer[:n])
+							seqInfo.DNAKmer[j][i2][key]++
+							if n == kmerLength {
+								seqInfo.Kmer[key]++
+							}
 						}
 					}
 				}

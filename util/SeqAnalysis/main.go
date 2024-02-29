@@ -69,6 +69,11 @@ var (
 		false,
 		"reverse synthesis",
 	)
+	useKmer = flag.Bool(
+		"kmer",
+		false,
+		"use kmer",
+	)
 	plot = flag.Bool(
 		"plot",
 		false,
@@ -159,7 +164,7 @@ func main() {
 			data["seq"],
 			data["fq"],
 		)
-		var seqInfo = NewSeqInfo(data, *long, *rev)
+		var seqInfo = NewSeqInfo(data, *long, *rev, *useKmer)
 		SeqInfoMap[seqInfo.Name] = seqInfo
 	}
 	simpleUtil.CheckErr(info.Close())
