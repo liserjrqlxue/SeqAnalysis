@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"embed"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"path"
@@ -67,6 +68,11 @@ var (
 		"rev",
 		false,
 		"reverse synthesis",
+	)
+	plot = flag.Bool(
+		"plot",
+		false,
+		"plot",
 	)
 	debug = flag.Bool(
 		"debug",
@@ -201,8 +207,12 @@ func main() {
 		summaryXlsx(*outputDir, inputInfo)
 	}
 
-	// use Rscript to plot
-	simpleUtil.CheckErr(sge.Run("Rscript", filepath.Join(binPath, "plot.R"), *outputDir))
+	if *plot {
+		// use Rscript to plot
+		simpleUtil.CheckErr(sge.Run("Rscript", filepath.Join(binPath, "plot.R"), *outputDir))
+	} else {
+		slog.Info(fmt.Sprintf("Run Plot use Rscript: Rscript %s %s", filepath.Join(binPath, "plot.R"), *outputDir))
+	}
 
 	// Compress-Archive to zip file on windows only when *zip is true
 	Zip(*outputDir)
