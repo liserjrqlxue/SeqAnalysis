@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"math"
 	"os"
 	"path"
@@ -219,9 +220,10 @@ func (seqInfo *SeqInfo) SingleRun(resultDir string) {
 }
 
 func (seqInfo *SeqInfo) Save() {
-	log.Printf("seqInfo.xlsx.SaveAs(%s)", seqInfo.Excel)
-
+	slog.Info("save xlsx", slog.Group("seqInfo", "name", seqInfo.Name, "path", seqInfo.Excel))
 	simpleUtil.CheckErr(seqInfo.xlsx.SaveAs(seqInfo.Excel))
+	slog.Info("free xlsx", slog.Group("seqInfo", "name", seqInfo.Name, "path", seqInfo.Excel))
+	seqInfo.xlsx = nil
 }
 
 // CountError4 count seq error
@@ -262,7 +264,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 		regIndexSeq = regexp.MustCompile(`^(.*?)AAAAAAAA`)
 		seqInfo.UseReverseComplement = false
 	}
-	if tarSeq == "A" {
+	if tarSeq == "A" || tarSeq == "AAAAAAAAAAAAAAAAAAAA" {
 		polyA = regexp.MustCompile(`^` + indexSeq + `(.*?)TTTTTTTT`)
 		regIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
 	}
@@ -1177,6 +1179,7 @@ func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string) {
 		sumDel += del1
 	}
 	// free seqInfo.HitSeqCount
+	seqInfo.HitSeqCount = make(map[string]int)
 	seqInfo.HitSeqCount = nil
 
 	log.Printf(
