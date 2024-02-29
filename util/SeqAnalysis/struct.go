@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"log"
 	"log/slog"
 	"math"
@@ -176,7 +175,7 @@ func (seqInfo *SeqInfo) Init() {
 			Horizontal: "center",
 		},
 	}
-	seqInfo.Style["center"] = simpleUtil.HandleError(seqInfo.xlsx.NewStyle(center)).(int)
+	seqInfo.Style["center"] = simpleUtil.HandleError(seqInfo.xlsx.NewStyle(center))
 
 	seqInfo.rowDeletion = 2
 	seqInfo.rowDeletionSingle = 2
@@ -287,7 +286,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 			i       = -1
 		)
 		if gz.MatchString(fastq) {
-			scanner = bufio.NewScanner(simpleUtil.HandleError(gzip.NewReader(file)).(io.Reader))
+			scanner = bufio.NewScanner(simpleUtil.HandleError(gzip.NewReader(file)))
 		} else {
 			scanner = bufio.NewScanner(file)
 		}

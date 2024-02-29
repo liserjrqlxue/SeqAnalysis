@@ -140,7 +140,7 @@ func main() {
 	var inputInfo = ParseInput(*input, *fqDir)
 
 	if *outputDir == "" {
-		*outputDir = filepath.Base(simpleUtil.HandleError(os.Getwd()).(string)) + ".分析"
+		*outputDir = filepath.Base(simpleUtil.HandleError(os.Getwd())) + ".分析"
 	}
 	// pare output directory structure
 	simpleUtil.CheckErr(os.MkdirAll(*outputDir, 0755))
