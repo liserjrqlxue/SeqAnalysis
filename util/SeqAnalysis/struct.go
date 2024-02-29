@@ -330,11 +330,32 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				rcS = ReverseComplement(s)
 			}
 
-			var byteS []byte
-			if regIndexSeq.MatchString(s) {
+			var (
+				byteS []byte
+
+				polyAResult         = polyA.MatchString(s)
+				polyARcResult       = false
+				regIndexSeqResult   = false
+				regIndexSeqRcResult = false
+			)
+			if polyAResult {
+				regIndexSeqResult = true
+			} else {
+				regIndexSeqResult = regIndexSeq.MatchString(s)
+
+				if seqInfo.UseReverseComplement {
+					polyARcResult = polyA.MatchString(rcS)
+					if polyARcResult {
+						regIndexSeqRcResult = true
+					} else {
+						regIndexSeqRcResult = regIndexSeq.MatchString(rcS)
+					}
+				}
+			}
+			if regIndexSeqResult {
 				byteS = []byte(s)
 				seqInfo.Stats["IndexReadsNum"]++
-			} else if seqInfo.UseReverseComplement && regIndexSeq.MatchString(rcS) {
+			} else if regIndexSeqRcResult {
 				byteS = []byte(rcS)
 				seqInfo.Stats["IndexReadsNum"]++
 			}
@@ -377,10 +398,10 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				}
 			}
 
-			if polyA.MatchString(s) || polyA.MatchString(rcS) {
-				if polyA.MatchString(s) {
+			if polyAResult || polyARcResult {
+				if polyAResult {
 					m = polyA.FindStringSubmatch(s)
-				} else if polyA.MatchString(rcS) {
+				} else if polyARcResult {
 					m = polyA.FindStringSubmatch(rcS)
 				}
 				//m = polyA.FindStringSubmatch(s)
@@ -406,11 +427,11 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 					//fmt.Printf("[%s]:[%s]:[%+v]\n", s, tSeq, m)
 					seqInfo.Stats["ExcludeReadsNum"]++
 				}
-			} else if seqInfo.AssemblerMode && (regIndexSeq.MatchString(s) || regIndexSeq.MatchString(rcS)) {
+			} else if seqInfo.AssemblerMode && (regIndexSeqResult || regIndexSeqRcResult) {
 				//m = regIndexSeq.FindStringSubmatch(s)
-				if regIndexSeq.MatchString(s) {
+				if regIndexSeqResult {
 					m = regIndexSeq.FindStringSubmatch(s)
-				} else if regIndexSeq.MatchString(rcS) {
+				} else if regIndexSeqRcResult {
 					m = regIndexSeq.FindStringSubmatch(rcS)
 				}
 				tSeq = m[1]
