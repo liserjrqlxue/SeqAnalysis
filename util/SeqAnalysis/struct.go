@@ -259,6 +259,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 		polyA       = regexp.MustCompile(`^` + indexSeq + `(.*?)AAAAAAAA`)
 		regIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
 		regTarSeq   = regexp.MustCompile(tarSeq)
+		regA8       = regexp.MustCompile(`AAAAAAAA`)
 
 		output          = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path))
 		outputShort     *os.File
@@ -353,7 +354,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				}
 			}
 
-			var byteSloc = regexp.MustCompile(`AAAAAAAA`).FindIndex(byteS)
+			var byteSloc = regA8.FindIndex(byteS)
 			if byteSloc != nil {
 				byteS = byteS[:byteSloc[0]]
 			}
