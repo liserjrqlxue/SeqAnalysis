@@ -360,20 +360,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				seqInfo.Stats["IndexReadsNum"]++
 			}
 
-			for i2, c := range byteS {
-				if i2 < 300 {
-					switch c {
-					case 'A':
-						seqInfo.A[i2]++
-					case 'C':
-						seqInfo.C[i2]++
-					case 'G':
-						seqInfo.G[i2]++
-					case 'T':
-						seqInfo.T[i2]++
-					}
-				}
-			}
+			seqInfo.UpdateACGT(byteS)
 
 			var byteSloc = regA8.FindIndex(byteS)
 			if byteSloc != nil {
@@ -431,6 +418,23 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 	// output histgram.txt
 	WriteHistogram(filepath.Join(outputDir, seqInfo.Name+".histogram.txt"), histogram)
 
+}
+
+func (seqInfo *SeqInfo) UpdateACGT(seq []byte) {
+	for i, c := range seq {
+		if i < 300 {
+			switch c {
+			case 'A':
+				seqInfo.A[i]++
+			case 'C':
+				seqInfo.C[i]++
+			case 'G':
+				seqInfo.G[i]++
+			case 'T':
+				seqInfo.T[i]++
+			}
+		}
+	}
 }
 
 func (seqInfo *SeqInfo) GetHitSeq() {
