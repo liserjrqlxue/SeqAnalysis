@@ -69,6 +69,11 @@ var (
 		false,
 		"reverse synthesis",
 	)
+	useRC = flag.Bool(
+		"rc",
+		false,
+		"use reverse complement",
+	)
 	useKmer = flag.Bool(
 		"kmer",
 		false,
@@ -164,7 +169,7 @@ func main() {
 			data["seq"],
 			data["fq"],
 		)
-		var seqInfo = NewSeqInfo(data, *long, *rev, *useKmer)
+		var seqInfo = NewSeqInfo(data, *long, *rev, *useRC, *useKmer)
 		SeqInfoMap[seqInfo.Name] = seqInfo
 	}
 	simpleUtil.CheckErr(info.Close())
