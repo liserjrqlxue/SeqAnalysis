@@ -261,9 +261,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 		regTarSeq   = regexp.MustCompile(tarSeq)
 		regA8       = regexp.MustCompile(`AAAAAAAA`)
 
-		output          = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path))
-		outputShort     *os.File
-		outputUnmatched *os.File
+		output = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path))
 
 		// value weight
 		histogram = make(map[int]int)
@@ -281,12 +279,6 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 
 	if seqInfo.Reverse {
 		regTarSeq = regexp.MustCompile(string(Reverse(append([]byte{}, seqInfo.Seq...))))
-	}
-
-	if verbose > 0 {
-		outputShort = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path+".short.txt"))
-		outputUnmatched = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path+".unmatched.txt"))
-		fmtUtil.Fprintf(outputUnmatched, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", "#Seq", "A", "C", "G", "T", "TargetSeq", "IndexSeq", "PloyA")
 	}
 
 	for _, fastq := range seqInfo.Fastqs {
@@ -455,24 +447,6 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 					//fmt.Printf("[%s]:[%s]:[%+v]\n", s, tSeq, m)
 					seqInfo.Stats["ExcludeReadsNum"]++
 				}
-
-			} else {
-				// seqInfo.Stats["UnmatchedReadsNum"]++
-				if verbose > 1 {
-
-					fmtUtil.Fprintf(
-						outputUnmatched,
-						"%s\t%d\t%d\t%d\t%d\t%v\t%v\t%v\n",
-						s,
-						len(regA.FindAllString(s, -1)),
-						len(regC.FindAllString(s, -1)),
-						len(regG.FindAllString(s, -1)),
-						len(regT.FindAllString(s, -1)),
-						regTarSeq.MatchString(s),
-						regIndexSeq.MatchString(s),
-						regPolyA.MatchString(s),
-					)
-				}
 			}
 		}
 		simpleUtil.CheckErr(file.Close())
@@ -492,10 +466,6 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 	}
 	simpleUtil.CheckErr(histogramFile.Close())
 
-	if verbose > 0 {
-		simpleUtil.CheckErr(outputShort.Close())
-		simpleUtil.CheckErr(outputUnmatched.Close())
-	}
 }
 
 func (seqInfo *SeqInfo) GetHitSeq() {
