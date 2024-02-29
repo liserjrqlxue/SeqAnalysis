@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -405,4 +406,19 @@ func LogMemStats() {
 		)
 		time.Sleep(1 * time.Second)
 	}
+}
+
+// WriteHistogram write hist to path with title [length weight]
+func WriteHistogram(path string, hist map[int]int) {
+	out := osUtil.Create(path)
+	fmtUtil.Fprintln(out, "length\tweight")
+	var seqLengths []int
+	for k := range hist {
+		seqLengths = append(seqLengths, k)
+	}
+	sort.Ints(seqLengths)
+	for _, k := range seqLengths {
+		fmtUtil.Fprintf(out, "%d\t%d\n", k, hist[k])
+	}
+	simpleUtil.CheckErr(out.Close())
 }

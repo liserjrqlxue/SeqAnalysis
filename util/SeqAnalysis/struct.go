@@ -261,7 +261,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 
 		output = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path))
 
-		// value weight
+		// value:weight -> length:count
 		histogram = make(map[int]int)
 	)
 	if indexSeq == "" {
@@ -424,20 +424,12 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 		}
 		simpleUtil.CheckErr(file.Close())
 	}
+
+	// update Stats
 	seqInfo.Stats["AnalyzedReadsNum"] = seqInfo.Stats["RightReadsNum"] + seqInfo.Stats["IndexPolyAReadsNum"]
 
 	// output histgram.txt
-	histogramFile := osUtil.Create(filepath.Join(outputDir, seqInfo.Name+".histogram.txt"))
-	fmtUtil.Fprintln(histogramFile, "length\tweight")
-	var seqLengths []int
-	for k := range histogram {
-		seqLengths = append(seqLengths, k)
-	}
-	sort.Ints(seqLengths)
-	for _, k := range seqLengths {
-		fmtUtil.Fprintf(histogramFile, "%d\t%d\n", k, histogram[k])
-	}
-	simpleUtil.CheckErr(histogramFile.Close())
+	WriteHistogram(filepath.Join(outputDir, seqInfo.Name+".histogram.txt"), histogram)
 
 }
 
