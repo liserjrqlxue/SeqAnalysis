@@ -307,10 +307,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 			// 	continue
 			// }
 			var (
-				tSeq string
-				rcS  = s
-				// regexp match
-				m []string
+				rcS = s
 			)
 			if indexSeq != "" && seqInfo.UseReverseComplement {
 				rcS = ReverseComplement(s)
@@ -319,29 +316,46 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 			var (
 				byteS []byte
 
-				polyAResult         = polyA.MatchString(s)
-				polyARcResult       = false
-				regIndexSeqResult   = false
-				regIndexSeqRcResult = false
+				submatch           = polyA.FindStringSubmatch(s)
+				regIndexSeqMatch   = false
+				regIndexSeqRcMatch = false
 			)
-			if polyAResult {
-				regIndexSeqResult = true
-			} else {
-				regIndexSeqResult = regIndexSeq.MatchString(s)
-
-				if seqInfo.UseReverseComplement {
-					polyARcResult = polyA.MatchString(rcS)
-					if polyARcResult {
-						regIndexSeqRcResult = true
-					} else {
-						regIndexSeqRcResult = regIndexSeq.MatchString(rcS)
+			if submatch != nil { // SubMatch -> regIndexSeqMatch
+				regIndexSeqMatch = true
+			} else { // A尾不匹配
+				if seqInfo.UseReverseComplement { // RC时考虑RC的A尾SubMatch
+					submatch = polyA.FindStringSubmatch(rcS)
+					if submatch != nil { // SubMatch -> regIndexSeqRcMatch
+						regIndexSeqRcMatch = true
 					}
 				}
+
+				if submatch == nil { // A尾不匹配
+					if seqInfo.AssemblerMode { // AseemblerMode 时 考虑靶标SubMatch
+						submatch = regIndexSeq.FindStringSubmatch(s)
+						if submatch != nil { // SubMatch -> regIndexSeqMatch
+							regIndexSeqMatch = true
+						} else if seqInfo.UseReverseComplement { // RC时考虑RC的靶标SubMatch
+							submatch = regIndexSeq.FindStringSubmatch(rcS)
+							if submatch != nil { // SubMatch -> regIndexSeqRcMatch
+								regIndexSeqRcMatch = true
+							}
+						}
+					} else { // 非AseemblerMode 时 考虑靶标Match
+						regIndexSeqMatch = regIndexSeq.MatchString(s)
+						if !regIndexSeqMatch && seqInfo.UseReverseComplement {
+							regIndexSeqRcMatch = regIndexSeq.MatchString(rcS)
+						}
+					}
+				} else { // RC的A尾SubMatch, 考察靶标Match
+					regIndexSeqMatch = regIndexSeq.MatchString(s)
+				}
 			}
-			if regIndexSeqResult {
+
+			if regIndexSeqMatch {
 				byteS = []byte(s)
 				seqInfo.Stats["IndexReadsNum"]++
-			} else if regIndexSeqRcResult {
+			} else if regIndexSeqRcMatch {
 				byteS = []byte(rcS)
 				seqInfo.Stats["IndexReadsNum"]++
 			}
@@ -384,43 +398,8 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				}
 			}
 
-			if polyAResult || polyARcResult {
-				if polyAResult {
-					m = polyA.FindStringSubmatch(s)
-				} else if polyARcResult {
-					m = polyA.FindStringSubmatch(rcS)
-				}
-				//m = polyA.FindStringSubmatch(s)
-
-				tSeq = m[1] //[seqInfo.Offset:]
-				fmtUtil.Fprintln(output, tSeq)
-				histogram[len(tSeq)]++
-				if seqInfo.Reverse {
-					tSeq = string(Reverse([]byte(tSeq)))
-				}
-
-				if len(tSeq) == 0 {
-					tSeq += "X"
-					seqInfo.HitSeqCount[tSeq]++
-					seqInfo.Stats["IndexPolyAReadsNum"]++
-				} else if tSeq == tarSeq {
-					seqInfo.Stats["RightReadsNum"]++
-					seqInfo.HitSeqCount[tSeq]++
-				} else if !regN.MatchString(tSeq) {
-					seqInfo.HitSeqCount[tSeq]++
-					seqInfo.Stats["IndexPolyAReadsNum"]++
-				} else {
-					//fmt.Printf("[%s]:[%s]:[%+v]\n", s, tSeq, m)
-					seqInfo.Stats["ExcludeReadsNum"]++
-				}
-			} else if seqInfo.AssemblerMode && (regIndexSeqResult || regIndexSeqRcResult) {
-				//m = regIndexSeq.FindStringSubmatch(s)
-				if regIndexSeqResult {
-					m = regIndexSeq.FindStringSubmatch(s)
-				} else if regIndexSeqRcResult {
-					m = regIndexSeq.FindStringSubmatch(rcS)
-				}
-				tSeq = m[1]
+			if submatch != nil {
+				tSeq := submatch[1] //[seqInfo.Offset:]
 				fmtUtil.Fprintln(output, tSeq)
 				histogram[len(tSeq)]++
 				if seqInfo.Reverse {
