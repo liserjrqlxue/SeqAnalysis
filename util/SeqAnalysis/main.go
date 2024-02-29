@@ -90,6 +90,10 @@ func init() {
 func main() {
 	flag.Parse()
 
+	go func() {
+		LogMemStats()
+	}()
+
 	// parse input
 	var inputInfo = ParseInput(*input, *fqDir)
 

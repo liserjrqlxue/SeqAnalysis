@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -365,5 +366,43 @@ func WriteUpperDownNIL(out *os.File, indexSeq, refSeq string, offset int) {
 	var n = len(refSeq) - offset*2
 	for end := 0; end <= n; end++ {
 		fmtUtil.Fprintf(out, "%d\t%d\t%s\t%s\n", end, 0, refSeq[end:end+offset], refSeq[end+offset:end+offset*2])
+	}
+}
+
+func LogMemStats() {
+	var m runtime.MemStats
+	var logFile = osUtil.Create("log.MemStats.txt")
+	defer simpleUtil.DeferClose(logFile)
+	logger := slog.New(slog.NewTextHandler(logFile, nil))
+	for {
+		runtime.ReadMemStats(&m)
+		logger.Info(
+			"memStats2",
+			"Alloc", m.Alloc,
+			"TotalAlloc", m.TotalAlloc,
+			"Sys", m.Sys,
+			"HeapAlloc", m.HeapAlloc,
+			"HeapSys", m.HeapSys,
+			"HeapIdle", m.HeapIdle,
+			"HeapInuse", m.HeapInuse,
+			"HeapReleased", m.HeapReleased,
+			"HeapObjects", m.HeapObjects,
+			"StackInuse", m.StackInuse,
+			"StackSys", m.StackSys,
+			"MSpanInuse", m.MSpanInuse,
+			"MSpanSys", m.MSpanSys,
+			"MCacheInuse", m.MCacheInuse,
+			"MCacheSys", m.MCacheSys,
+			"BuckHashSys", m.BuckHashSys,
+			"GCSys", m.GCSys,
+			"OtherSys", m.OtherSys,
+			"NextGC", m.NextGC,
+			"LastGC", m.LastGC,
+			"PauseTotalNs", m.PauseTotalNs,
+			"NumGC", m.NumGC,
+			"NumForcedGC", m.NumForcedGC,
+			"GCCPUFraction", m.GCCPUFraction,
+		)
+		time.Sleep(1 * time.Second)
 	}
 }
