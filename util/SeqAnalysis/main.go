@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime/pprof"
 	"sync"
 
 	"github.com/liserjrqlxue/goUtil/fmtUtil"
@@ -67,6 +68,21 @@ var (
 		false,
 		"reverse synthesis",
 	)
+	debug = flag.Bool(
+		"debug",
+		false,
+		"debug",
+	)
+	cpuProfile = flag.String(
+		"cpu",
+		"log.cpuProfile",
+		"cpu profile",
+	)
+	memProfile = flag.String(
+		"mem",
+		"log.memProfile",
+		"mem profile",
+	)
 )
 
 // embed etc
@@ -90,9 +106,19 @@ func init() {
 func main() {
 	flag.Parse()
 
-	go func() {
-		LogMemStats()
-	}()
+	if !*debug {
+		*cpuProfile = ""
+		*memProfile = ""
+	} else {
+		go LogMemStats()
+	}
+
+	if *cpuProfile != "" {
+		var LogCPUProfile = osUtil.Create(*cpuProfile)
+		defer simpleUtil.DeferClose(LogCPUProfile)
+		pprof.StartCPUProfile(LogCPUProfile)
+		defer pprof.StopCPUProfile()
+	}
 
 	// parse input
 	var inputInfo = ParseInput(*input, *fqDir)
@@ -135,6 +161,7 @@ func main() {
 	var wg sync.WaitGroup
 	for id := range SeqInfoMap {
 		chanList <- true
+		wg.Add(1)
 		go func(id string) {
 			defer func() {
 				wg.Done()
@@ -179,4 +206,10 @@ func main() {
 
 	// Compress-Archive to zip file on windows only when *zip is true
 	Zip(*outputDir)
+
+	if *memProfile != "" {
+		var LogMemProfile = osUtil.Create(*memProfile)
+		defer simpleUtil.DeferClose(LogMemProfile)
+		pprof.WriteHeapProfile(LogMemProfile)
+	}
 }
