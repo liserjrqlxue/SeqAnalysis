@@ -255,10 +255,9 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 	var (
 		tarSeq   = string(seqInfo.Seq)
 		indexSeq = seqInfo.IndexSeq
-		//seqHit      = regexp.MustCompile(indexSeq + tarSeq)
+
 		polyA       = regexp.MustCompile(`^` + indexSeq + `(.*?)AAAAAAAA`)
 		regIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
-		regTarSeq   = regexp.MustCompile(tarSeq)
 		regA8       = regexp.MustCompile(`AAAAAAAA`)
 
 		output = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path))
@@ -276,10 +275,6 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 		regIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
 	}
 	defer simpleUtil.DeferClose(output)
-
-	if seqInfo.Reverse {
-		regTarSeq = regexp.MustCompile(string(Reverse(append([]byte{}, seqInfo.Seq...))))
-	}
 
 	for _, fastq := range seqInfo.Fastqs {
 		if fastq == "" {
