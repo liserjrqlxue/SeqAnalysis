@@ -61,6 +61,7 @@ type SeqInfo struct {
 	AssemblerMode        bool
 	Reverse              bool
 
+	lineLimit int
 	xlsx      *excelize.File
 	Sheets    map[string]string
 	SheetList []string
@@ -96,6 +97,7 @@ type SeqInfo struct {
 	RegPolyA     *regexp.Regexp
 	RegIndexSeq  *regexp.Regexp
 
+	LessMem            bool
 	HitSeq             []string
 	HitSeqCount        map[string]int
 	Stats              map[string]int
@@ -131,7 +133,7 @@ type SeqInfo struct {
 	OSAR float64
 }
 
-func NewSeqInfo(data map[string]string, long, rev, useRC, useKmer bool) *SeqInfo {
+func NewSeqInfo(data map[string]string, lineLimit int, long, rev, useRC, useKmer, lessMem bool) *SeqInfo {
 	var seqInfo = new(SeqInfo)
 	seqInfo = &SeqInfo{
 		Name:           data["id"],
@@ -144,6 +146,7 @@ func NewSeqInfo(data map[string]string, long, rev, useRC, useKmer bool) *SeqInfo
 		Excel:     filepath.Join(*outputDir, data["id"]+".xlsx"),
 		Sheets:    Sheets,
 		SheetList: sheetList,
+		lineLimit: lineLimit,
 
 		Stats:       make(map[string]int),
 		HitSeqCount: make(map[string]int),
@@ -153,6 +156,7 @@ func NewSeqInfo(data map[string]string, long, rev, useRC, useKmer bool) *SeqInfo
 		Reverse:              rev,
 		UseReverseComplement: useRC,
 		UseKmer:              useKmer,
+		LessMem:              lessMem,
 	}
 
 	seqInfo.SeqChanWG.Add(len(seqInfo.Fastqs))
@@ -268,7 +272,11 @@ func (seqInfo *SeqInfo) CountError4(outputDir string, verbose int) {
 	// 2. 与正确合成序列进行比对,统计不同合成结果出现的频数
 	seqInfo.del3 = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+".del3.txt"))
 	seqInfo.del1 = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+".del1.txt"))
-	seqInfo.WriteHitSeq()
+	if seqInfo.LessMem {
+		seqInfo.WriteHitSeqLessMem()
+	} else {
+		seqInfo.WriteHitSeq()
+	}
 	seqInfo.WriteSeqResultNum()
 
 	seqInfo.UpdateDistributionStats()
@@ -404,6 +412,50 @@ func (seqInfo *SeqInfo) GetHitSeq() {
 	sort.Slice(seqInfo.HitSeq, func(i, j int) bool {
 		return seqInfo.HitSeqCount[seqInfo.HitSeq[i]] > seqInfo.HitSeqCount[seqInfo.HitSeq[j]]
 	})
+}
+
+func (seqInfo *SeqInfo) WriteHitSeqLessMem() {
+	for i, key := range seqInfo.HitSeq {
+		if key == string(seqInfo.Seq) {
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
+			seqInfo.rowDeletion++
+			if i < seqInfo.lineLimit {
+				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key]})
+			}
+			continue
+		}
+		if seqInfo.Align1(key) {
+			if i < seqInfo.lineLimit {
+				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align})
+			}
+			continue
+		}
+
+		if seqInfo.Align2(key) {
+			if i < seqInfo.lineLimit {
+				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert})
+			}
+			continue
+		}
+
+		if seqInfo.Align3(key) {
+			if i < seqInfo.lineLimit {
+				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
+			}
+			continue
+		}
+		if i < seqInfo.lineLimit {
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
+		}
+
+		if seqInfo.rowOther < seqInfo.lineLimit+2 {
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["Other"], 1, seqInfo.rowOther, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
+			seqInfo.rowOther++
+		}
+		seqInfo.Stats["ErrorOtherReadsNum"] += seqInfo.HitSeqCount[key]
+	}
+	// free HitSeq
+	seqInfo.HitSeq = nil
 }
 
 func (seqInfo *SeqInfo) WriteHitSeq() {

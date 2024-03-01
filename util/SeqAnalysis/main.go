@@ -85,6 +85,16 @@ var (
 		false,
 		"plot",
 	)
+	lessMem = flag.Bool(
+		"lessMem",
+		false,
+		"less memory: no BarCode Sheet",
+	)
+	lineLimit = flag.Int(
+		"lineLimit",
+		100000,
+		"line limit",
+	)
 	debug = flag.Bool(
 		"debug",
 		false,
@@ -171,7 +181,7 @@ func main() {
 			data["seq"],
 			data["fq"],
 		)
-		var seqInfo = NewSeqInfo(data, *long, *rev, *useRC, *useKmer)
+		var seqInfo = NewSeqInfo(data, *lineLimit, *long, *rev, *useRC, *useKmer, *lessMem)
 		SeqInfoMap[seqInfo.Name] = seqInfo
 
 		for _, fq := range seqInfo.Fastqs {
