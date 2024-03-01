@@ -94,6 +94,8 @@ type SeqInfo struct {
 	HitSeq             []string
 	HitSeqCount        map[string]int
 	Stats              map[string]int
+	AllReadsNum        int
+	IndexReadsNum      int
 	IndexPolyAReadsNum int
 	RightReadsNum      int
 	ExcludeReadsNum    int
@@ -279,12 +281,6 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 	}
 	defer simpleUtil.DeferClose(output)
 
-	// seqInfo stats
-	var (
-		IndexReadsNum int
-		AllReadsNum   int
-	)
-
 	for _, fastq := range seqInfo.Fastqs {
 		if fastq == "" {
 			continue
@@ -308,12 +304,12 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 			}
 			// seqInfo.ReadsLength[len(s)]++
 
-			AllReadsNum++
+			seqInfo.AllReadsNum++
 
 			submatch, byteS, indexSeqMatch := MatchSeq(s, polyA, regIndexSeq, seqInfo.UseReverseComplement, seqInfo.AssemblerMode)
 
 			if indexSeqMatch {
-				IndexReadsNum++
+				seqInfo.IndexReadsNum++
 			}
 
 			seqInfo.UpdateACGT(byteS)
@@ -339,8 +335,8 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 	}
 
 	// update Stats
-	seqInfo.Stats["IndexReadsNum"] = IndexReadsNum
-	seqInfo.Stats["AllReadsNum"] = AllReadsNum
+	seqInfo.Stats["IndexReadsNum"] = seqInfo.IndexReadsNum
+	seqInfo.Stats["AllReadsNum"] = seqInfo.AllReadsNum
 	seqInfo.Stats["RightReadsNum"] = seqInfo.RightReadsNum
 	seqInfo.Stats["AnalyzedReadsNum"] = seqInfo.RightReadsNum + seqInfo.IndexPolyAReadsNum
 
@@ -755,32 +751,32 @@ func (seqInfo *SeqInfo) PrintStats(resultDir string) {
 
 	fmtUtil.Fprintf(out,
 		"AllReadsNum\t\t= %d\n",
-		stats["AllReadsNum"],
+		seqInfo.AllReadsNum,
 	)
 	fmtUtil.Fprintf(out,
 		"+ShortReadsNum\t\t= %d\t%7.4f%%\n",
 		stats["ShortReadsNum"],
-		math2.DivisionInt(stats["ShortReadsNum"], stats["AllReadsNum"])*100,
+		math2.DivisionInt(stats["ShortReadsNum"], seqInfo.AllReadsNum)*100,
 	)
 	// fmtUtil.Fprintf(out,
 	// 	"+UnmatchedReadsNum\t= %d\t%7.4f%%\n",
 	// 	stats["UnmatchedReadsNum"],
-	// 	math2.DivisionInt(stats["UnmatchedReadsNum"], stats["AllReadsNum"])*100,
+	// 	math2.DivisionInt(stats["UnmatchedReadsNum"], seqInfo.AllReadsNum)*100,
 	// )
 	fmtUtil.Fprintf(out,
 		"+ExcludeReadsNum\t= %d\t%7.4f%%\n",
 		seqInfo.ExcludeReadsNum,
-		math2.DivisionInt(seqInfo.ExcludeReadsNum, stats["AllReadsNum"])*100,
+		math2.DivisionInt(seqInfo.ExcludeReadsNum, seqInfo.AllReadsNum)*100,
 	)
 	fmtUtil.Fprintf(out,
 		"+IndexReadsNum\t\t= %d\t%.4f%%\n",
-		stats["IndexReadsNum"],
-		math2.DivisionInt(stats["IndexReadsNum"], stats["AllReadsNum"])*100,
+		seqInfo.IndexReadsNum,
+		math2.DivisionInt(seqInfo.IndexReadsNum, seqInfo.AllReadsNum)*100,
 	)
 	fmtUtil.Fprintf(out,
 		"+AnalyzedReadsNum\t= %d\t%.4f%%\n",
 		stats["AnalyzedReadsNum"],
-		math2.DivisionInt(stats["AnalyzedReadsNum"], stats["IndexReadsNum"])*100,
+		math2.DivisionInt(stats["AnalyzedReadsNum"], seqInfo.IndexReadsNum)*100,
 	)
 	fmtUtil.Fprintf(out,
 		"++RightReadsNum\t\t= %d\t%.4f%%\n",
@@ -1153,7 +1149,7 @@ func (info *SeqInfo) WriteStatsTxt(file *os.File) {
 	statsString := fmt.Sprintf(
 		"%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
 		info.Name, info.IndexSeq, info.Seq, len(info.Seq),
-		stats["AllReadsNum"], stats["IndexReadsNum"], stats["AnalyzedReadsNum"], info.RightReadsNum,
+		info.AllReadsNum, info.IndexReadsNum, stats["AnalyzedReadsNum"], info.RightReadsNum,
 		info.YieldCoefficient, info.AverageYieldAccuracy,
 		math2.DivisionInt(stats["ErrorReadsNum"], stats["AnalyzedReadsNum"]),
 		math2.DivisionInt(stats["Deletion"], stats["AnalyzedReadsNum"]),
@@ -1176,7 +1172,7 @@ func (info *SeqInfo) SummaryRow() []interface{} {
 	var stats = info.Stats
 	return []interface{}{
 		info.Name, info.IndexSeq, info.Seq, len(info.Seq),
-		stats["AllReadsNum"], stats["IndexReadsNum"], stats["AnalyzedReadsNum"], info.RightReadsNum,
+		info.AllReadsNum, info.IndexReadsNum, stats["AnalyzedReadsNum"], info.RightReadsNum,
 		info.YieldCoefficient, info.AverageYieldAccuracy,
 		math2.DivisionInt(stats["ErrorReadsNum"], stats["AnalyzedReadsNum"]),
 		math2.DivisionInt(stats["Deletion"], stats["AnalyzedReadsNum"]),
