@@ -42,6 +42,28 @@ CPU 1 核，内存受输入数据量影响。
 2. 进入解压文件夹，使用 `go build` 重新编译编（可选）
 3. 使用 `SeqAnalysis/SeqAnalysis` （`linux`下）或 `SeqAnalysis\SeqAnalysis.exe` （`windows`下） # 代码逻辑分析
 
+## 并行优化说明
+
+1. `fastq` 与 `seqInfo` 是 `M:N` 关系，原方案对 `fastq` 进行冗余重复读取
+2. 现使用 `seqInfo.SeqChan` 读取 序列 信息进行后续分析
+3. 使用 `fqSet` 对每个 `fastq` 维护一个 `1:N` 的 `SeqChan` 对应关系
+4. 遍历 读取 `fastq` 时，同时写入 对应的 `N` 个 `SeqChan`
+5. 所有读取完成后，关闭所有的 `SeqChan`
+
+### 劣势点
+
+1. fastq 读取 `1:N`, 需要等待 最慢的 接收channel，否则堵塞
+   1. 更大 channel buffer size 可减少堵塞，但是增加内存
+   2. 增加一层融合channel，fastq -> fastqChan -> SeqChan,SeqChan堵塞时fastqChan加倍buffer，内存增加更快，其它消耗
+2. 每个 `seqInfo.SeqChan` 的关闭不用等待所有的 `fastq` 读取完成
+   1. `seqInfo` 端触发 关闭 `SeqChan`
+
+### TO-DO
+
+1. `seqInfo.SeqChanWG.Add(len(seqInfo.Fastqs))`
+2. `ReadFastq -> chanList -> SeqChanWG.Done`
+3. `go func(){seqChanWG.Wait();close(SeqChan)}()`
+
 ## `main`
 
 1. 遍历输入 `input.txt` --> `s` = `fastq` + `target sequence` + `index sequence`
