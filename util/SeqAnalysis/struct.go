@@ -91,6 +91,8 @@ type SeqInfo struct {
 	IndexSeq string
 	Fastqs   []string
 
+	SeqResultTxt *os.File
+
 	HitSeq             []string
 	HitSeqCount        map[string]int
 	Stats              map[string]int
@@ -110,6 +112,8 @@ type SeqInfo struct {
 	G   [300]int
 	T   [300]int
 	DNA [300]byte
+	// value:weight -> length:count
+	Histogram map[int]int
 
 	UseKmer bool
 	DNAKmer [kmerLength][300]map[string]int
@@ -137,6 +141,7 @@ func NewSeqInfo(data map[string]string, long, rev, useRC, useKmer bool) *SeqInfo
 		SheetList:      sheetList,
 		Stats:          make(map[string]int),
 		HitSeqCount:    make(map[string]int),
+		Histogram:      make(map[int]int),
 		// ReadsLength:          make(map[int]int),
 		AssemblerMode:        long,
 		Reverse:              rev,
@@ -264,12 +269,11 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 
 		polyA       = regexp.MustCompile(`^` + indexSeq + `(.*?)AAAAAAAA`)
 		regIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
-
-		output = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path))
-
-		// value:weight -> length:count
-		histogram = make(map[int]int)
 	)
+
+	seqInfo.SeqResultTxt = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path))
+	defer simpleUtil.DeferClose(seqInfo.SeqResultTxt)
+
 	if indexSeq == "" {
 		polyA = regexp.MustCompile(`^(.*?)AAAAAAAA`)
 		regIndexSeq = regexp.MustCompile(`^(.*?)AAAAAAAA`)
@@ -279,7 +283,6 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 		polyA = regexp.MustCompile(`^` + indexSeq + `(.*?)TTTTTTTT`)
 		regIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
 	}
-	defer simpleUtil.DeferClose(output)
 
 	for _, fastq := range seqInfo.Fastqs {
 		if fastq == "" {
@@ -304,32 +307,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 			}
 			// seqInfo.ReadsLength[len(s)]++
 
-			seqInfo.AllReadsNum++
-
-			submatch, byteS, indexSeqMatch := MatchSeq(s, polyA, regIndexSeq, seqInfo.UseReverseComplement, seqInfo.AssemblerMode)
-
-			if indexSeqMatch {
-				seqInfo.IndexReadsNum++
-			}
-
-			seqInfo.UpdateACGT(byteS)
-			// trim byteS from polyA
-			var byteSloc = regA8.FindIndex(byteS)
-			if byteSloc != nil {
-				byteS = byteS[:byteSloc[0]]
-			}
-
-			if seqInfo.UseKmer {
-				seqInfo.UpdateKmer(byteS)
-			}
-
-			if submatch != nil {
-				tSeq := submatch[1] //[seqInfo.Offset:]
-				fmtUtil.Fprintln(output, tSeq)
-				histogram[len(tSeq)]++
-
-				seqInfo.UpdateHitSeqCount(tarSeq, tSeq)
-			}
+			seqInfo.Write1SeqResult(polyA, regIndexSeq, s)
 		}
 		simpleUtil.CheckErr(file.Close())
 	}
@@ -341,8 +319,36 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 	seqInfo.Stats["AnalyzedReadsNum"] = seqInfo.RightReadsNum + seqInfo.IndexPolyAReadsNum
 
 	// output histgram.txt
-	WriteHistogram(filepath.Join(outputDir, seqInfo.Name+".histogram.txt"), histogram)
+	WriteHistogram(filepath.Join(outputDir, seqInfo.Name+".histogram.txt"), seqInfo.Histogram)
 
+}
+
+func (seqInfo *SeqInfo) Write1SeqResult(polyA, regIndexSeq *regexp.Regexp, s string) {
+	seqInfo.AllReadsNum++
+	submatch, byteS, indexSeqMatch := MatchSeq(s, polyA, regIndexSeq, seqInfo.UseReverseComplement, seqInfo.AssemblerMode)
+
+	if indexSeqMatch {
+		seqInfo.IndexReadsNum++
+	}
+
+	seqInfo.UpdateACGT(byteS)
+	// trim byteS from polyA
+	var byteSloc = regA8.FindIndex(byteS)
+	if byteSloc != nil {
+		byteS = byteS[:byteSloc[0]]
+	}
+
+	if seqInfo.UseKmer {
+		seqInfo.UpdateKmer(byteS)
+	}
+
+	if submatch != nil {
+		tSeq := submatch[1] //[seqInfo.Offset:]
+		fmtUtil.Fprintln(seqInfo.SeqResultTxt, tSeq)
+		seqInfo.Histogram[len(tSeq)]++
+
+		seqInfo.UpdateHitSeqCount(string(seqInfo.Seq), tSeq)
+	}
 }
 
 func (seqInfo *SeqInfo) UpdateKmer(byteS []byte) {
