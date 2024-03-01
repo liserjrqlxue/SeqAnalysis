@@ -306,7 +306,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 
 			seqInfo.Stats["AllReadsNum"]++
 
-			submatch, byteS, indexSeqMatch := seqInfo.MatchSeq(polyA, regIndexSeq, s)
+			submatch, byteS, indexSeqMatch := MatchSeq(s, polyA, regIndexSeq, seqInfo.UseReverseComplement, seqInfo.AssemblerMode)
 
 			if indexSeqMatch {
 				IndexReadsNum++
@@ -341,60 +341,6 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 	// output histgram.txt
 	WriteHistogram(filepath.Join(outputDir, seqInfo.Name+".histogram.txt"), histogram)
 
-}
-
-func (seqInfo *SeqInfo) MatchSeq(polyA, regIndexSeq *regexp.Regexp, seq string) (submatch []string, byteS []byte, indexSeqMatch bool) {
-	var (
-		seqRC string
-
-		regIndexSeqMatch   bool
-		regIndexSeqRcMatch bool
-	)
-	if seqInfo.UseReverseComplement {
-		seqRC = ReverseComplement(seq)
-	}
-
-	submatch = polyA.FindStringSubmatch(seq)
-	if submatch != nil { // SubMatch -> regIndexSeqMatch
-		regIndexSeqMatch = true
-	} else { // A尾不匹配
-		if seqInfo.UseReverseComplement { // RC时考虑RC的A尾SubMatch
-			submatch = polyA.FindStringSubmatch(seqRC)
-			if submatch != nil { // SubMatch -> regIndexSeqRcMatch
-				regIndexSeqRcMatch = true
-			}
-		}
-
-		if submatch == nil { // A尾不匹配
-			if seqInfo.AssemblerMode { // AseemblerMode 时 考虑靶标SubMatch
-				submatch = regIndexSeq.FindStringSubmatch(seq)
-				if submatch != nil { // SubMatch -> regIndexSeqMatch
-					regIndexSeqMatch = true
-				} else if seqInfo.UseReverseComplement { // RC时考虑RC的靶标SubMatch
-					submatch = regIndexSeq.FindStringSubmatch(seqRC)
-					if submatch != nil { // SubMatch -> regIndexSeqRcMatch
-						regIndexSeqRcMatch = true
-					}
-				}
-			} else { // 非AseemblerMode 时 考虑靶标Match
-				regIndexSeqMatch = regIndexSeq.MatchString(seq)
-				if !regIndexSeqMatch && seqInfo.UseReverseComplement {
-					regIndexSeqRcMatch = regIndexSeq.MatchString(seqRC)
-				}
-			}
-		} else { // RC的A尾SubMatch, 考察靶标Match
-			regIndexSeqMatch = regIndexSeq.MatchString(seq)
-		}
-	}
-
-	if regIndexSeqMatch {
-		byteS = []byte(seq)
-		indexSeqMatch = true
-	} else if regIndexSeqRcMatch {
-		byteS = []byte(seqRC)
-		indexSeqMatch = true
-	}
-	return
 }
 
 func (seqInfo *SeqInfo) UpdateKmer(byteS []byte) {

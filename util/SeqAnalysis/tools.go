@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -408,7 +409,7 @@ func LogMemStats() {
 	}
 }
 
-// WriteHistogram write hist to path with title [length weight]
+// WriteHistogram sort hist and write to path with title [length weight]
 func WriteHistogram(path string, hist map[int]int) {
 	out := osUtil.Create(path)
 	fmtUtil.Fprintln(out, "length\tweight")
@@ -421,4 +422,58 @@ func WriteHistogram(path string, hist map[int]int) {
 		fmtUtil.Fprintf(out, "%d\t%d\n", k, hist[k])
 	}
 	simpleUtil.CheckErr(out.Close())
+}
+
+func MatchSeq(seq string, polyA, regIndexSeq *regexp.Regexp, useRC, assemblerMode bool) (submatch []string, byteS []byte, indexSeqMatch bool) {
+	var (
+		seqRC string
+
+		regIndexSeqMatch   bool
+		regIndexSeqRcMatch bool
+	)
+	if useRC {
+		seqRC = ReverseComplement(seq)
+	}
+
+	submatch = polyA.FindStringSubmatch(seq)
+	if submatch != nil { // SubMatch -> regIndexSeqMatch
+		regIndexSeqMatch = true
+	} else { // A尾不匹配
+		if useRC { // RC时考虑RC的A尾SubMatch
+			submatch = polyA.FindStringSubmatch(seqRC)
+			if submatch != nil { // SubMatch -> regIndexSeqRcMatch
+				regIndexSeqRcMatch = true
+			}
+		}
+
+		if submatch == nil { // A尾不匹配
+			if assemblerMode { // AseemblerMode 时 考虑靶标SubMatch
+				submatch = regIndexSeq.FindStringSubmatch(seq)
+				if submatch != nil { // SubMatch -> regIndexSeqMatch
+					regIndexSeqMatch = true
+				} else if useRC { // RC时考虑RC的靶标SubMatch
+					submatch = regIndexSeq.FindStringSubmatch(seqRC)
+					if submatch != nil { // SubMatch -> regIndexSeqRcMatch
+						regIndexSeqRcMatch = true
+					}
+				}
+			} else { // 非AseemblerMode 时 考虑靶标Match
+				regIndexSeqMatch = regIndexSeq.MatchString(seq)
+				if !regIndexSeqMatch && useRC {
+					regIndexSeqRcMatch = regIndexSeq.MatchString(seqRC)
+				}
+			}
+		} else { // RC的A尾SubMatch, 考察靶标Match
+			regIndexSeqMatch = regIndexSeq.MatchString(seq)
+		}
+	}
+
+	if regIndexSeqMatch {
+		byteS = []byte(seq)
+		indexSeqMatch = true
+	} else if regIndexSeqRcMatch {
+		byteS = []byte(seqRC)
+		indexSeqMatch = true
+	}
+	return
 }
