@@ -272,7 +272,7 @@ func input2summaryXlsx(input, resultDir string) {
 		excel.SetCellInt("Summary", cellName, stats["AnalyzedReadsNum"])
 
 		cellName = GetCellName(nrow, "正确reads", titleIndex)
-		excel.SetCellInt("Summary", cellName, stats["RightReadsNum"])
+		excel.SetCellInt("Summary", cellName, info.RightReadsNum)
 
 		cellName = GetCellName(nrow, "收率", titleIndex)
 		excel.SetCellFloat("Summary", cellName, info.YieldCoefficient, 4, 64)

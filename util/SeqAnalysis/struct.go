@@ -91,20 +91,23 @@ type SeqInfo struct {
 	IndexSeq string
 	Fastqs   []string
 
-	HitSeq      []string
-	HitSeqCount map[string]int
-	Stats       map[string]int
+	HitSeq             []string
+	HitSeqCount        map[string]int
+	Stats              map[string]int
+	IndexPolyAReadsNum int
+	RightReadsNum      int
+	ExcludeReadsNum    int
 
 	DistributionNum  [4][]int
 	DistributionFreq [4][]float64
 
 	// fastq
-	ReadsLength map[int]int
-	A           [300]int
-	C           [300]int
-	G           [300]int
-	T           [300]int
-	DNA         [300]byte
+	// ReadsLength map[int]int
+	A   [300]int
+	C   [300]int
+	G   [300]int
+	T   [300]int
+	DNA [300]byte
 
 	UseKmer bool
 	DNAKmer [kmerLength][300]map[string]int
@@ -122,17 +125,17 @@ type SeqInfo struct {
 func NewSeqInfo(data map[string]string, long, rev, useRC, useKmer bool) *SeqInfo {
 	var seqInfo = new(SeqInfo)
 	seqInfo = &SeqInfo{
-		Name:                 data["id"],
-		ParallelTestID:       data["平行"],
-		IndexSeq:             strings.ToUpper(data["index"]),
-		Seq:                  []byte(strings.ToUpper(data["seq"])),
-		Fastqs:               strings.Split(data["fq"], ","),
-		Excel:                filepath.Join(*outputDir, data["id"]+".xlsx"),
-		Sheets:               Sheets,
-		SheetList:            sheetList,
-		Stats:                make(map[string]int),
-		HitSeqCount:          make(map[string]int),
-		ReadsLength:          make(map[int]int),
+		Name:           data["id"],
+		ParallelTestID: data["平行"],
+		IndexSeq:       strings.ToUpper(data["index"]),
+		Seq:            []byte(strings.ToUpper(data["seq"])),
+		Fastqs:         strings.Split(data["fq"], ","),
+		Excel:          filepath.Join(*outputDir, data["id"]+".xlsx"),
+		Sheets:         Sheets,
+		SheetList:      sheetList,
+		Stats:          make(map[string]int),
+		HitSeqCount:    make(map[string]int),
+		// ReadsLength:          make(map[int]int),
 		AssemblerMode:        long,
 		Reverse:              rev,
 		UseReverseComplement: useRC,
@@ -279,6 +282,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 	// seqInfo stats
 	var (
 		IndexReadsNum int
+		AllReadsNum   int
 	)
 
 	for _, fastq := range seqInfo.Fastqs {
@@ -302,9 +306,9 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 			if i%4 != 1 {
 				continue
 			}
-			seqInfo.ReadsLength[len(s)]++
+			// seqInfo.ReadsLength[len(s)]++
 
-			seqInfo.Stats["AllReadsNum"]++
+			AllReadsNum++
 
 			submatch, byteS, indexSeqMatch := MatchSeq(s, polyA, regIndexSeq, seqInfo.UseReverseComplement, seqInfo.AssemblerMode)
 
@@ -336,7 +340,9 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 
 	// update Stats
 	seqInfo.Stats["IndexReadsNum"] = IndexReadsNum
-	seqInfo.Stats["AnalyzedReadsNum"] = seqInfo.Stats["RightReadsNum"] + seqInfo.Stats["IndexPolyAReadsNum"]
+	seqInfo.Stats["AllReadsNum"] = AllReadsNum
+	seqInfo.Stats["RightReadsNum"] = seqInfo.RightReadsNum
+	seqInfo.Stats["AnalyzedReadsNum"] = seqInfo.RightReadsNum + seqInfo.IndexPolyAReadsNum
 
 	// output histgram.txt
 	WriteHistogram(filepath.Join(outputDir, seqInfo.Name+".histogram.txt"), histogram)
@@ -368,16 +374,16 @@ func (seqInfo *SeqInfo) UpdateHitSeqCount(tarSeq, seq string) {
 	if len(seq) == 0 {
 		seq += "X"
 		seqInfo.HitSeqCount[seq]++
-		seqInfo.Stats["IndexPolyAReadsNum"]++
+		seqInfo.IndexPolyAReadsNum++
 	} else if seq == tarSeq {
-		seqInfo.Stats["RightReadsNum"]++
+		seqInfo.RightReadsNum++
 		seqInfo.HitSeqCount[seq]++
 	} else if !regN.MatchString(seq) {
 		seqInfo.HitSeqCount[seq]++
-		seqInfo.Stats["IndexPolyAReadsNum"]++
+		seqInfo.IndexPolyAReadsNum++
 	} else {
 		//fmt.Printf("[%s]:[%s]:[%+v]\n", s, tSeq, m)
-		seqInfo.Stats["ExcludeReadsNum"]++
+		seqInfo.ExcludeReadsNum++
 	}
 }
 
@@ -443,7 +449,7 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	simpleUtil.CheckErr(seqInfo.del1.Close())
 
 	SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 5, 1,
-		[]interface{}{"总数", seqInfo.Stats["Deletion"] + seqInfo.Stats["RightReadsNum"]},
+		[]interface{}{"总数", seqInfo.Stats["Deletion"] + seqInfo.RightReadsNum},
 	)
 	SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionSingle"], 5, 1,
 		[]interface{}{"总数", seqInfo.Stats["DeletionSingle"]},
@@ -726,7 +732,7 @@ func (seqInfo *SeqInfo) Align3(key string) bool {
 
 func (seqInfo *SeqInfo) UpdateDistributionStats() {
 	seqInfo.Stats["ErrorReadsNum"] = seqInfo.Stats["Deletion"] + seqInfo.Stats["ErrorInsReadsNum"] + seqInfo.Stats["ErrorInsDelReadsNum"] + seqInfo.Stats["ErrorMutReadsNum"] + seqInfo.Stats["ErrorOtherReadsNum"]
-	seqInfo.Stats["ExcludeOtherReadsNum"] = seqInfo.Stats["RightReadsNum"] + seqInfo.Stats["ErrorReadsNum"] - seqInfo.Stats["ErrorOtherReadsNum"]
+	seqInfo.Stats["ExcludeOtherReadsNum"] = seqInfo.RightReadsNum + seqInfo.Stats["ErrorReadsNum"] - seqInfo.Stats["ErrorOtherReadsNum"]
 	seqInfo.Stats["AccuReadsNum"] = seqInfo.Stats["ExcludeOtherReadsNum"] * len(seqInfo.Seq)
 
 	for i := range seqInfo.Seq {
@@ -763,8 +769,8 @@ func (seqInfo *SeqInfo) PrintStats(resultDir string) {
 	// )
 	fmtUtil.Fprintf(out,
 		"+ExcludeReadsNum\t= %d\t%7.4f%%\n",
-		stats["ExcludeReadsNum"],
-		math2.DivisionInt(stats["ExcludeReadsNum"], stats["AllReadsNum"])*100,
+		seqInfo.ExcludeReadsNum,
+		math2.DivisionInt(seqInfo.ExcludeReadsNum, stats["AllReadsNum"])*100,
 	)
 	fmtUtil.Fprintf(out,
 		"+IndexReadsNum\t\t= %d\t%.4f%%\n",
@@ -778,13 +784,13 @@ func (seqInfo *SeqInfo) PrintStats(resultDir string) {
 	)
 	fmtUtil.Fprintf(out,
 		"++RightReadsNum\t\t= %d\t%.4f%%\n",
-		stats["RightReadsNum"],
-		math2.DivisionInt(stats["RightReadsNum"], stats["AnalyzedReadsNum"])*100,
+		seqInfo.RightReadsNum,
+		math2.DivisionInt(seqInfo.RightReadsNum, stats["AnalyzedReadsNum"])*100,
 	)
 	fmtUtil.Fprintf(out,
 		"++IndexPolyAReadsNum\t= %d\t%.4f%%\n",
-		stats["IndexPolyAReadsNum"],
-		math2.DivisionInt(stats["IndexPolyAReadsNum"], stats["AnalyzedReadsNum"])*100,
+		seqInfo.IndexPolyAReadsNum,
+		math2.DivisionInt(seqInfo.IndexPolyAReadsNum, stats["AnalyzedReadsNum"])*100,
 	)
 	fmtUtil.Fprintf(out,
 		"+++ErrorReadsNum\t= %d\n",
@@ -973,7 +979,7 @@ func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string) {
 	}
 	statsMap["靶标"] = seqInfo.IndexSeq
 	statsMap["合成序列"] = string(seqInfo.Seq)
-	statsMap["Accuracy"] = math2.DivisionInt(stats["RightReadsNum"], stats["AnalyzedReadsNum"])
+	statsMap["Accuracy"] = math2.DivisionInt(seqInfo.RightReadsNum, stats["AnalyzedReadsNum"])
 	statsMap["AverageBaseAccuracy"] = math2.DivisionInt(stats["AccuRightNum"], stats["AccuReadsNum"])
 	for _, s := range titleStats {
 		SetRow(xlsx, sheet, 1, rIdx, []interface{}{s, "", statsMap[s]})
@@ -1147,7 +1153,7 @@ func (info *SeqInfo) WriteStatsTxt(file *os.File) {
 	statsString := fmt.Sprintf(
 		"%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
 		info.Name, info.IndexSeq, info.Seq, len(info.Seq),
-		stats["AllReadsNum"], stats["IndexReadsNum"], stats["AnalyzedReadsNum"], stats["RightReadsNum"],
+		stats["AllReadsNum"], stats["IndexReadsNum"], stats["AnalyzedReadsNum"], info.RightReadsNum,
 		info.YieldCoefficient, info.AverageYieldAccuracy,
 		math2.DivisionInt(stats["ErrorReadsNum"], stats["AnalyzedReadsNum"]),
 		math2.DivisionInt(stats["Deletion"], stats["AnalyzedReadsNum"]),
@@ -1170,7 +1176,7 @@ func (info *SeqInfo) SummaryRow() []interface{} {
 	var stats = info.Stats
 	return []interface{}{
 		info.Name, info.IndexSeq, info.Seq, len(info.Seq),
-		stats["AllReadsNum"], stats["IndexReadsNum"], stats["AnalyzedReadsNum"], stats["RightReadsNum"],
+		stats["AllReadsNum"], stats["IndexReadsNum"], stats["AnalyzedReadsNum"], info.RightReadsNum,
 		info.YieldCoefficient, info.AverageYieldAccuracy,
 		math2.DivisionInt(stats["ErrorReadsNum"], stats["AnalyzedReadsNum"]),
 		math2.DivisionInt(stats["Deletion"], stats["AnalyzedReadsNum"]),
