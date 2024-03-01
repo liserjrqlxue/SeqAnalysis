@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	//"compress/gzip"
 
@@ -86,9 +87,10 @@ type SeqInfo struct {
 	AlignInsert []byte
 	AlignMut    []byte
 
-	IndexSeq string
-	Fastqs   []string
-	SeqChan  chan string
+	IndexSeq  string
+	Fastqs    []string
+	SeqChan   chan string
+	SeqChanWG sync.WaitGroup
 
 	SeqResultTxt *os.File
 	RegPolyA     *regexp.Regexp
@@ -137,7 +139,7 @@ func NewSeqInfo(data map[string]string, long, rev, useRC, useKmer bool) *SeqInfo
 		IndexSeq:       strings.ToUpper(data["index"]),
 		Seq:            []byte(strings.ToUpper(data["seq"])),
 		Fastqs:         strings.Split(data["fq"], ","),
-		SeqChan:        make(chan string, 1024),
+		SeqChan:        make(chan string, 102400),
 
 		Excel:     filepath.Join(*outputDir, data["id"]+".xlsx"),
 		Sheets:    Sheets,
@@ -152,6 +154,15 @@ func NewSeqInfo(data map[string]string, long, rev, useRC, useKmer bool) *SeqInfo
 		UseReverseComplement: useRC,
 		UseKmer:              useKmer,
 	}
+
+	seqInfo.SeqChanWG.Add(len(seqInfo.Fastqs))
+	// close seqInfo.SeqChan after seqInfo.SeqChanWG
+	go func() {
+		seqInfo.SeqChanWG.Wait()
+		slog.Info("close seqInfo.SeqChan", "name", seqInfo.Name)
+		close(seqInfo.SeqChan)
+	}()
+
 	// support N
 	seqInfo.IndexSeq = strings.Replace(seqInfo.IndexSeq, "N", ".", -1)
 

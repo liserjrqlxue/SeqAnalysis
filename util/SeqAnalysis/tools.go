@@ -89,8 +89,8 @@ func Rows2Map(rows [][]string) (result []map[string]string) {
 	return
 }
 
-func ParseInput(input, fqDir string) (info []map[string]string, fqSet map[string][]chan string) {
-	fqSet = make(map[string][]chan string)
+func ParseInput(input, fqDir string) (info []map[string]string, fqSet map[string][]*SeqInfo) {
+	fqSet = make(map[string][]*SeqInfo)
 	if isXlsx.MatchString(input) {
 		xlsx, err := excelize.OpenFile(input)
 		simpleUtil.CheckErr(err)
@@ -109,12 +109,12 @@ func ParseInput(input, fqDir string) (info []map[string]string, fqSet map[string
 				if data["路径-R1"] != "" {
 					data["路径-R1"] = filepath.Join(fqDir, data["路径-R1"])
 
-					fqSet[data["路径-R1"]] = []chan string{}
+					fqSet[data["路径-R1"]] = []*SeqInfo{}
 				}
 				if data["路径-R2"] != "" {
 					data["路径-R2"] = filepath.Join(fqDir, data["路径-R2"])
 
-					fqSet[data["路径-R2"]] = []chan string{}
+					fqSet[data["路径-R2"]] = []*SeqInfo{}
 				}
 			}
 			data["fq"] = data["路径-R1"] + "," + data["路径-R2"]
@@ -137,15 +137,15 @@ func ParseInput(input, fqDir string) (info []map[string]string, fqSet map[string
 				data["fq"] = strings.Join(fqList, ",")
 
 				for _, v := range fqList {
-					fqSet[v] = []chan string{}
+					fqSet[v] = []*SeqInfo{}
 				}
 			} else {
 				fq1 := filepath.Join(fqDir, "00.CleanData", stra[0], stra[0]+"_1.clean.fq.gz")
 				fq2 := filepath.Join(fqDir, "00.CleanData", stra[0], stra[0]+"_2.clean.fq.gz")
 				data["fq"] = fq1 + "," + fq2
 
-				fqSet[fq1] = []chan string{}
-				fqSet[fq2] = []chan string{}
+				fqSet[fq1] = []*SeqInfo{}
+				fqSet[fq2] = []*SeqInfo{}
 			}
 			info = append(info, data)
 		}
@@ -519,27 +519,30 @@ func ReadFastq(fastq string, chanList []chan string) {
 	slog.Info("ReadFastq Done", "fq", fastq)
 }
 
-func ReadAllFastq(fqSet map[string][]chan string) {
+func ReadAllFastq(fqSet map[string][]*SeqInfo) {
 	var wg sync.WaitGroup
 
 	// read fastqs 多对多 到各个 SeqChan
 	wg.Add(len(fqSet))
-	for fastq, chanList := range fqSet {
+	for fastq, seqInfos := range fqSet {
 		if fastq == "" {
 			continue
 		}
 		slog.Info("ReadFastq", "fq", fastq)
 		// read fastq 一对多 到各个 SeqChan
-		go func(fastq string, chanList []chan string) {
+		go func(fastq string, seqInfos []*SeqInfo) {
+			var chanList []chan string
+			for _, seqInfo := range seqInfos {
+				chanList = append(chanList, seqInfo.SeqChan)
+			}
 			ReadFastq(fastq, chanList)
+			for _, seqInfo := range seqInfos {
+				seqInfo.SeqChanWG.Done()
+			}
 			wg.Done()
-		}(fastq, chanList)
+		}(fastq, seqInfos)
 	}
 	// wait readDone
 	wg.Wait()
 	slog.Info("ReadAllFastq Done")
-	// 关闭 各个 SeqChan
-	for _, seqInfo := range SeqInfoMap {
-		close(seqInfo.SeqChan)
-	}
 }

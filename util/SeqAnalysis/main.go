@@ -175,7 +175,7 @@ func main() {
 		SeqInfoMap[seqInfo.Name] = seqInfo
 
 		for _, fq := range seqInfo.Fastqs {
-			fqSet[fq] = append(fqSet[fq], seqInfo.SeqChan)
+			fqSet[fq] = append(fqSet[fq], seqInfo)
 		}
 	}
 	simpleUtil.CheckErr(info.Close())
