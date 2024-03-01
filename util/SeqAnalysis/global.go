@@ -4,11 +4,10 @@ import "regexp"
 
 // regexp
 var (
-	plus3    = regexp.MustCompile(`\+\+\+`)
-	minus1   = regexp.MustCompile(`-`)
-	minus2   = regexp.MustCompile(`--`)
-	minus3   = regexp.MustCompile(`---`)
-	regPolyA = regexp.MustCompile(`AAAAAAAA`)
+	plus3  = regexp.MustCompile(`\+\+\+`)
+	minus1 = regexp.MustCompile(`-`)
+	minus2 = regexp.MustCompile(`--`)
+	minus3 = regexp.MustCompile(`---`)
 
 	//minus3   = regexp.MustCompile(`---`)
 	//m2p2     = regexp.MustCompile(`\+\+--`)

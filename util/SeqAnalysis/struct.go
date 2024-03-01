@@ -92,6 +92,8 @@ type SeqInfo struct {
 	Fastqs   []string
 
 	SeqResultTxt *os.File
+	RegPolyA     *regexp.Regexp
+	RegIndexSeq  *regexp.Regexp
 
 	HitSeq             []string
 	HitSeqCount        map[string]int
@@ -266,22 +268,21 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 	var (
 		tarSeq   = string(seqInfo.Seq)
 		indexSeq = seqInfo.IndexSeq
-
-		polyA       = regexp.MustCompile(`^` + indexSeq + `(.*?)AAAAAAAA`)
-		regIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
 	)
+	seqInfo.RegPolyA = regexp.MustCompile(`^` + indexSeq + `(.*?)AAAAAAAA`)
+	seqInfo.RegIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
 
 	seqInfo.SeqResultTxt = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path))
 	defer simpleUtil.DeferClose(seqInfo.SeqResultTxt)
 
 	if indexSeq == "" {
-		polyA = regexp.MustCompile(`^(.*?)AAAAAAAA`)
-		regIndexSeq = regexp.MustCompile(`^(.*?)AAAAAAAA`)
+		seqInfo.RegPolyA = regexp.MustCompile(`^(.*?)AAAAAAAA`)
+		seqInfo.RegIndexSeq = regexp.MustCompile(`^(.*?)AAAAAAAA`)
 		seqInfo.UseReverseComplement = false
 	}
 	if tarSeq == "A" || tarSeq == "AAAAAAAAAAAAAAAAAAAA" {
-		polyA = regexp.MustCompile(`^` + indexSeq + `(.*?)TTTTTTTT`)
-		regIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
+		seqInfo.RegPolyA = regexp.MustCompile(`^` + indexSeq + `(.*?)TTTTTTTT`)
+		seqInfo.RegIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
 	}
 
 	for _, fastq := range seqInfo.Fastqs {
@@ -307,7 +308,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 			}
 			// seqInfo.ReadsLength[len(s)]++
 
-			seqInfo.Write1SeqResult(polyA, regIndexSeq, s)
+			seqInfo.Write1SeqResult(s)
 		}
 		simpleUtil.CheckErr(file.Close())
 	}
@@ -323,9 +324,9 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 
 }
 
-func (seqInfo *SeqInfo) Write1SeqResult(polyA, regIndexSeq *regexp.Regexp, s string) {
+func (seqInfo *SeqInfo) Write1SeqResult(s string) {
 	seqInfo.AllReadsNum++
-	submatch, byteS, indexSeqMatch := MatchSeq(s, polyA, regIndexSeq, seqInfo.UseReverseComplement, seqInfo.AssemblerMode)
+	submatch, byteS, indexSeqMatch := MatchSeq(s, seqInfo.RegPolyA, seqInfo.RegIndexSeq, seqInfo.UseReverseComplement, seqInfo.AssemblerMode)
 
 	if indexSeqMatch {
 		seqInfo.IndexReadsNum++
