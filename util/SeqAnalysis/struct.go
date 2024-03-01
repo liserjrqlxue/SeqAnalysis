@@ -268,6 +268,7 @@ func (seqInfo *SeqInfo) CountError4(outputDir string, verbose int) {
 	// 2. 与正确合成序列进行比对,统计不同合成结果出现的频数
 	seqInfo.del3 = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+".del3.txt"))
 	seqInfo.del1 = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+".del1.txt"))
+	seqInfo.WriteHitSeq()
 	seqInfo.WriteSeqResultNum()
 
 	seqInfo.UpdateDistributionStats()
@@ -405,7 +406,7 @@ func (seqInfo *SeqInfo) GetHitSeq() {
 	})
 }
 
-func (seqInfo *SeqInfo) WriteSeqResultNum() {
+func (seqInfo *SeqInfo) WriteHitSeq() {
 	for i, key := range seqInfo.HitSeq {
 		if key == string(seqInfo.Seq) {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
@@ -435,7 +436,9 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	}
 	// free HitSeq
 	seqInfo.HitSeq = nil
+}
 
+func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	WriteUpperDownNIL(seqInfo.del3, seqInfo.IndexSeq, string(seqInfo.Seq), 3)
 	simpleUtil.CheckErr(seqInfo.del3.Close())
 	simpleUtil.CheckErr(seqInfo.del1.Close())
