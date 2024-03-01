@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime/pprof"
 	"sync"
+	"time"
 
 	"github.com/liserjrqlxue/goUtil/fmtUtil"
 	"github.com/liserjrqlxue/goUtil/osUtil"
@@ -121,6 +122,7 @@ func init() {
 
 func main() {
 	flag.Parse()
+	now := time.Now()
 
 	if !*debug {
 		*cpuProfile = ""
@@ -137,7 +139,7 @@ func main() {
 	}
 
 	// parse input
-	var inputInfo = ParseInput(*input, *fqDir)
+	var inputInfo, fqSet = ParseInput(*input, *fqDir)
 
 	if *outputDir == "" {
 		*outputDir = filepath.Base(simpleUtil.HandleError(os.Getwd())) + ".分析"
@@ -171,8 +173,14 @@ func main() {
 		)
 		var seqInfo = NewSeqInfo(data, *long, *rev, *useRC, *useKmer)
 		SeqInfoMap[seqInfo.Name] = seqInfo
+
+		for _, fq := range seqInfo.Fastqs {
+			fqSet[fq] = append(fqSet[fq], seqInfo.SeqChan)
+		}
 	}
 	simpleUtil.CheckErr(info.Close())
+
+	go ReadAllFastq(fqSet)
 
 	var wg sync.WaitGroup
 	for id := range SeqInfoMap {
@@ -232,4 +240,6 @@ func main() {
 		defer simpleUtil.DeferClose(LogMemProfile)
 		pprof.WriteHeapProfile(LogMemProfile)
 	}
+
+	slog.Info("Done", "time", time.Since(now))
 }

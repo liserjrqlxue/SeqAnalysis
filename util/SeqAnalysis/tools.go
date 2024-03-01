@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"embed"
 	"fmt"
 	"io"
@@ -12,8 +13,10 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
+	gzip "github.com/klauspost/pgzip"
 	"github.com/liserjrqlxue/goUtil/fmtUtil"
 	math2 "github.com/liserjrqlxue/goUtil/math"
 	"github.com/liserjrqlxue/goUtil/osUtil"
@@ -86,7 +89,8 @@ func Rows2Map(rows [][]string) (result []map[string]string) {
 	return
 }
 
-func ParseInput(input, fqDir string) (info []map[string]string) {
+func ParseInput(input, fqDir string) (info []map[string]string, fqSet map[string][]chan string) {
+	fqSet = make(map[string][]chan string)
 	if isXlsx.MatchString(input) {
 		xlsx, err := excelize.OpenFile(input)
 		simpleUtil.CheckErr(err)
@@ -104,9 +108,13 @@ func ParseInput(input, fqDir string) (info []map[string]string) {
 			if fqDir != "" {
 				if data["路径-R1"] != "" {
 					data["路径-R1"] = filepath.Join(fqDir, data["路径-R1"])
+
+					fqSet[data["路径-R1"]] = []chan string{}
 				}
 				if data["路径-R2"] != "" {
 					data["路径-R2"] = filepath.Join(fqDir, data["路径-R2"])
+
+					fqSet[data["路径-R2"]] = []chan string{}
 				}
 			}
 			data["fq"] = data["路径-R1"] + "," + data["路径-R2"]
@@ -127,11 +135,17 @@ func ParseInput(input, fqDir string) (info []map[string]string) {
 					}
 				}
 				data["fq"] = strings.Join(fqList, ",")
+
+				for _, v := range fqList {
+					fqSet[v] = []chan string{}
+				}
 			} else {
-				data["fq"] =
-					filepath.Join(fqDir, "00.CleanData", stra[0], stra[0]+"_1.clean.fq.gz") +
-						"," +
-						filepath.Join(fqDir, "00.CleanData", stra[0], stra[0]+"_2.clean.fq.gz")
+				fq1 := filepath.Join(fqDir, "00.CleanData", stra[0], stra[0]+"_1.clean.fq.gz")
+				fq2 := filepath.Join(fqDir, "00.CleanData", stra[0], stra[0]+"_2.clean.fq.gz")
+				data["fq"] = fq1 + "," + fq2
+
+				fqSet[fq1] = []chan string{}
+				fqSet[fq2] = []chan string{}
 			}
 			info = append(info, data)
 		}
@@ -476,4 +490,56 @@ func MatchSeq(seq string, polyA, regIndexSeq *regexp.Regexp, useRC, assemblerMod
 		indexSeqMatch = true
 	}
 	return
+}
+
+func ReadFastq(fastq string, chanList []chan string) {
+	var (
+		file    = osUtil.Open(fastq)
+		scanner *bufio.Scanner
+		i       = -1
+	)
+	if gz.MatchString(fastq) {
+		scanner = bufio.NewScanner(simpleUtil.HandleError(gzip.NewReader(file)))
+	} else {
+		scanner = bufio.NewScanner(file)
+	}
+
+	for scanner.Scan() {
+		var s = scanner.Text()
+		i++
+		if i%4 != 1 {
+			continue
+		}
+		for _, ch := range chanList {
+			ch <- s
+		}
+	}
+
+	simpleUtil.CheckErr(file.Close())
+	slog.Info("ReadFastq Done", "fq", fastq)
+}
+
+func ReadAllFastq(fqSet map[string][]chan string) {
+	var wg sync.WaitGroup
+
+	// read fastqs 多对多 到各个 SeqChan
+	wg.Add(len(fqSet))
+	for fastq, chanList := range fqSet {
+		if fastq == "" {
+			continue
+		}
+		slog.Info("ReadFastq", "fq", fastq)
+		// read fastq 一对多 到各个 SeqChan
+		go func(fastq string, chanList []chan string) {
+			ReadFastq(fastq, chanList)
+			wg.Done()
+		}(fastq, chanList)
+	}
+	// wait readDone
+	wg.Wait()
+	slog.Info("ReadAllFastq Done")
+	// 关闭 各个 SeqChan
+	for _, seqInfo := range SeqInfoMap {
+		close(seqInfo.SeqChan)
+	}
 }
