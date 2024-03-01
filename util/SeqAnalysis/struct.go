@@ -276,6 +276,11 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 	}
 	defer simpleUtil.DeferClose(output)
 
+	// seqInfo stats
+	var (
+		IndexReadsNum int
+	)
+
 	for _, fastq := range seqInfo.Fastqs {
 		if fastq == "" {
 			continue
@@ -301,7 +306,12 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 
 			seqInfo.Stats["AllReadsNum"]++
 
-			submatch, byteS := seqInfo.MatchSeq(polyA, regIndexSeq, s)
+			submatch, byteS, indexSeqMatch := seqInfo.MatchSeq(polyA, regIndexSeq, s)
+
+			if indexSeqMatch {
+				IndexReadsNum++
+			}
+
 			seqInfo.UpdateACGT(byteS)
 			// trim byteS from polyA
 			var byteSloc = regA8.FindIndex(byteS)
@@ -325,6 +335,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 	}
 
 	// update Stats
+	seqInfo.Stats["IndexReadsNum"] = IndexReadsNum
 	seqInfo.Stats["AnalyzedReadsNum"] = seqInfo.Stats["RightReadsNum"] + seqInfo.Stats["IndexPolyAReadsNum"]
 
 	// output histgram.txt
@@ -332,7 +343,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 
 }
 
-func (seqInfo *SeqInfo) MatchSeq(polyA, regIndexSeq *regexp.Regexp, seq string) (submatch []string, byteS []byte) {
+func (seqInfo *SeqInfo) MatchSeq(polyA, regIndexSeq *regexp.Regexp, seq string) (submatch []string, byteS []byte, indexSeqMatch bool) {
 	var (
 		seqRC string
 
@@ -378,10 +389,10 @@ func (seqInfo *SeqInfo) MatchSeq(polyA, regIndexSeq *regexp.Regexp, seq string) 
 
 	if regIndexSeqMatch {
 		byteS = []byte(seq)
-		seqInfo.Stats["IndexReadsNum"]++
+		indexSeqMatch = true
 	} else if regIndexSeqRcMatch {
 		byteS = []byte(seqRC)
-		seqInfo.Stats["IndexReadsNum"]++
+		indexSeqMatch = true
 	}
 	return
 }
