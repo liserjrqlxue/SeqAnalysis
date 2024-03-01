@@ -368,21 +368,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 			}
 
 			if seqInfo.UseKmer {
-				var kmer []byte
-				for i2, c := range byteS {
-					if i2 < 300 {
-
-						kmer = append([]byte{c}, kmer...)
-						for j := 0; j < kmerLength; j++ {
-							var n = min(j+1, len(kmer))
-							var key = string(kmer[:n])
-							seqInfo.DNAKmer[j][i2][key]++
-							if n == kmerLength {
-								seqInfo.Kmer[key]++
-							}
-						}
-					}
-				}
+				seqInfo.UpdateKmer(byteS)
 			}
 
 			if submatch != nil {
@@ -402,6 +388,23 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 	// output histgram.txt
 	WriteHistogram(filepath.Join(outputDir, seqInfo.Name+".histogram.txt"), histogram)
 
+}
+
+func (seqInfo *SeqInfo) UpdateKmer(byteS []byte) {
+	var kmer []byte
+	for i, c := range byteS {
+		if i < 300 {
+			kmer = append([]byte{c}, kmer...)
+			for j := 0; j < kmerLength; j++ {
+				var n = min(j+1, len(kmer))
+				var key = string(kmer[:n])
+				seqInfo.DNAKmer[j][i][key]++
+				if n == kmerLength {
+					seqInfo.Kmer[key]++
+				}
+			}
+		}
+	}
 }
 
 func (seqInfo *SeqInfo) UpdateHitSeqCount(tarSeq, seq string) {
