@@ -526,6 +526,10 @@ func ReadAllFastq(fqSet map[string][]*SeqInfo) {
 	wg.Add(len(fqSet))
 	for fastq, seqInfos := range fqSet {
 		if fastq == "" {
+			for _, seqInfo := range seqInfos {
+				seqInfo.SeqChanWG.Done()
+			}
+			wg.Done()
 			continue
 		}
 		slog.Info("ReadFastq", "fq", fastq)
