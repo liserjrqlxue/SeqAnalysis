@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	//"compress/gzip"
 	gzip "github.com/klauspost/pgzip"
@@ -88,13 +89,14 @@ type SeqInfo struct {
 	AlignInsert []byte
 	AlignMut    []byte
 
-	IndexSeq string
-	Fastqs   []string
+	IndexSeq   string
+	Fastqs     []string
+	SeqChanMap map[string]chan string
+	SeqChan    chan string
 
 	SeqResultTxt *os.File
 	RegPolyA     *regexp.Regexp
 	RegIndexSeq  *regexp.Regexp
-	SeqChan      chan string
 
 	HitSeq             []string
 	HitSeqCount        map[string]int
@@ -139,6 +141,7 @@ func NewSeqInfo(data map[string]string, long, rev, useRC, useKmer bool) *SeqInfo
 		IndexSeq:       strings.ToUpper(data["index"]),
 		Seq:            []byte(strings.ToUpper(data["seq"])),
 		Fastqs:         strings.Split(data["fq"], ","),
+		SeqChanMap:     make(map[string]chan string),
 		SeqChan:        make(chan string, 1024),
 
 		Excel:     filepath.Join(*outputDir, data["id"]+".xlsx"),
@@ -289,12 +292,15 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 		seqInfo.RegIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
 	}
 
-	go func() {
-		defer close(seqInfo.SeqChan)
-		for _, fastq := range seqInfo.Fastqs {
-			if fastq == "" {
-				continue
-			}
+	for _, fastq := range seqInfo.Fastqs {
+		if fastq == "" {
+			continue
+		}
+
+		var ch = make(chan string, 1024)
+		seqInfo.SeqChanMap[fastq] = ch
+		go func(ch chan<- string, fastq string) {
+			defer close(ch)
 			log.Printf("load %s", fastq)
 			var (
 				file    = osUtil.Open(fastq)
@@ -313,12 +319,31 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 				if i%4 != 1 {
 					continue
 				}
-				seqInfo.SeqChan <- s
+				ch <- s
 			}
 
 			simpleUtil.CheckErr(file.Close())
+		}(ch, fastq)
+	}
+
+	// seqInfo.SeqChanMap 聚合到 seqInfo.SeqChan
+	go func() {
+		var wg sync.WaitGroup
+		wg.Add(len(seqInfo.SeqChanMap))
+
+		for _, ch := range seqInfo.SeqChanMap {
+			go func(ch chan string) {
+				defer wg.Done()
+				for msg := range ch {
+					seqInfo.SeqChan <- msg // 将消息发送到数据聚合channel
+				}
+			}(ch)
 		}
+
+		wg.Wait()              // 等待所有goroutine完成
+		close(seqInfo.SeqChan) // 关闭数据聚合channel
 	}()
+
 	for s := range seqInfo.SeqChan {
 		seqInfo.Write1SeqResult(s)
 	}
