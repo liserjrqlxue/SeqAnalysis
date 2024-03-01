@@ -94,6 +94,7 @@ type SeqInfo struct {
 	SeqResultTxt *os.File
 	RegPolyA     *regexp.Regexp
 	RegIndexSeq  *regexp.Regexp
+	SeqChan      chan string
 
 	HitSeq             []string
 	HitSeqCount        map[string]int
@@ -138,12 +139,15 @@ func NewSeqInfo(data map[string]string, long, rev, useRC, useKmer bool) *SeqInfo
 		IndexSeq:       strings.ToUpper(data["index"]),
 		Seq:            []byte(strings.ToUpper(data["seq"])),
 		Fastqs:         strings.Split(data["fq"], ","),
-		Excel:          filepath.Join(*outputDir, data["id"]+".xlsx"),
-		Sheets:         Sheets,
-		SheetList:      sheetList,
-		Stats:          make(map[string]int),
-		HitSeqCount:    make(map[string]int),
-		Histogram:      make(map[int]int),
+		SeqChan:        make(chan string, 1024),
+
+		Excel:     filepath.Join(*outputDir, data["id"]+".xlsx"),
+		Sheets:    Sheets,
+		SheetList: sheetList,
+
+		Stats:       make(map[string]int),
+		HitSeqCount: make(map[string]int),
+		Histogram:   make(map[int]int),
 		// ReadsLength:          make(map[int]int),
 		AssemblerMode:        long,
 		Reverse:              rev,
@@ -285,32 +289,38 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 		seqInfo.RegIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
 	}
 
-	for _, fastq := range seqInfo.Fastqs {
-		if fastq == "" {
-			continue
-		}
-		log.Printf("load %s", fastq)
-		var (
-			file    = osUtil.Open(fastq)
-			scanner *bufio.Scanner
-			i       = -1
-		)
-		if gz.MatchString(fastq) {
-			scanner = bufio.NewScanner(simpleUtil.HandleError(gzip.NewReader(file)))
-		} else {
-			scanner = bufio.NewScanner(file)
-		}
-		for scanner.Scan() {
-			var s = scanner.Text()
-			i++
-			if i%4 != 1 {
+	go func() {
+		defer close(seqInfo.SeqChan)
+		for _, fastq := range seqInfo.Fastqs {
+			if fastq == "" {
 				continue
 			}
-			// seqInfo.ReadsLength[len(s)]++
+			log.Printf("load %s", fastq)
+			var (
+				file    = osUtil.Open(fastq)
+				scanner *bufio.Scanner
+				i       = -1
+			)
+			if gz.MatchString(fastq) {
+				scanner = bufio.NewScanner(simpleUtil.HandleError(gzip.NewReader(file)))
+			} else {
+				scanner = bufio.NewScanner(file)
+			}
 
-			seqInfo.Write1SeqResult(s)
+			for scanner.Scan() {
+				var s = scanner.Text()
+				i++
+				if i%4 != 1 {
+					continue
+				}
+				seqInfo.SeqChan <- s
+			}
+
+			simpleUtil.CheckErr(file.Close())
 		}
-		simpleUtil.CheckErr(file.Close())
+	}()
+	for s := range seqInfo.SeqChan {
+		seqInfo.Write1SeqResult(s)
 	}
 
 	// update Stats
