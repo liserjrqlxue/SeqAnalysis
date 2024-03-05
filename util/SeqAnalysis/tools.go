@@ -166,7 +166,12 @@ func Zip(dir string) {
 		log.Println(strings.Join(args, " "))
 		if *zip {
 			simpleUtil.CheckErr(sge.Run("powershell", args...))
-			simpleUtil.CheckErr(sge.Run("powershell", "explorer", dir))
+			absDir, err := filepath.Abs(dir)
+			if err != nil {
+				slog.Error("get abs dir error", "dir", dir, "err", err)
+				return
+			}
+			simpleUtil.CheckErr(sge.Run("powershell", "explorer", absDir))
 		}
 	}
 }
@@ -174,9 +179,7 @@ func Zip(dir string) {
 func summaryTxt(resultDir string, inputInfo []map[string]string) {
 	var summary = osUtil.Create(filepath.Join(resultDir, "summary.txt"))
 
-	//fmt.Println(strings.Join(textUtil.File2Array(filepath.Join(etcPath, "title.Summary.txt")), "\t"))
-	var summaryTitle = textUtil.File2Array(filepath.Join(etcPath, "title.Summary.txt"))
-	fmtUtil.FprintStringArray(summary, summaryTitle, "\t")
+	fmtUtil.FprintStringArray(summary, TitleSummary, "\t")
 
 	for i := range inputInfo {
 		SeqInfoMap[inputInfo[i]["id"]].WriteStatsTxt(summary)
@@ -187,9 +190,6 @@ func summaryTxt(resultDir string, inputInfo []map[string]string) {
 
 func summaryXlsx(resultDir string, inputInfo []map[string]string) {
 
-	//fmt.Println(strings.Join(textUtil.File2Array(filepath.Join(etcPath, "title.Summary.txt")), "\t"))
-	var summaryTitle = textUtil.File2Array(filepath.Join(etcPath, "title.Summary.txt"))
-
 	// write summary.xlsx
 	var (
 		excel       = excelize.NewFile()
@@ -199,7 +199,7 @@ func summaryXlsx(resultDir string, inputInfo []map[string]string) {
 	// Summary Sheet
 	simpleUtil.CheckErr(excel.SetSheetName("Sheet1", "Summary"))
 	// write Title
-	for i, s := range summaryTitle {
+	for i, s := range TitleSummary {
 		SetCellStr(excel, "Summary", 1+i, 1, s)
 	}
 
@@ -239,10 +239,6 @@ func input2summaryXlsx(input, resultDir string) {
 		simpleUtil.CheckErr(excel.SetSheetName("Sheet1", "Summary"))
 	}
 
-	var keysInfo, _ = textUtil.File2MapArray(
-		filepath.Join(etcPath, "统计字段.txt"), "\t", nil,
-	)
-
 	var titleIndex = make(map[string]int)
 	var sampleList []string
 	for i := range rows {
@@ -250,7 +246,7 @@ func input2summaryXlsx(input, resultDir string) {
 			for j, v := range rows[i] {
 				titleIndex[v] = j + 1
 			}
-			for _, v := range keysInfo {
+			for _, v := range StatisticalField {
 				var title = v["summary_title"]
 				var _, ok = titleIndex[title]
 				if !ok {
@@ -303,7 +299,7 @@ func input2summaryXlsx(input, resultDir string) {
 		excel.SetCellFloat("Summary", cellName, parallelTest.AverageYieldAccuracySD, 4, 64)
 
 		// 写入统计
-		for _, v := range keysInfo {
+		for _, v := range StatisticalField {
 			var (
 				key   = v["key"]
 				title = v["summary_title"]

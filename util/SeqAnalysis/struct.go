@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"math"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -24,7 +23,6 @@ import (
 	"github.com/liserjrqlxue/goUtil/osUtil"
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
 	"github.com/liserjrqlxue/goUtil/stringsUtil"
-	"github.com/liserjrqlxue/goUtil/textUtil"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -1001,8 +999,8 @@ func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string) {
 		sheet = seqInfo.Sheets["Stats"]
 		rIdx  = 1
 
-		titleTar     = textUtil.File2Array(path.Join(etcPath, "title.Tar.txt"))
-		titleStats   = textUtil.File2Array(path.Join(etcPath, "title.Stats.txt"))
+		titleTar     = TitleTar
+		titleStats   = TitleStats
 		statsMap     = make(map[string]interface{})
 		distribution = seqInfo.DistributionFreq
 		readsCount   = stats["AnalyzedReadsNum"]

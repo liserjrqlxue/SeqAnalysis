@@ -1,6 +1,10 @@
 package main
 
-import "regexp"
+import (
+	"regexp"
+
+	"github.com/liserjrqlxue/goUtil/osUtil"
+)
 
 // regexp
 var (
@@ -28,4 +32,11 @@ var (
 	chanList         chan bool
 	SeqInfoMap       = make(map[string]*SeqInfo)
 	ParallelStatsMap = make(map[string]*ParallelTest)
+)
+
+var (
+	TitleTar            = osUtil.FS2Array(osUtil.OpenFS("etc/title.Tar.txt", exPath, etcEMFS))
+	TitleStats          = osUtil.FS2Array(osUtil.OpenFS("etc/title.Stats.txt", exPath, etcEMFS))
+	TitleSummary        = osUtil.FS2Array(osUtil.OpenFS("etc/title.Summary.txt", exPath, etcEMFS))
+	StatisticalField, _ = osUtil.FS2MapArray(osUtil.OpenFS("etc/统计字段.txt", exPath, etcEMFS), "\t", nil)
 )
