@@ -16,6 +16,8 @@ import (
 	"sync"
 	"time"
 
+	util "SeqAnalysis/pkg/seqAnalysis"
+
 	gzip "github.com/klauspost/pgzip"
 	"github.com/liserjrqlxue/goUtil/fmtUtil"
 	math2 "github.com/liserjrqlxue/goUtil/math"
@@ -25,36 +27,6 @@ import (
 	"github.com/liserjrqlxue/goUtil/textUtil"
 	"github.com/xuri/excelize/v2"
 )
-
-// from https://forum.golangbridge.org/t/easy-way-for-letter-substitution-reverse-complementary-dna-sequence/20101
-// from https://go.dev/play/p/IXI6PY7XUXN
-var dnaComplement = strings.NewReplacer(
-	"A", "T",
-	"T", "A",
-	"G", "C",
-	"C", "G",
-	"a", "t",
-	"t", "a",
-	"g", "c",
-	"c", "g",
-)
-
-func Complement(s string) string {
-	return dnaComplement.Replace(s)
-}
-
-// Reverse returns its argument string reversed rune-wise left to right.
-// from https://github.com/golang/example/blob/master/stringmain/reverse.go
-func Reverse(r []byte) []byte {
-	for i, j := 0, len(r)-1; i < len(r)/2; i, j = i+1, j-1 {
-		r[i], r[j] = r[j], r[i]
-	}
-	return r
-}
-
-func ReverseComplement(s string) string {
-	return Complement(string(Reverse([]byte(s))))
-}
 
 // Open is a function that opens a file from the given path using the embed.FS file system.
 //
@@ -442,7 +414,7 @@ func MatchSeq(seq string, polyA, regIndexSeq *regexp.Regexp, useRC, assemblerMod
 		regIndexSeqRcMatch bool
 	)
 	if useRC {
-		seqRC = ReverseComplement(seq)
+		seqRC = util.ReverseComplement(seq)
 	}
 
 	submatch = polyA.FindStringSubmatch(seq)

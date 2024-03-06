@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	//"compress/gzip"
+	util "SeqAnalysis/pkg/seqAnalysis"
 
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/opts"
@@ -169,7 +169,7 @@ func NewSeqInfo(data map[string]string, lineLimit int, long, rev, useRC, useKmer
 	seqInfo.IndexSeq = strings.Replace(seqInfo.IndexSeq, "N", ".", -1)
 
 	if seqInfo.Reverse {
-		seqInfo.Seq = Reverse(seqInfo.Seq)
+		seqInfo.Seq = util.Reverse(seqInfo.Seq)
 	}
 	log.Printf("[%s]:[%s]:[%s]:[%+v]\n", seqInfo.Name, seqInfo.IndexSeq, seqInfo.Seq, seqInfo.Fastqs)
 	return seqInfo
@@ -367,7 +367,7 @@ func (seqInfo *SeqInfo) UpdateKmer(byteS []byte) {
 
 func (seqInfo *SeqInfo) UpdateHitSeqCount(tarSeq, seq string) {
 	if seqInfo.Reverse {
-		seq = string(Reverse([]byte(seq)))
+		seq = string(util.Reverse([]byte(seq)))
 	}
 
 	if len(seq) == 0 {

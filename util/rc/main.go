@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"SeqAnalysis/util"
+	util "SeqAnalysis/pkg/seqAnalysis"
 
 	"github.com/liserjrqlxue/goUtil/osUtil"
 )

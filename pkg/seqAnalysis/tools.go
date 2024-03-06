@@ -1,4 +1,4 @@
-package util
+package seqAnalysis
 
 import (
 	"strings"
