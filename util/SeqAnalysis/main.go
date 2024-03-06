@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	util "SeqAnalysis/pkg/seqAnalysis"
+
 	"github.com/liserjrqlxue/goUtil/fmtUtil"
 	"github.com/liserjrqlxue/goUtil/osUtil"
 	"github.com/liserjrqlxue/goUtil/scannerUtil"
@@ -25,7 +27,6 @@ var (
 	ex, _   = os.Executable()
 	exPath  = filepath.Dir(ex)
 	binPath = path.Join(exPath, "bin")
-	etcPath = path.Join(exPath, "etc")
 )
 
 // flag
@@ -44,11 +45,6 @@ var (
 		"o",
 		"",
 		"output directory, default is sub directory of CWD: [BaseName]+.分析",
-	)
-	verbose = flag.Int(
-		"v",
-		0,
-		"verbose level\n\t1: more log\n\t2: unmatched.txt",
 	)
 	thread = flag.Int(
 		"t",
@@ -128,6 +124,11 @@ func init() {
 		Sheets[m["Name"]] = m["SheetName"]
 		sheetList = append(sheetList, m["SheetName"])
 	}
+
+	TitleTar = osUtil.FS2Array(osUtil.OpenFS("etc/title.Tar.txt", exPath, etcEMFS))
+	TitleStats = osUtil.FS2Array(osUtil.OpenFS("etc/title.Stats.txt", exPath, etcEMFS))
+	TitleSummary = osUtil.FS2Array(osUtil.OpenFS("etc/title.Summary.txt", exPath, etcEMFS))
+	StatisticalField, _ = osUtil.FS2MapArray(osUtil.OpenFS("etc/统计字段.txt", exPath, etcEMFS), "\t", nil)
 }
 
 func main() {
@@ -181,11 +182,11 @@ func main() {
 			data["seq"],
 			data["fq"],
 		)
-		var seqInfo = NewSeqInfo(data, *lineLimit, *long, *rev, *useRC, *useKmer, *lessMem)
+		var seqInfo = util.NewSeqInfo(data, Sheets, sheetList, *outputDir, *lineLimit, *long, *rev, *useRC, *useKmer, *lessMem)
 		SeqInfoMap[seqInfo.Name] = seqInfo
 
 		for _, fq := range seqInfo.Fastqs {
-			fqSet[fq] = append(fqSet[fq], seqInfo)
+			fqSet[fq] = append(fqSet[fq], (*SeqInfo)(seqInfo))
 		}
 	}
 	simpleUtil.CheckErr(info.Close())
@@ -202,7 +203,7 @@ func main() {
 				<-chanList
 			}()
 			slog.Info("SingleRun", "id", id)
-			SeqInfoMap[id].SingleRun(*outputDir)
+			SeqInfoMap[id].SingleRun(*outputDir, TitleTar, TitleStats)
 		}(id)
 	}
 
@@ -217,7 +218,7 @@ func main() {
 		var id = seqInfo.ParallelTestID
 		var p, ok = ParallelStatsMap[id]
 		if !ok {
-			p = &ParallelTest{}
+			p = &util.ParallelTest{}
 			ParallelStatsMap[id] = p
 		}
 		p.YieldCoefficient = append(p.YieldCoefficient, seqInfo.YieldCoefficient)

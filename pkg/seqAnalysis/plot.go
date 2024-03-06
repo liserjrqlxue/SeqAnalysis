@@ -1,4 +1,4 @@
-package main
+package seqAnalysis
 
 import "github.com/go-echarts/go-echarts/v2/opts"
 

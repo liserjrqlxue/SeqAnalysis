@@ -1,4 +1,4 @@
-package main
+package seqAnalysis
 
 import (
 	"fmt"
@@ -13,8 +13,6 @@ import (
 	"strings"
 	"sync"
 
-	util "SeqAnalysis/pkg/seqAnalysis"
-
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/opts"
 	"github.com/go-echarts/go-echarts/v2/types"
@@ -28,6 +26,17 @@ import (
 
 const (
 	kmerLength = 9
+)
+
+// regexp
+var (
+	plus3  = regexp.MustCompile(`\+\+\+`)
+	minus1 = regexp.MustCompile(`-`)
+	minus2 = regexp.MustCompile(`--`)
+	minus3 = regexp.MustCompile(`---`)
+
+	regA8 = regexp.MustCompile(`AAAAAAAA`)
+	regN  = regexp.MustCompile(`N`)
 )
 
 type ParallelTest struct {
@@ -131,7 +140,7 @@ type SeqInfo struct {
 	OSAR float64
 }
 
-func NewSeqInfo(data map[string]string, lineLimit int, long, rev, useRC, useKmer, lessMem bool) *SeqInfo {
+func NewSeqInfo(data, Sheets map[string]string, sheetList []string, outputDir string, lineLimit int, long, rev, useRC, useKmer, lessMem bool) *SeqInfo {
 	var seqInfo = new(SeqInfo)
 	seqInfo = &SeqInfo{
 		Name:           data["id"],
@@ -141,7 +150,7 @@ func NewSeqInfo(data map[string]string, lineLimit int, long, rev, useRC, useKmer
 		Fastqs:         strings.Split(data["fq"], ","),
 		SeqChan:        make(chan string, 102400),
 
-		Excel:     filepath.Join(*outputDir, data["id"]+".xlsx"),
+		Excel:     filepath.Join(outputDir, data["id"]+".xlsx"),
 		Sheets:    Sheets,
 		SheetList: sheetList,
 		lineLimit: lineLimit,
@@ -169,7 +178,7 @@ func NewSeqInfo(data map[string]string, lineLimit int, long, rev, useRC, useKmer
 	seqInfo.IndexSeq = strings.Replace(seqInfo.IndexSeq, "N", ".", -1)
 
 	if seqInfo.Reverse {
-		seqInfo.Seq = util.Reverse(seqInfo.Seq)
+		seqInfo.Seq = Reverse(seqInfo.Seq)
 	}
 	log.Printf("[%s]:[%s]:[%s]:[%+v]\n", seqInfo.Name, seqInfo.IndexSeq, seqInfo.Seq, seqInfo.Fastqs)
 	return seqInfo
@@ -238,11 +247,11 @@ func (seqInfo *SeqInfo) Init() {
 	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets["Other"], "A", "F", 25))
 }
 
-func (seqInfo *SeqInfo) SingleRun(resultDir string) {
+func (seqInfo *SeqInfo) SingleRun(resultDir string, TitleTar, TitleStats []string) {
 	seqInfo.Init()
-	seqInfo.CountError4(resultDir, *verbose)
+	seqInfo.CountError4(resultDir)
 
-	seqInfo.WriteStatsSheet(resultDir)
+	seqInfo.WriteStatsSheet(resultDir, TitleTar, TitleStats)
 	seqInfo.Save()
 	seqInfo.PrintStats(resultDir)
 
@@ -261,9 +270,9 @@ func (seqInfo *SeqInfo) Save() {
 }
 
 // CountError4 count seq error
-func (seqInfo *SeqInfo) CountError4(outputDir string, verbose int) {
+func (seqInfo *SeqInfo) CountError4(outputDir string) {
 	// 1. 统计不同测序结果出现的频数
-	seqInfo.WriteSeqResult(".SeqResult.txt", outputDir, verbose)
+	seqInfo.WriteSeqResult(".SeqResult.txt", outputDir)
 
 	seqInfo.GetHitSeq()
 
@@ -282,9 +291,7 @@ func (seqInfo *SeqInfo) CountError4(outputDir string, verbose int) {
 	//seqInfo.PrintStats()
 }
 
-var regA8 = regexp.MustCompile(`AAAAAAAA`)
-
-func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
+func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string) {
 	var (
 		tarSeq   = string(seqInfo.Seq)
 		indexSeq = seqInfo.IndexSeq
@@ -367,7 +374,7 @@ func (seqInfo *SeqInfo) UpdateKmer(byteS []byte) {
 
 func (seqInfo *SeqInfo) UpdateHitSeqCount(tarSeq, seq string) {
 	if seqInfo.Reverse {
-		seq = string(util.Reverse([]byte(seq)))
+		seq = string(Reverse([]byte(seq)))
 	}
 
 	if len(seq) == 0 {
@@ -992,7 +999,7 @@ func (seqInfo *SeqInfo) WriteKmer(prefix string) {
 //
 // No parameters.
 // No return values.
-func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string) {
+func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string, TitleTar, TitleStats []string) {
 	var (
 		stats = seqInfo.Stats
 		xlsx  = seqInfo.xlsx
