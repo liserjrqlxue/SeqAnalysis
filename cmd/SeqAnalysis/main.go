@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"embed"
 	"flag"
 	"fmt"
@@ -17,7 +16,6 @@ import (
 
 	"github.com/liserjrqlxue/goUtil/fmtUtil"
 	"github.com/liserjrqlxue/goUtil/osUtil"
-	"github.com/liserjrqlxue/goUtil/scannerUtil"
 	"github.com/liserjrqlxue/goUtil/sge"
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
 )
@@ -114,12 +112,7 @@ var (
 var etcEMFS embed.FS
 
 func init() {
-	var sheetTxt, err = Open("etc/sheet.txt", exPath, etcEMFS)
-	simpleUtil.CheckErr(err)
-	var sheetScan = bufio.NewScanner(sheetTxt)
-	var sheetMap, _ = scannerUtil.Scanner2MapArray(sheetScan, "\t", nil)
-	simpleUtil.CheckErr(sheetTxt.Close())
-
+	var sheetMap, _ = osUtil.FS2MapArray(osUtil.OpenFS("etc/sheet.txt", exPath, etcEMFS), "\t", nil)
 	for _, m := range sheetMap {
 		Sheets[m["Name"]] = m["SheetName"]
 		sheetList = append(sheetList, m["SheetName"])
@@ -186,12 +179,12 @@ func main() {
 		SeqInfoMap[seqInfo.Name] = seqInfo
 
 		for _, fq := range seqInfo.Fastqs {
-			fqSet[fq] = append(fqSet[fq], (*SeqInfo)(seqInfo))
+			fqSet[fq] = append(fqSet[fq], seqInfo)
 		}
 	}
 	simpleUtil.CheckErr(info.Close())
 
-	go ReadAllFastq(fqSet)
+	go util.ReadAllFastq(fqSet)
 
 	var wg sync.WaitGroup
 	for id := range SeqInfoMap {
@@ -211,7 +204,7 @@ func main() {
 	wg.Wait()
 
 	// write summary.txt
-	summaryTxt(*outputDir, inputInfo)
+	util.SummaryTxt(*outputDir, TitleSummary, inputInfo, SeqInfoMap)
 
 	// 基于平行的统计
 	for _, seqInfo := range SeqInfoMap {
@@ -231,9 +224,9 @@ func main() {
 	// write summary.xlsx
 	if isXlsx.MatchString(*input) {
 		// update from input.xlsx
-		input2summaryXlsx(*input, *outputDir)
+		util.Input2summaryXlsx(*input, *outputDir, filepath.Base(*outputDir), StatisticalField, SeqInfoMap, ParallelStatsMap)
 	} else {
-		summaryXlsx(*outputDir, inputInfo)
+		util.SummaryXlsx(*outputDir, filepath.Base(*outputDir), TitleSummary, inputInfo, SeqInfoMap)
 	}
 
 	if *plot {
@@ -244,7 +237,11 @@ func main() {
 	}
 
 	// Compress-Archive to zip file on windows only when *zip is true
-	Zip(*outputDir)
+	if *zip {
+		util.Zip(*outputDir)
+	} else {
+		slog.Info(fmt.Sprintf("Run Zip use powershell: powershell Compress-Archive -Path %s/*.xlsx,%s/*.pdf -DestinationPath %s.result.zip -Force", *outputDir, *outputDir, *outputDir))
+	}
 
 	if *memProfile != "" {
 		var LogMemProfile = osUtil.Create(*memProfile)

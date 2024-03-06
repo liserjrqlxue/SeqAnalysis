@@ -8,7 +8,6 @@ import (
 
 // regexp
 var (
-	gz     = regexp.MustCompile(`\.gz$`)
 	isXlsx = regexp.MustCompile(`\.xlsx$`)
 )
 
