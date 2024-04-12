@@ -35,8 +35,7 @@ var (
 	minus2 = regexp.MustCompile(`--`)
 	minus3 = regexp.MustCompile(`---`)
 
-	regA8 = regexp.MustCompile(`AAAAAAAA`)
-	regN  = regexp.MustCompile(`N`)
+	regN = regexp.MustCompile(`N`)
 )
 
 type ParallelTest struct {
@@ -96,6 +95,7 @@ type SeqInfo struct {
 	AlignMut    []byte
 
 	IndexSeq  string
+	PostSeq   string
 	Fastqs    []string
 	SeqChan   chan string
 	SeqChanWG sync.WaitGroup
@@ -146,6 +146,7 @@ func NewSeqInfo(data, Sheets map[string]string, sheetList []string, outputDir st
 		Name:           data["id"],
 		ParallelTestID: data["平行"],
 		IndexSeq:       strings.ToUpper(data["index"]),
+		PostSeq:        strings.ToUpper(data["postBase"]),
 		Seq:            []byte(strings.ToUpper(data["seq"])),
 		Fastqs:         strings.Split(data["fq"], ","),
 		SeqChan:        make(chan string, 102400),
@@ -295,16 +296,22 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string) {
 	var (
 		tarSeq   = string(seqInfo.Seq)
 		indexSeq = seqInfo.IndexSeq
+		postSeq  = seqInfo.PostSeq
 	)
-	seqInfo.RegPolyA = regexp.MustCompile(`^` + indexSeq + `(.*?)AAAAAAAA`)
+	if postSeq == "" {
+		postSeq = "AAAAAAAA"
+	}
+	var regPost = regexp.MustCompile(postSeq)
+
+	seqInfo.RegPolyA = regexp.MustCompile(`^` + indexSeq + `(.*?)` + postSeq)
 	seqInfo.RegIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
 
 	seqInfo.SeqResultTxt = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path))
 	defer simpleUtil.DeferClose(seqInfo.SeqResultTxt)
 
 	if indexSeq == "" {
-		seqInfo.RegPolyA = regexp.MustCompile(`^(.*?)AAAAAAAA`)
-		seqInfo.RegIndexSeq = regexp.MustCompile(`^(.*?)AAAAAAAA`)
+		seqInfo.RegPolyA = regexp.MustCompile(`^(.*?)` + postSeq)
+		seqInfo.RegIndexSeq = regexp.MustCompile(`^(.*?)` + postSeq)
 		seqInfo.UseReverseComplement = false
 	}
 	if tarSeq == "A" || tarSeq == "AAAAAAAAAAAAAAAAAAAA" {
@@ -313,7 +320,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string) {
 	}
 
 	for s := range seqInfo.SeqChan {
-		seqInfo.Write1SeqResult(s)
+		seqInfo.Write1SeqResult(s, regPost)
 	}
 
 	// update Stats
@@ -327,7 +334,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string) {
 
 }
 
-func (seqInfo *SeqInfo) Write1SeqResult(s string) {
+func (seqInfo *SeqInfo) Write1SeqResult(s string, reg *regexp.Regexp) {
 	seqInfo.AllReadsNum++
 	submatch, byteS, indexSeqMatch := MatchSeq(s, seqInfo.RegPolyA, seqInfo.RegIndexSeq, seqInfo.UseReverseComplement, seqInfo.AssemblerMode)
 
@@ -337,7 +344,7 @@ func (seqInfo *SeqInfo) Write1SeqResult(s string) {
 
 	seqInfo.UpdateACGT(byteS)
 	// trim byteS from polyA
-	var byteSloc = regA8.FindIndex(byteS)
+	var byteSloc = reg.FindIndex(byteS)
 	if byteSloc != nil {
 		byteS = byteS[:byteSloc[0]]
 	}
