@@ -53,7 +53,7 @@ func main() {
 	for _, in := range inList {
 		var (
 			inF = osUtil.Open(in)
-			gr  = simpleUtil.HandleError(gzip.NewReader(inF)).(*gzip.Reader)
+			gr  = simpleUtil.HandleError(gzip.NewReader(inF))
 		)
 		log.Printf("split %s", in)
 		SplitSE(gr, outF, filter)
