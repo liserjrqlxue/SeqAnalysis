@@ -169,7 +169,7 @@ func (batch *Batch) Visual(exPath string) error {
 		cmd := exec.Command("Rscript", filepath.Join(binPath, "plot.R"), batch.OutputPrefix)
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
-		slog.Info("Rscript cmd:", cmd)
+		slog.Info("Rscript", "cmd", cmd)
 		err := cmd.Run()
 		if err != nil {
 			slog.Error("Rscript error:", err)
