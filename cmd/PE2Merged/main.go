@@ -27,6 +27,8 @@ var (
 )
 
 func main() {
+	flag.Parse()
+
 	// 打开现有的xlsx文件
 	f, err := excelize.OpenFile(*input)
 	if err != nil {
@@ -46,6 +48,8 @@ func main() {
 		fq2Idx = -1
 		cIdx1  = 'A'
 		cIdx2  = 'A'
+
+		mergedMap = make(map[string]bool)
 	)
 
 	// 遍历所有行，修改指定列的值
@@ -68,6 +72,7 @@ func main() {
 		}
 		fq1 := row[fq1Idx]
 		merged := strings.Replace(fq1, "1.fq.gz", "merged.fq.gz", -1)
+		mergedMap[merged] = true
 		simpleUtil.CheckErr(f.SetCellStr("Sheet1", string(cIdx1)+strconv.Itoa(i+1), merged))
 		simpleUtil.CheckErr(f.SetCellStr("Sheet1", string(cIdx2)+strconv.Itoa(i+1), ""))
 	}
@@ -75,5 +80,9 @@ func main() {
 	// 保存文件到新的路径
 	if err := f.SaveAs(*output); err != nil {
 		fmt.Println(err)
+	}
+
+	for merged := range mergedMap {
+		fmt.Printf("CMD:\n\tmnt/d/jrqlx/Documents/中合/测序分析/NGmerge.sh %s\n", merged)
 	}
 }
