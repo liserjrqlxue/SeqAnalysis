@@ -100,9 +100,9 @@ type SeqInfo struct {
 	SeqChan   chan string
 	SeqChanWG sync.WaitGroup
 
-	SeqResultTxt *os.File
-	RegPolyA     *regexp.Regexp
-	RegIndexSeq  *regexp.Regexp
+	// SeqResultTxt *os.File
+	RegPolyA    *regexp.Regexp
+	RegIndexSeq *regexp.Regexp
 
 	LessMem            bool
 	HitSeq             []string
@@ -306,8 +306,8 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string) {
 	seqInfo.RegPolyA = regexp.MustCompile(`^` + indexSeq + `(.*?)` + postSeq)
 	seqInfo.RegIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
 
-	seqInfo.SeqResultTxt = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path))
-	defer simpleUtil.DeferClose(seqInfo.SeqResultTxt)
+	// seqInfo.SeqResultTxt = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path))
+	// defer simpleUtil.DeferClose(seqInfo.SeqResultTxt)
 
 	if indexSeq == "" {
 		seqInfo.RegPolyA = regexp.MustCompile(`^(.*?)` + postSeq)
@@ -355,7 +355,7 @@ func (seqInfo *SeqInfo) Write1SeqResult(s string, reg *regexp.Regexp) {
 
 	if submatch != nil {
 		tSeq := submatch[1] //[seqInfo.Offset:]
-		fmtUtil.Fprintln(seqInfo.SeqResultTxt, tSeq)
+		// fmtUtil.Fprintln(seqInfo.SeqResultTxt, tSeq)
 		seqInfo.Histogram[len(tSeq)]++
 
 		seqInfo.UpdateHitSeqCount(string(seqInfo.Seq), tSeq)
