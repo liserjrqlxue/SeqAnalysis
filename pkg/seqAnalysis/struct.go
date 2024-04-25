@@ -266,7 +266,7 @@ func (seqInfo *SeqInfo) SingleRun(resultDir string, TitleTar, TitleStats []strin
 func (seqInfo *SeqInfo) Save() {
 	slog.Info("save xlsx", slog.Group("seqInfo", "name", seqInfo.Name, "path", seqInfo.Excel))
 	simpleUtil.CheckErr(seqInfo.xlsx.SaveAs(seqInfo.Excel))
-	slog.Info("free xlsx", slog.Group("seqInfo", "name", seqInfo.Name, "path", seqInfo.Excel))
+	slog.Info("free xlsx", slog.Group("seqInfo", "name", seqInfo.Name))
 	seqInfo.xlsx = nil
 }
 
@@ -428,35 +428,38 @@ func (seqInfo *SeqInfo) GetHitSeq() {
 
 func (seqInfo *SeqInfo) WriteHitSeqLessMem() {
 	for i, key := range seqInfo.HitSeq {
+		if i > seqInfo.lineLimit+2 {
+			break
+		}
 		if key == string(seqInfo.Seq) {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
 			seqInfo.rowDeletion++
-			if i < seqInfo.lineLimit {
+			if i < seqInfo.lineLimit+1 {
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key]})
 			}
 			continue
 		}
 		if seqInfo.Align1(key) {
-			if i < seqInfo.lineLimit {
+			if i < seqInfo.lineLimit+1 {
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align})
 			}
 			continue
 		}
 
 		if seqInfo.Align2(key) {
-			if i < seqInfo.lineLimit {
+			if i < seqInfo.lineLimit+1 {
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert})
 			}
 			continue
 		}
 
 		if seqInfo.Align3(key) {
-			if i < seqInfo.lineLimit {
+			if i < seqInfo.lineLimit+1 {
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
 			}
 			continue
 		}
-		if i < seqInfo.lineLimit {
+		if i < seqInfo.lineLimit+1 {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
 		}
 
