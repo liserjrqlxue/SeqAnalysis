@@ -435,11 +435,7 @@ func (seqInfo *SeqInfo) WriteHitSeqLessMem() {
 		if key == string(seqInfo.Seq) {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
 			seqInfo.rowDeletion++
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key]})
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key]})
-			}
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key]})
-			}
 			continue
 		}
 		if seqInfo.Align1(key, keep) {
@@ -535,7 +531,7 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	}
 	sheet = seqInfo.Sheets["DeletionSingle"]
 	for i := 2; i < seqInfo.rowDeletionSingle; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), "from DeletionSingle: "+ seqInfo.Name)
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), "from DeletionSingle: "+seqInfo.Name)
 		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["DeletionSingle"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
@@ -553,7 +549,7 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	}
 	sheet = seqInfo.Sheets["DeletionContinuous2"]
 	for i := 2; i < seqInfo.rowDeletionContinuous2; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i),"from DeletionContinuous2: ", seqInfo.Name)
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), "from DeletionContinuous2: ", seqInfo.Name)
 		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["DeletionContinuous2"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
