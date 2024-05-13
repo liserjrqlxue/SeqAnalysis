@@ -427,16 +427,18 @@ func (seqInfo *SeqInfo) GetHitSeq() {
 }
 
 func (seqInfo *SeqInfo) WriteHitSeqLessMem() {
-	var keep = true
 	for i, key := range seqInfo.HitSeq {
+		var keep = true
 		if i > seqInfo.lineLimit+2 {
 			keep = false
 		}
 		if key == string(seqInfo.Seq) {
-			if keep {
-				seqInfo.rowDeletion++
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
+			seqInfo.rowDeletion++
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key]})
+				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key]})
+			}
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key]})
 			}
 			continue
 		}
@@ -475,8 +477,8 @@ func (seqInfo *SeqInfo) WriteHitSeq() {
 	var keep = true
 	for i, key := range seqInfo.HitSeq {
 		if key == string(seqInfo.Seq) {
-			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key]})
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
 			seqInfo.rowDeletion++
 			continue
 		}
@@ -527,39 +529,35 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 
 	var sheet = seqInfo.Sheets["Deletion"]
 	for i := 3; i < seqInfo.rowDeletion; i++ {
-		// var countStr = GetCellValue(seqInfo.xlsx, sheet, 3, i)
-		// var count = 0
-		// if countStr != "" {
-		// 	count = stringsUtil.Atoi(countStr, fmt.Sprint("from Deletion:", seqInfo.Name, " ", i))
-		// }
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from Deletion:", seqInfo.Name, " ", i))
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), "from Deletion: "+seqInfo.Name)
 		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["Deletion"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
 	sheet = seqInfo.Sheets["DeletionSingle"]
 	for i := 2; i < seqInfo.rowDeletionSingle; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from DeletionSingle:", seqInfo.Name, " ", i, " ", seqInfo.rowDeletionSingle))
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), "from DeletionSingle: "+ seqInfo.Name)
 		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["DeletionSingle"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
 	sheet = seqInfo.Sheets["DeletionDiscrete2"]
 	for i := 2; i < seqInfo.rowDeletionDiscrete2; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from DeletionDiscrete2:", seqInfo.Name, " ", i))
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), "from DeletionDiscrete2: "+seqInfo.Name)
 		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["DeletionDiscrete2"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
 	sheet = seqInfo.Sheets["DeletionDiscrete3"]
 	for i := 2; i < seqInfo.rowDeletionDiscrete3; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from DeletionDiscrete3:", seqInfo.Name, " ", i))
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), "from DeletionDiscrete3: ", seqInfo.Name)
 		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["DeletionDiscrete3"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
 	sheet = seqInfo.Sheets["DeletionContinuous2"]
 	for i := 2; i < seqInfo.rowDeletionContinuous2; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from DeletionContinuous2:", seqInfo.Name, " ", i))
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i),"from DeletionContinuous2: ", seqInfo.Name)
 		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["DeletionContinuous2"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
+
 }
 
 // var dash = regexp.MustCompile(`-+`)
