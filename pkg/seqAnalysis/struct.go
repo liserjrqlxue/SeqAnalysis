@@ -433,8 +433,8 @@ func (seqInfo *SeqInfo) WriteHitSeqLessMem() {
 			keep = false
 		}
 		if key == string(seqInfo.Seq) {
-			seqInfo.rowDeletion++
 			if keep {
+				seqInfo.rowDeletion++
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key]})
 			}
@@ -463,8 +463,8 @@ func (seqInfo *SeqInfo) WriteHitSeqLessMem() {
 		if keep {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["Other"], 1, seqInfo.rowOther, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
+			seqInfo.rowOther++
 		}
-		seqInfo.rowOther++
 		seqInfo.Stats["ErrorOtherReadsNum"] += seqInfo.HitSeqCount[key]
 	}
 	// free HitSeq
@@ -601,18 +601,17 @@ func (seqInfo *SeqInfo) Align1(sequencingSeqStr string, keep bool) bool {
 
 		if keep {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
-
+			seqInfo.rowDeletion++
 		}
-		seqInfo.rowDeletion++
 
 		if delCount == 1 { // 单个缺失
 			seqInfo.Stats["DeletionSingle"] += count
 
 			if keep {
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionSingle"], 1, seqInfo.rowDeletionSingle, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
+				seqInfo.rowDeletionSingle++
 
 			}
-			seqInfo.rowDeletionSingle++
 
 			var m = minus1.FindIndex(sequencingAlignment)
 			if m != nil {
@@ -633,17 +632,15 @@ func (seqInfo *SeqInfo) Align1(sequencingSeqStr string, keep bool) bool {
 
 				if keep {
 					SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous2"], 1, seqInfo.rowDeletionContinuous2, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
-
+					seqInfo.rowDeletionContinuous2++
 				}
-				seqInfo.rowDeletionContinuous2++
 			} else { // 离散2缺失
 				seqInfo.Stats["DeletionDiscrete2"] += count
 
 				if keep {
 					SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDiscrete2"], 1, seqInfo.rowDeletionDiscrete2, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
-
+					seqInfo.rowDeletionDiscrete2++
 				}
-				seqInfo.rowDeletionDiscrete2++
 			}
 		} else if delCount >= 3 {
 			seqInfo.Stats["Deletion3"] += count
@@ -653,9 +650,8 @@ func (seqInfo *SeqInfo) Align1(sequencingSeqStr string, keep bool) bool {
 
 				if keep {
 					SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous3"], 1, seqInfo.rowDeletionContinuous3, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
-
+					seqInfo.rowDeletionContinuous3++
 				}
-				seqInfo.rowDeletionContinuous3++
 
 				var index = minus3.FindIndex(sequencingAlignment)
 				if index != nil {
@@ -698,16 +694,14 @@ func (seqInfo *SeqInfo) Align1(sequencingSeqStr string, keep bool) bool {
 
 				if keep {
 					SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous2"], 1, seqInfo.rowDeletionContinuous2, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
-
+					seqInfo.rowDeletionContinuous2++
 				}
-				seqInfo.rowDeletionContinuous2++
 			} else { // 离散3缺失
 				if keep {
 					SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDiscrete3"], 1, seqInfo.rowDeletionDiscrete3, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
-
+					seqInfo.rowDeletionDiscrete3++
 				}
 				seqInfo.Stats["DeletionDiscrete3"] += count
-				seqInfo.rowDeletionDiscrete3++
 			}
 		}
 
@@ -763,8 +757,8 @@ func (seqInfo *SeqInfo) Align2(key string, keep bool) bool {
 			} else {
 				if keep {
 					SetRow(seqInfo.xlsx, seqInfo.Sheets["Insertion"], 1, seqInfo.rowInsertion, []interface{}{seqInfo.Seq, key, count, c})
+					seqInfo.rowInsertion++
 				}
-				seqInfo.rowInsertion++
 				seqInfo.Stats["ErrorInsReadsNum"] += count
 			}
 			var i = 0
@@ -804,10 +798,9 @@ func (seqInfo *SeqInfo) Align3(key string, keep bool) bool {
 	seqInfo.AlignMut = c
 	if k < 2 && len(c) > 0 {
 		if keep {
-
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["Mutation"], 1, seqInfo.rowMutation, []interface{}{seqInfo.Seq, key, count, c})
+			seqInfo.rowMutation++
 		}
-		seqInfo.rowMutation++
 		seqInfo.Stats["ErrorMutReadsNum"] += count
 		for i, c1 := range c {
 			if c1 == 'X' {
