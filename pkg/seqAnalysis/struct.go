@@ -427,46 +427,42 @@ func (seqInfo *SeqInfo) GetHitSeq() {
 }
 
 func (seqInfo *SeqInfo) WriteHitSeqLessMem() {
+	var keep = true
 	for i, key := range seqInfo.HitSeq {
 		if i > seqInfo.lineLimit+2 {
-			break
+			keep = false
 		}
 		if key == string(seqInfo.Seq) {
-			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
 			seqInfo.rowDeletion++
-			if i < seqInfo.lineLimit+1 {
+			if keep {
+				SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key]})
 			}
 			continue
 		}
 		if seqInfo.Align1(key) {
-			if i < seqInfo.lineLimit+1 {
+			if keep{
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align})
 			}
 			continue
 		}
 
 		if seqInfo.Align2(key) {
-			if i < seqInfo.lineLimit+1 {
+			if keep{
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert})
 			}
-			continue
 		}
 
 		if seqInfo.Align3(key) {
-			if i < seqInfo.lineLimit+1 {
+			if keep{
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
-			}
 			continue
 		}
-		if i < seqInfo.lineLimit+1 {
+		if keep{
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
-		}
-
-		if seqInfo.rowOther < seqInfo.lineLimit+2 {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["Other"], 1, seqInfo.rowOther, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
-			seqInfo.rowOther++
 		}
+		seqInfo.rowOther++
 		seqInfo.Stats["ErrorOtherReadsNum"] += seqInfo.HitSeqCount[key]
 	}
 	// free HitSeq
