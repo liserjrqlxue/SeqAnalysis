@@ -441,24 +441,26 @@ func (seqInfo *SeqInfo) WriteHitSeqLessMem() {
 			continue
 		}
 		if seqInfo.Align1(key) {
-			if keep{
+			if keep {
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align})
 			}
 			continue
 		}
 
 		if seqInfo.Align2(key) {
-			if keep{
+			if keep {
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert})
 			}
+			continue
 		}
 
 		if seqInfo.Align3(key) {
-			if keep{
+			if keep {
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
+			}
 			continue
 		}
-		if keep{
+		if keep {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["Other"], 1, seqInfo.rowOther, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
 		}
