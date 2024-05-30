@@ -52,7 +52,7 @@ func main() {
 	flag.Parse()
 	if *input == "" || *output == "" || *barcode == "" {
 		flag.PrintDefaults()
-		log.Fatal("-1/-2/-p required!")
+		log.Fatal("-i/-o/-b required!")
 	}
 
 	var (
