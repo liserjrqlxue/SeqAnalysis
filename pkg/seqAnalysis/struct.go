@@ -55,7 +55,13 @@ type ParallelTest struct {
 
 func (p *ParallelTest) Calculater() {
 	p.YieldCoefficientMean, p.YieldCoefficientSD = math2.MeanStdDev(p.YieldCoefficient)
+	if len(p.YieldCoefficient) == 1 {
+		p.YieldCoefficientSD = 0
+	}
 	p.AverageYieldAccuracyMean, p.AverageYieldAccuracySD = math2.MeanStdDev(p.AverageYieldAccuracy)
+	if len(p.AverageYieldAccuracy) == 1 {
+		p.AverageYieldAccuracySD = 0
+	}
 }
 
 type SeqInfo struct {
