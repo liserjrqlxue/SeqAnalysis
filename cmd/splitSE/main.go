@@ -64,9 +64,9 @@ func main() {
 
 	if trailer != "" {
 		if *cut {
-			filter = regexp.MustCompile(`^` + header + `.*(` + trailer + `)`)
+			filter = regexp.MustCompile(`^` + header + `.*?(` + trailer + `)`)
 		} else {
-			filter = regexp.MustCompile(`^` + header + `.*` + trailer + ``)
+			filter = regexp.MustCompile(`^` + header + `.*?` + trailer + ``)
 		}
 	} else if *cut {
 		log.Printf("empty trailer, not cut!")
@@ -113,7 +113,7 @@ func SplitSE(in io.Reader, out io.Writer, filter *regexp.Regexp, cut bool) {
 				qual = line
 				var match = filter.FindStringSubmatchIndex(seq)
 				if match != nil {
-					simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq[:match[1]] + "\n" + note + "\n" + qual[:match[1]] + "\n")))
+					simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq[:match[2]] + "\n" + note + "\n" + qual[:match[2]] + "\n")))
 				}
 			}
 		}
