@@ -41,6 +41,11 @@ var (
 		false,
 		"if cut trailer",
 	)
+	skip = flag.String(
+		"skip",
+		"",
+		"skip seq",
+	)
 )
 
 func main() {
@@ -54,7 +59,8 @@ func main() {
 		header  = strings.ToUpper(*barcode)
 		trailer = strings.ToUpper(*tail)
 
-		filter = regexp.MustCompile(`^` + header)
+		filter  = regexp.MustCompile(`^` + header)
+		skipReg *regexp.Regexp
 
 		inList = strings.Split(*input, ",")
 
@@ -73,6 +79,10 @@ func main() {
 		*cut = false
 	}
 
+	if *skip != "" {
+		skipReg = regexp.MustCompile(`^` + header + *skip)
+	}
+
 	defer simpleUtil.DeferClose(outF)
 	defer simpleUtil.DeferClose(gw)
 
@@ -82,13 +92,30 @@ func main() {
 			gr  = simpleUtil.HandleError(gzip.NewReader(inF))
 		)
 		log.Printf("split %s", in)
-		SplitSE(gr, gw, filter, *cut)
+		SplitSE(gr, gw, filter, skipReg, *cut)
 		simpleUtil.DeferClose(gr)
 		simpleUtil.DeferClose(inF)
 	}
 }
 
-func SplitSE(in io.Reader, out io.Writer, filter *regexp.Regexp, cut bool) {
+// SplitSE 根据skipReg和cut进行分流
+func SplitSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp, cut bool) {
+	if cut {
+		if skipReg == nil {
+			splitCutSE(in, out, filter)
+		} else {
+			splitCutSkipSE(in, out, filter, skipReg)
+		}
+	} else {
+		if skipReg == nil {
+			splitSE(in, out, filter)
+		} else {
+			splitSkipSE(in, out, filter, skipReg)
+		}
+	}
+}
+
+func splitSE(in io.Reader, out io.Writer, filter *regexp.Regexp) {
 	var (
 		n    = 0
 		name string
@@ -98,40 +125,119 @@ func SplitSE(in io.Reader, out io.Writer, filter *regexp.Regexp, cut bool) {
 
 		scanner = bufio.NewScanner(in)
 	)
-	if cut {
-		for scanner.Scan() {
-			var line = scanner.Text()
-			n++
-			switch n % 4 {
-			case 1:
-				name = line
-			case 2:
-				seq = line
-			case 3:
-				note = line
-			case 0:
-				qual = line
-				var match = filter.FindStringSubmatchIndex(seq)
-				if match != nil {
-					simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq[:match[2]] + "\n" + note + "\n" + qual[:match[2]] + "\n")))
+
+	for scanner.Scan() {
+		var line = scanner.Text()
+		n++
+		switch n % 4 {
+		case 1:
+			name = line
+		case 2:
+			seq = line
+		case 3:
+			note = line
+		case 0:
+			qual = line
+			if filter.MatchString(seq) {
+				simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq + "\n" + note + "\n" + qual + "\n")))
+			}
+		}
+	}
+	simpleUtil.CheckErr(scanner.Err())
+}
+
+func splitSkipSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp) {
+	var (
+		n    = 0
+		name string
+		seq  string
+		note string
+		qual string
+
+		scanner = bufio.NewScanner(in)
+	)
+
+	for scanner.Scan() {
+		var line = scanner.Text()
+		n++
+		switch n % 4 {
+		case 1:
+			name = line
+		case 2:
+			seq = line
+		case 3:
+			note = line
+		case 0:
+			qual = line
+			if filter.MatchString(seq) {
+				if !skipReg.MatchString(seq) {
+					simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq + "\n" + note + "\n" + qual + "\n")))
 				}
 			}
 		}
-	} else {
-		for scanner.Scan() {
-			var line = scanner.Text()
-			n++
-			switch n % 4 {
-			case 1:
-				name = line
-			case 2:
-				seq = line
-			case 3:
-				note = line
-			case 0:
-				qual = line
-				if filter.MatchString(seq) {
-					simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq + "\n" + note + "\n" + qual + "\n")))
+	}
+	simpleUtil.CheckErr(scanner.Err())
+}
+
+func splitCutSE(in io.Reader, out io.Writer, filter *regexp.Regexp) {
+	var (
+		n    = 0
+		name string
+		seq  string
+		note string
+		qual string
+
+		scanner = bufio.NewScanner(in)
+	)
+
+	for scanner.Scan() {
+		var line = scanner.Text()
+		n++
+		switch n % 4 {
+		case 1:
+			name = line
+		case 2:
+			seq = line
+		case 3:
+			note = line
+		case 0:
+			qual = line
+			var match = filter.FindStringSubmatchIndex(seq)
+			if match != nil {
+				simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq[:match[2]] + "\n" + note + "\n" + qual[:match[2]] + "\n")))
+			}
+		}
+	}
+	simpleUtil.CheckErr(scanner.Err())
+}
+
+func splitCutSkipSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp) {
+	var (
+		n    = 0
+		name string
+		seq  string
+		note string
+		qual string
+
+		scanner = bufio.NewScanner(in)
+	)
+
+	for scanner.Scan() {
+		var line = scanner.Text()
+		n++
+		switch n % 4 {
+		case 1:
+			name = line
+		case 2:
+			seq = line
+		case 3:
+			note = line
+		case 0:
+			qual = line
+			var match = filter.FindStringSubmatchIndex(seq)
+			if match != nil {
+				if !skipReg.MatchString(seq) {
+					simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq[:match[2]] + "\n" + note + "\n" + qual[:match[2]] + "\n")))
 				}
 			}
 		}
