@@ -113,6 +113,7 @@ func main() {
 	}
 
 	for merged := range mergedMap {
-		fmt.Printf("CMD:\n\tmnt/d/jrqlx/Documents/中合/测序分析/NGmerge.sh %s\n", merged)
+		merged = strings.Replace(merged, "_merged.fq.gz", "", -1)
+		fmt.Printf("CMD:\n\t/mnt/d/jrqlx/Documents/中合/测序分析/NGmerge.sh %s\n", merged)
 	}
 }
