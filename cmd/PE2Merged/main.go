@@ -120,6 +120,11 @@ func main() {
 
 	for merged := range mergedMap {
 		merged = strings.Replace(merged, "_merged.fq.gz", "", -1)
-		fmt.Printf("CMD:\n\t/mnt/d/jrqlx/Documents/中合/测序分析/NGmerge.sh %s\n", merged)
+		// 检测系统环境
+		if os.Getenv("OS") == "Windows_NT" {
+			fmt.Printf("CMD:\n  bash -c '/mnt/d/jrqlx/Documents/中合/测序分析/NGmerge.sh %s'\n", merged)
+		} else {
+			fmt.Printf("CMD:\n\tNGmerge.sh %s\n", merged)
+		}
 	}
 }
