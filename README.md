@@ -13,6 +13,8 @@ CPU 1 核，内存受输入数据量影响。
 
 `Go 1.20` 以上版本 （编译需要，编译后的二进制软件可直接运行不需要其他依赖）
 
+`R` （画图需要）
+
 ### 系统
 
 因为 `Go` 语言具有跨平台编译支持，而软件本身没有依赖特定系统平台的库文件，所以 `Windows`、`Linux`、`MacOS` 理论上均支持。
@@ -20,7 +22,9 @@ CPU 1 核，内存受输入数据量影响。
 
 ## 使用说明
 
-### 安装依赖（可选）
+### 安装依赖 ~~（可选）~~
+
+#### 安装 Go
 
 **注意**：直接使用对应系统平台可用的预编译软件可跳过本步骤
 
@@ -33,6 +37,20 @@ CPU 1 核，内存受输入数据量影响。
    1. `Windows` 下直接双击 msi 包安装;`Linux` 下直接解压 tar.gz 包
    2. 配置好 `GOROOT`、`GOPATH` 等环境变量，并将 `go` 添加到 `PATH` 查找环境
    3. 详情参考官网[安装文档](https://go.dev/doc/install)
+   
+#### 安装 `R` 和 相关 `packages`
+
+1. 去 [CRAN](https://cran.r-project.org/) 官方网站下载并安装对应系统的软件安装包
+2. 将 `R` 环节写入 `PATH` 环境变量
+3. 参考下面命令安装相关 `packages`
+```R
+install.packages("ggplot2")
+install.packages("coorspace")
+install.packages("colorspace")
+install.packages("stringr")
+install.packages("cowplot")
+install.packages("showtext")
+```
 
 ### 安装软件
 
@@ -148,3 +166,5 @@ CPU 1 核，内存受输入数据量影响。
 - [x] 性能
   - [x] `plot.R` 内存消耗过大
 - [x] 靶标兼容N
+- [ ] A尾与无A尾独立
+

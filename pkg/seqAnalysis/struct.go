@@ -1,4 +1,4 @@
-package main
+package seqAnalysis
 
 import (
 	"fmt"
@@ -13,8 +13,6 @@ import (
 	"strings"
 	"sync"
 
-	//"compress/gzip"
-
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/opts"
 	"github.com/go-echarts/go-echarts/v2/types"
@@ -28,6 +26,16 @@ import (
 
 const (
 	kmerLength = 9
+)
+
+// regexp
+var (
+	plus3  = regexp.MustCompile(`\+\+\+`)
+	minus1 = regexp.MustCompile(`-`)
+	minus2 = regexp.MustCompile(`--`)
+	minus3 = regexp.MustCompile(`---`)
+
+	regN = regexp.MustCompile(`N`)
 )
 
 type ParallelTest struct {
@@ -47,7 +55,13 @@ type ParallelTest struct {
 
 func (p *ParallelTest) Calculater() {
 	p.YieldCoefficientMean, p.YieldCoefficientSD = math2.MeanStdDev(p.YieldCoefficient)
+	if len(p.YieldCoefficient) == 1 {
+		p.YieldCoefficientSD = 0
+	}
 	p.AverageYieldAccuracyMean, p.AverageYieldAccuracySD = math2.MeanStdDev(p.AverageYieldAccuracy)
+	if len(p.AverageYieldAccuracy) == 1 {
+		p.AverageYieldAccuracySD = 0
+	}
 }
 
 type SeqInfo struct {
@@ -87,13 +101,14 @@ type SeqInfo struct {
 	AlignMut    []byte
 
 	IndexSeq  string
+	PostSeq   string
 	Fastqs    []string
 	SeqChan   chan string
 	SeqChanWG sync.WaitGroup
 
-	SeqResultTxt *os.File
-	RegPolyA     *regexp.Regexp
-	RegIndexSeq  *regexp.Regexp
+	// SeqResultTxt *os.File
+	RegPolyA    *regexp.Regexp
+	RegIndexSeq *regexp.Regexp
 
 	LessMem            bool
 	HitSeq             []string
@@ -131,17 +146,18 @@ type SeqInfo struct {
 	OSAR float64
 }
 
-func NewSeqInfo(data map[string]string, lineLimit int, long, rev, useRC, useKmer, lessMem bool) *SeqInfo {
+func NewSeqInfo(data, Sheets map[string]string, sheetList []string, outputDir string, lineLimit int, long, rev, useRC, useKmer, lessMem bool) *SeqInfo {
 	var seqInfo = new(SeqInfo)
 	seqInfo = &SeqInfo{
 		Name:           data["id"],
 		ParallelTestID: data["平行"],
 		IndexSeq:       strings.ToUpper(data["index"]),
+		PostSeq:        strings.ToUpper(data["postBase"]),
 		Seq:            []byte(strings.ToUpper(data["seq"])),
 		Fastqs:         strings.Split(data["fq"], ","),
 		SeqChan:        make(chan string, 102400),
 
-		Excel:     filepath.Join(*outputDir, data["id"]+".xlsx"),
+		Excel:     filepath.Join(outputDir, data["id"]+".xlsx"),
 		Sheets:    Sheets,
 		SheetList: sheetList,
 		lineLimit: lineLimit,
@@ -238,11 +254,11 @@ func (seqInfo *SeqInfo) Init() {
 	simpleUtil.CheckErr(seqInfo.xlsx.SetColWidth(seqInfo.Sheets["Other"], "A", "F", 25))
 }
 
-func (seqInfo *SeqInfo) SingleRun(resultDir string) {
+func (seqInfo *SeqInfo) SingleRun(resultDir string, TitleTar, TitleStats []string) {
 	seqInfo.Init()
-	seqInfo.CountError4(resultDir, *verbose)
+	seqInfo.CountError4(resultDir)
 
-	seqInfo.WriteStatsSheet(resultDir)
+	seqInfo.WriteStatsSheet(resultDir, TitleTar, TitleStats)
 	seqInfo.Save()
 	seqInfo.PrintStats(resultDir)
 
@@ -256,14 +272,14 @@ func (seqInfo *SeqInfo) SingleRun(resultDir string) {
 func (seqInfo *SeqInfo) Save() {
 	slog.Info("save xlsx", slog.Group("seqInfo", "name", seqInfo.Name, "path", seqInfo.Excel))
 	simpleUtil.CheckErr(seqInfo.xlsx.SaveAs(seqInfo.Excel))
-	slog.Info("free xlsx", slog.Group("seqInfo", "name", seqInfo.Name, "path", seqInfo.Excel))
+	slog.Info("free xlsx", slog.Group("seqInfo", "name", seqInfo.Name))
 	seqInfo.xlsx = nil
 }
 
 // CountError4 count seq error
-func (seqInfo *SeqInfo) CountError4(outputDir string, verbose int) {
+func (seqInfo *SeqInfo) CountError4(outputDir string) {
 	// 1. 统计不同测序结果出现的频数
-	seqInfo.WriteSeqResult(".SeqResult.txt", outputDir, verbose)
+	seqInfo.WriteSeqResult(".SeqResult.txt", outputDir)
 
 	seqInfo.GetHitSeq()
 
@@ -282,22 +298,26 @@ func (seqInfo *SeqInfo) CountError4(outputDir string, verbose int) {
 	//seqInfo.PrintStats()
 }
 
-var regA8 = regexp.MustCompile(`AAAAAAAA`)
-
-func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
+func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string) {
 	var (
 		tarSeq   = string(seqInfo.Seq)
 		indexSeq = seqInfo.IndexSeq
+		postSeq  = seqInfo.PostSeq
 	)
-	seqInfo.RegPolyA = regexp.MustCompile(`^` + indexSeq + `(.*?)AAAAAAAA`)
+	if postSeq == "" {
+		postSeq = "AAAAAAAA"
+	}
+	var regPost = regexp.MustCompile(postSeq)
+
+	seqInfo.RegPolyA = regexp.MustCompile(`^` + indexSeq + `(.*?)` + postSeq)
 	seqInfo.RegIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
 
-	seqInfo.SeqResultTxt = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path))
-	defer simpleUtil.DeferClose(seqInfo.SeqResultTxt)
+	// seqInfo.SeqResultTxt = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path))
+	// defer simpleUtil.DeferClose(seqInfo.SeqResultTxt)
 
 	if indexSeq == "" {
-		seqInfo.RegPolyA = regexp.MustCompile(`^(.*?)AAAAAAAA`)
-		seqInfo.RegIndexSeq = regexp.MustCompile(`^(.*?)AAAAAAAA`)
+		seqInfo.RegPolyA = regexp.MustCompile(`^(.*?)` + postSeq)
+		seqInfo.RegIndexSeq = regexp.MustCompile(`^(.*?)` + postSeq)
 		seqInfo.UseReverseComplement = false
 	}
 	if tarSeq == "A" || tarSeq == "AAAAAAAAAAAAAAAAAAAA" {
@@ -306,7 +326,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 	}
 
 	for s := range seqInfo.SeqChan {
-		seqInfo.Write1SeqResult(s)
+		seqInfo.Write1SeqResult(s, regPost)
 	}
 
 	// update Stats
@@ -320,7 +340,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string, verbose int) {
 
 }
 
-func (seqInfo *SeqInfo) Write1SeqResult(s string) {
+func (seqInfo *SeqInfo) Write1SeqResult(s string, reg *regexp.Regexp) {
 	seqInfo.AllReadsNum++
 	submatch, byteS, indexSeqMatch := MatchSeq(s, seqInfo.RegPolyA, seqInfo.RegIndexSeq, seqInfo.UseReverseComplement, seqInfo.AssemblerMode)
 
@@ -330,7 +350,7 @@ func (seqInfo *SeqInfo) Write1SeqResult(s string) {
 
 	seqInfo.UpdateACGT(byteS)
 	// trim byteS from polyA
-	var byteSloc = regA8.FindIndex(byteS)
+	var byteSloc = reg.FindIndex(byteS)
 	if byteSloc != nil {
 		byteS = byteS[:byteSloc[0]]
 	}
@@ -341,7 +361,7 @@ func (seqInfo *SeqInfo) Write1SeqResult(s string) {
 
 	if submatch != nil {
 		tSeq := submatch[1] //[seqInfo.Offset:]
-		fmtUtil.Fprintln(seqInfo.SeqResultTxt, tSeq)
+		// fmtUtil.Fprintln(seqInfo.SeqResultTxt, tSeq)
 		seqInfo.Histogram[len(tSeq)]++
 
 		seqInfo.UpdateHitSeqCount(string(seqInfo.Seq), tSeq)
@@ -414,39 +434,38 @@ func (seqInfo *SeqInfo) GetHitSeq() {
 
 func (seqInfo *SeqInfo) WriteHitSeqLessMem() {
 	for i, key := range seqInfo.HitSeq {
+		var keep = true
+		if i > seqInfo.lineLimit+2 {
+			keep = false
+		}
 		if key == string(seqInfo.Seq) {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
 			seqInfo.rowDeletion++
-			if i < seqInfo.lineLimit {
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key]})
-			}
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key]})
 			continue
 		}
-		if seqInfo.Align1(key) {
-			if i < seqInfo.lineLimit {
+		if seqInfo.Align1(key, keep) {
+			if keep {
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align})
 			}
 			continue
 		}
 
-		if seqInfo.Align2(key) {
-			if i < seqInfo.lineLimit {
+		if seqInfo.Align2(key, keep) {
+			if keep {
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert})
 			}
 			continue
 		}
 
-		if seqInfo.Align3(key) {
-			if i < seqInfo.lineLimit {
+		if seqInfo.Align3(key, keep) {
+			if keep {
 				SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
 			}
 			continue
 		}
-		if i < seqInfo.lineLimit {
+		if keep {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
-		}
-
-		if seqInfo.rowOther < seqInfo.lineLimit+2 {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["Other"], 1, seqInfo.rowOther, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
 			seqInfo.rowOther++
 		}
@@ -457,24 +476,25 @@ func (seqInfo *SeqInfo) WriteHitSeqLessMem() {
 }
 
 func (seqInfo *SeqInfo) WriteHitSeq() {
+	var keep = true
 	for i, key := range seqInfo.HitSeq {
 		if key == string(seqInfo.Seq) {
-			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key]})
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, key, seqInfo.HitSeqCount[key]})
 			seqInfo.rowDeletion++
 			continue
 		}
-		if seqInfo.Align1(key) {
+		if seqInfo.Align1(key, keep) {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align})
 			continue
 		}
 
-		if seqInfo.Align2(key) {
+		if seqInfo.Align2(key, keep) {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert})
 			continue
 		}
 
-		if seqInfo.Align3(key) {
+		if seqInfo.Align3(key, keep) {
 			SetRow(seqInfo.xlsx, seqInfo.Sheets["BarCode"], 1, i+1, []interface{}{key, seqInfo.HitSeqCount[key], seqInfo.Align, seqInfo.AlignInsert, seqInfo.AlignMut})
 			continue
 		}
@@ -511,46 +531,42 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 
 	var sheet = seqInfo.Sheets["Deletion"]
 	for i := 3; i < seqInfo.rowDeletion; i++ {
-		// var countStr = GetCellValue(seqInfo.xlsx, sheet, 3, i)
-		// var count = 0
-		// if countStr != "" {
-		// 	count = stringsUtil.Atoi(countStr, fmt.Sprint("from Deletion:", seqInfo.Name, " ", i))
-		// }
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from Deletion:", seqInfo.Name, " ", i))
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), "from Deletion: "+seqInfo.Name)
 		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["Deletion"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
 	sheet = seqInfo.Sheets["DeletionSingle"]
 	for i := 2; i < seqInfo.rowDeletionSingle; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from DeletionSingle:", seqInfo.Name, " ", i, " ", seqInfo.rowDeletionSingle))
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), "from DeletionSingle: "+seqInfo.Name)
 		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["DeletionSingle"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
 	sheet = seqInfo.Sheets["DeletionDiscrete2"]
 	for i := 2; i < seqInfo.rowDeletionDiscrete2; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from DeletionDiscrete2:", seqInfo.Name, " ", i))
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), "from DeletionDiscrete2: "+seqInfo.Name)
 		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["DeletionDiscrete2"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
 	sheet = seqInfo.Sheets["DeletionDiscrete3"]
 	for i := 2; i < seqInfo.rowDeletionDiscrete3; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from DeletionDiscrete3:", seqInfo.Name, " ", i))
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), "from DeletionDiscrete3: ", seqInfo.Name)
 		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["DeletionDiscrete3"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
 	sheet = seqInfo.Sheets["DeletionContinuous2"]
 	for i := 2; i < seqInfo.rowDeletionContinuous2; i++ {
-		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), fmt.Sprint("from DeletionContinuous2:", seqInfo.Name, " ", i))
+		var count = stringsUtil.Atoi(GetCellValue(seqInfo.xlsx, sheet, 3, i), "from DeletionContinuous2: ", seqInfo.Name)
 		SetCellValue(seqInfo.xlsx, sheet, 5, i, math2.DivisionInt(count, seqInfo.Stats["DeletionContinuous2"]))
 		SetCellValue(seqInfo.xlsx, sheet, 6, i, math2.DivisionInt(count, seqInfo.Stats["AnalyzedReadsNum"]))
 	}
+
 }
 
 // var dash = regexp.MustCompile(`-+`)
 var dash3 = regexp.MustCompile(`---+`)
 var dashEnd = regexp.MustCompile(`-$`)
 
-func (seqInfo *SeqInfo) Align1(sequencingSeqStr string) bool {
+func (seqInfo *SeqInfo) Align1(sequencingSeqStr string, keep bool) bool {
 	var (
 		targetSynthesisSeq  = seqInfo.Seq
 		sequencingSeq       = []byte(sequencingSeqStr)
@@ -583,14 +599,19 @@ func (seqInfo *SeqInfo) Align1(sequencingSeqStr string) bool {
 	if k >= len(sequencingSeq) { // all match
 		seqInfo.Stats["Deletion"] += count
 
-		SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
-		seqInfo.rowDeletion++
+		if keep {
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
+			seqInfo.rowDeletion++
+		}
 
 		if delCount == 1 { // 单个缺失
 			seqInfo.Stats["DeletionSingle"] += count
 
-			SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionSingle"], 1, seqInfo.rowDeletionSingle, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
-			seqInfo.rowDeletionSingle++
+			if keep {
+				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionSingle"], 1, seqInfo.rowDeletionSingle, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
+				seqInfo.rowDeletionSingle++
+
+			}
 
 			var m = minus1.FindIndex(sequencingAlignment)
 			if m != nil {
@@ -609,13 +630,17 @@ func (seqInfo *SeqInfo) Align1(sequencingSeqStr string) bool {
 			if minus2.Match(sequencingAlignment) { // 连续2缺失
 				seqInfo.Stats["DeletionContinuous2"] += count
 
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous2"], 1, seqInfo.rowDeletionContinuous2, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
-				seqInfo.rowDeletionContinuous2++
+				if keep {
+					SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous2"], 1, seqInfo.rowDeletionContinuous2, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
+					seqInfo.rowDeletionContinuous2++
+				}
 			} else { // 离散2缺失
 				seqInfo.Stats["DeletionDiscrete2"] += count
 
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDiscrete2"], 1, seqInfo.rowDeletionDiscrete2, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
-				seqInfo.rowDeletionDiscrete2++
+				if keep {
+					SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDiscrete2"], 1, seqInfo.rowDeletionDiscrete2, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
+					seqInfo.rowDeletionDiscrete2++
+				}
 			}
 		} else if delCount >= 3 {
 			seqInfo.Stats["Deletion3"] += count
@@ -623,8 +648,10 @@ func (seqInfo *SeqInfo) Align1(sequencingSeqStr string) bool {
 			if minus3.Match(sequencingAlignment) { // 连续3缺失
 				seqInfo.Stats["DeletionContinuous3"] += count
 
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous3"], 1, seqInfo.rowDeletionContinuous3, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
-				seqInfo.rowDeletionContinuous3++
+				if keep {
+					SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous3"], 1, seqInfo.rowDeletionContinuous3, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
+					seqInfo.rowDeletionContinuous3++
+				}
 
 				var index = minus3.FindIndex(sequencingAlignment)
 				if index != nil {
@@ -665,12 +692,16 @@ func (seqInfo *SeqInfo) Align1(sequencingSeqStr string) bool {
 			} else if minus2.Match(sequencingAlignment) { // 连续2缺失
 				seqInfo.Stats["DeletionContinuous2"] += count
 
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous2"], 1, seqInfo.rowDeletionContinuous2, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
-				seqInfo.rowDeletionContinuous2++
+				if keep {
+					SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous2"], 1, seqInfo.rowDeletionContinuous2, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
+					seqInfo.rowDeletionContinuous2++
+				}
 			} else { // 离散3缺失
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDiscrete3"], 1, seqInfo.rowDeletionDiscrete3, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
+				if keep {
+					SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDiscrete3"], 1, seqInfo.rowDeletionDiscrete3, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
+					seqInfo.rowDeletionDiscrete3++
+				}
 				seqInfo.Stats["DeletionDiscrete3"] += count
-				seqInfo.rowDeletionDiscrete3++
 			}
 		}
 
@@ -685,7 +716,7 @@ func (seqInfo *SeqInfo) Align1(sequencingSeqStr string) bool {
 	return false
 }
 
-func (seqInfo *SeqInfo) Align2(key string) bool {
+func (seqInfo *SeqInfo) Align2(key string, keep bool) bool {
 	var (
 		a      = seqInfo.Seq
 		b      = []byte(key)
@@ -718,12 +749,16 @@ func (seqInfo *SeqInfo) Align2(key string) bool {
 		//if !plus3.Match(c) && !minus3.Match(c) && !m2p2.Match(c) && minus1.Match(c) {
 		if !plus3.Match(c) {
 			if minus1.Match(c) {
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["InsertionDeletion"], 1, seqInfo.rowInsertionDeletion, []interface{}{seqInfo.Seq, key, count, c})
+				if keep {
+					SetRow(seqInfo.xlsx, seqInfo.Sheets["InsertionDeletion"], 1, seqInfo.rowInsertionDeletion, []interface{}{seqInfo.Seq, key, count, c})
+				}
 				seqInfo.rowInsertionDeletion++
 				seqInfo.Stats["ErrorInsDelReadsNum"] += count
 			} else {
-				SetRow(seqInfo.xlsx, seqInfo.Sheets["Insertion"], 1, seqInfo.rowInsertion, []interface{}{seqInfo.Seq, key, count, c})
-				seqInfo.rowInsertion++
+				if keep {
+					SetRow(seqInfo.xlsx, seqInfo.Sheets["Insertion"], 1, seqInfo.rowInsertion, []interface{}{seqInfo.Seq, key, count, c})
+					seqInfo.rowInsertion++
+				}
 				seqInfo.Stats["ErrorInsReadsNum"] += count
 			}
 			var i = 0
@@ -740,7 +775,7 @@ func (seqInfo *SeqInfo) Align2(key string) bool {
 	return false
 }
 
-func (seqInfo *SeqInfo) Align3(key string) bool {
+func (seqInfo *SeqInfo) Align3(key string, keep bool) bool {
 	var (
 		a = seqInfo.Seq
 		b = []byte(key)
@@ -762,8 +797,10 @@ func (seqInfo *SeqInfo) Align3(key string) bool {
 	}
 	seqInfo.AlignMut = c
 	if k < 2 && len(c) > 0 {
-		SetRow(seqInfo.xlsx, seqInfo.Sheets["Mutation"], 1, seqInfo.rowMutation, []interface{}{seqInfo.Seq, key, count, c})
-		seqInfo.rowMutation++
+		if keep {
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["Mutation"], 1, seqInfo.rowMutation, []interface{}{seqInfo.Seq, key, count, c})
+			seqInfo.rowMutation++
+		}
 		seqInfo.Stats["ErrorMutReadsNum"] += count
 		for i, c1 := range c {
 			if c1 == 'X' {
@@ -992,7 +1029,7 @@ func (seqInfo *SeqInfo) WriteKmer(prefix string) {
 //
 // No parameters.
 // No return values.
-func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string) {
+func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string, TitleTar, TitleStats []string) {
 	var (
 		stats = seqInfo.Stats
 		xlsx  = seqInfo.xlsx

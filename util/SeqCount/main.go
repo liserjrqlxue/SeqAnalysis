@@ -7,7 +7,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"io"
 	"regexp"
 	"sort"
 
@@ -75,7 +74,7 @@ func fqCount(fastq string, start, end int) {
 		i       = -1
 	)
 	if gz.MatchString(fastq) {
-		scanner = bufio.NewScanner(simpleUtil.HandleError(gzip.NewReader(file)).(io.Reader))
+		scanner = bufio.NewScanner(simpleUtil.HandleError(gzip.NewReader(file)))
 	} else {
 		scanner = bufio.NewScanner(file)
 	}
