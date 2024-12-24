@@ -22,7 +22,7 @@ var (
 	)
 	output = flag.String(
 		"o",
-		"merged.xlsx",
+		"",
 		"output",
 	)
 	sheet = flag.String(
@@ -39,6 +39,9 @@ var (
 
 func main() {
 	flag.Parse()
+	if *output == "" {
+		*output = strings.Replace(*input, ".xlsx", ".merged.xlsx", 1)
+	}
 
 	// 打开现有的xlsx文件
 	f, err := excelize.OpenFile(*input)
