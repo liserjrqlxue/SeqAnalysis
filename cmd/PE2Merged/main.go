@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -91,6 +92,11 @@ func main() {
 			cIdx2 += rune(fq2Idx)
 			headerColIdx += rune(headerIdx)
 			targetSynthesisSeqColIdx += rune(targetSynthesisSeqIdx)
+			continue
+		}
+		//slog.Info("row", slog.Int("i", i), slog.Any("row", row))
+		if len(row) < fq1Idx {
+			slog.Info("skip	 row", slog.Int("i", i), slog.Any("row", row))
 			continue
 		}
 		fq1 := row[fq1Idx]
