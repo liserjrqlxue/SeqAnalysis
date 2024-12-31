@@ -36,6 +36,11 @@ var (
 		"",
 		"insert string",
 	)
+	cutSE = flag.Int(
+		"c",
+		0,
+		"cut SE length, 0 not cut",
+	)
 )
 
 type IOs struct {
@@ -62,7 +67,12 @@ func main() {
 
 	ios.InsertSeq = *insertSeq
 	log.Print("InsertSeq: ", ios.InsertSeq)
-	CombinePE(ios)
+	if *cutSE > 0 {
+		CutCombinePE(ios, *cutSE)
+
+	} else {
+		CombinePE(ios)
+	}
 
 	log.Print("Done in ", time.Since(t0))
 }
@@ -153,4 +163,46 @@ func CombinePE(ios *IOs) {
 
 func WriteMerge(ios *IOs, name1, name2, seq1, seq2, note1, note2, qual1, qual2 string) {
 	simpleUtil.HandleError(ios.GwM.Write([]byte(name1 + "\n" + seq1 + ios.InsertSeq + util.ReverseComplement(seq2) + "\n" + note1 + "\n" + qual1 + ios.InsertSeq + string(util.Reverse([]byte(qual2))) + "\n")))
+}
+
+func CutCombinePE(ios *IOs, length int) {
+	var (
+		n     = 0
+		name1 string
+		seq1  string
+		note1 string
+		qual1 string
+		name2 string
+		seq2  string
+		note2 string
+		qual2 string
+
+		scanner1 = bufio.NewScanner(ios.Gr1)
+		scanner2 = bufio.NewScanner(ios.Gr2)
+	)
+
+	for scanner1.Scan() && scanner2.Scan() {
+		line1 := scanner1.Text()
+		line2 := scanner2.Text()
+		n++
+		switch n % 4 {
+		case 1:
+			name1 = line1
+			name2 = line2
+		case 2:
+			seq1 = line1[:length]
+			seq2 = line2[:length]
+		case 3:
+			note1 = line1
+			note2 = line2
+		case 0:
+			qual1 = line1[:length]
+			qual2 = line2[:length]
+			WriteMerge(ios, name1, name2, seq1, seq2, note1, note2, qual1, qual2)
+		}
+	}
+
+	simpleUtil.CheckErr(scanner1.Err())
+	simpleUtil.CheckErr(scanner2.Err())
+	log.Printf("Lines: %d, PairEnds: %d", n, n/4)
 }
