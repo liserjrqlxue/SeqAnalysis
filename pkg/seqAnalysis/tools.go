@@ -1,7 +1,6 @@
 package seqAnalysis
 
 import (
-	"PrimerDesigner/util"
 	"bufio"
 	"fmt"
 	"log"
@@ -18,6 +17,7 @@ import (
 	//"compress/gzip"
 	gzip "github.com/klauspost/pgzip"
 
+	"github.com/liserjrqlxue/DNA/pkg/util"
 	"github.com/liserjrqlxue/goUtil/fmtUtil"
 	math2 "github.com/liserjrqlxue/goUtil/math"
 	"github.com/liserjrqlxue/goUtil/osUtil"
@@ -343,6 +343,11 @@ func Input2summaryXlsx(input, resultDir, baseName string, StatisticalField []map
 			cellName = GetCellName(nrow, title+"/个数", titleIndex)
 			excel.SetCellInt("Summary", cellName, stats[key])
 		}
+		// cellName = GetCellName(nrow, "高频序列", titleIndex)
+		// excel.SetCellStr("Summary", cellName, info.HighFreqSeq)
+		// cellName = GetCellName(nrow, "高频个数", titleIndex)
+		// excel.SetCellInt("Summary", cellName, info.HighFreqCount)
+
 	}
 
 	// get cwd

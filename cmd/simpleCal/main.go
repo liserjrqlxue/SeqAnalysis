@@ -1,7 +1,6 @@
 package main
 
 import (
-	"PrimerDesigner/util"
 	"bufio"
 	"flag"
 	"fmt"
@@ -14,6 +13,7 @@ import (
 	//"compress/gzip"
 	gzip "github.com/klauspost/pgzip"
 
+	"github.com/liserjrqlxue/DNA/pkg/util"
 	"github.com/liserjrqlxue/goUtil/osUtil"
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
 )

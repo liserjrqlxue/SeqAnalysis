@@ -1,7 +1,6 @@
 package main
 
 import (
-	"PrimerDesigner/util"
 	"bufio"
 	"flag"
 	"io"
@@ -13,6 +12,7 @@ import (
 	//"compress/gzip"
 	gzip "github.com/klauspost/pgzip"
 
+	"github.com/liserjrqlxue/DNA/pkg/util"
 	"github.com/liserjrqlxue/goUtil/osUtil"
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
 )
@@ -149,21 +149,24 @@ func CloseIOs(ios *IOs) {
 	}
 	if ios.Out1 != nil {
 		if ios.Gw1 != nil {
+			ios.Gw1.Flush()
 			ios.Gw1.Close()
 		}
 		ios.Out1.Close()
 	}
 	if ios.Out2 != nil {
 		if ios.Gw2 != nil {
+			ios.Gw2.Flush()
 			ios.Gw2.Close()
 		}
 		ios.Out2.Close()
 	}
 	if ios.OutM != nil {
-		ios.OutM.Close()
 		if ios.GwM != nil {
+			ios.GwM.Flush()
 			ios.GwM.Close()
 		}
+		ios.OutM.Close()
 	}
 }
 
