@@ -5,6 +5,7 @@ import (
 	"flag"
 	"io"
 	"log"
+	"log/slog"
 	"regexp"
 	"strings"
 
@@ -143,6 +144,7 @@ func splitSE(in io.Reader, out io.Writer, filter *regexp.Regexp) {
 			}
 		}
 	}
+	slog.Info("finish", "n", n, "reads", n/4)
 	simpleUtil.CheckErr(scanner.Err())
 }
 
@@ -177,6 +179,7 @@ func splitSkipSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp) {
 		}
 	}
 	simpleUtil.CheckErr(scanner.Err())
+	slog.Info("finish", "n", n, "reads", n/4)
 }
 
 func splitCutSE(in io.Reader, out io.Writer, filter *regexp.Regexp) {
@@ -209,6 +212,7 @@ func splitCutSE(in io.Reader, out io.Writer, filter *regexp.Regexp) {
 		}
 	}
 	simpleUtil.CheckErr(scanner.Err())
+	slog.Info("finish", "n", n, "reads", n/4)
 }
 
 func splitCutSkipSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp) {
@@ -243,4 +247,5 @@ func splitCutSkipSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp)
 		}
 	}
 	simpleUtil.CheckErr(scanner.Err())
+	slog.Info("finish", "n", n, "reads", n/4)
 }
