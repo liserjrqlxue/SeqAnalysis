@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -121,8 +122,9 @@ func main() {
 		fmt.Println(err)
 	}
 
+	var outDir = filepath.Dir(*output)
 	for merged := range mergedMap {
-		merged = strings.Replace(merged, "_merged.fq.gz", "", -1)
+		merged = filepath.Join(outDir, strings.Replace(merged, "_merged.fq.gz", "", -1))
 		// 检测系统环境
 		if os.Getenv("OS") == "Windows_NT" {
 			fmt.Printf("CMD:\n  bash -c '/mnt/d/jrqlx/Documents/中合/测序分析/NGmerge.sh %s'\n", merged)
