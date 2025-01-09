@@ -12,6 +12,7 @@ import (
 	//"compress/gzip"
 	gzip "github.com/klauspost/pgzip"
 
+	"github.com/liserjrqlxue/DNA/pkg/util"
 	"github.com/liserjrqlxue/goUtil/osUtil"
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
 )
@@ -46,6 +47,11 @@ var (
 		"skip",
 		"",
 		"skip seq",
+	)
+	rc = flag.Bool(
+		"rc",
+		false,
+		"if use rc",
 	)
 )
 
@@ -93,30 +99,30 @@ func main() {
 			gr  = simpleUtil.HandleError(gzip.NewReader(inF))
 		)
 		log.Printf("split %s", in)
-		SplitSE(gr, gw, filter, skipReg, *cut)
+		SplitSE(gr, gw, filter, skipReg, *cut, *rc)
 		simpleUtil.DeferClose(gr)
 		simpleUtil.DeferClose(inF)
 	}
 }
 
 // SplitSE 根据skipReg和cut进行分流
-func SplitSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp, cut bool) {
+func SplitSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp, cut, rc bool) {
 	if cut {
 		if skipReg == nil {
-			splitCutSE(in, out, filter)
+			splitCutSE(in, out, filter, rc)
 		} else {
-			splitCutSkipSE(in, out, filter, skipReg)
+			splitCutSkipSE(in, out, filter, skipReg, rc)
 		}
 	} else {
 		if skipReg == nil {
-			splitSE(in, out, filter)
+			splitSE(in, out, filter, rc)
 		} else {
-			splitSkipSE(in, out, filter, skipReg)
+			splitSkipSE(in, out, filter, skipReg, rc)
 		}
 	}
 }
 
-func splitSE(in io.Reader, out io.Writer, filter *regexp.Regexp) {
+func splitSE(in io.Reader, out io.Writer, filter *regexp.Regexp, rc bool) {
 	var (
 		n    = 0
 		name string
@@ -141,6 +147,12 @@ func splitSE(in io.Reader, out io.Writer, filter *regexp.Regexp) {
 			qual = line
 			if filter.MatchString(seq) {
 				simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq + "\n" + note + "\n" + qual + "\n")))
+			} else if rc {
+				rcSeq := util.ReverseComplement(seq)
+				if filter.MatchString(rcSeq) {
+					rcQual := string(util.Reverse([]byte(qual)))
+					simpleUtil.HandleError(out.Write([]byte(name + "\n" + rcSeq + "\n" + note + "\n" + rcQual + "\n")))
+				}
 			}
 		}
 	}
@@ -148,7 +160,7 @@ func splitSE(in io.Reader, out io.Writer, filter *regexp.Regexp) {
 	simpleUtil.CheckErr(scanner.Err())
 }
 
-func splitSkipSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp) {
+func splitSkipSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp, rc bool) {
 	var (
 		n    = 0
 		name string
@@ -175,6 +187,14 @@ func splitSkipSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp) {
 				if !skipReg.MatchString(seq) {
 					simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq + "\n" + note + "\n" + qual + "\n")))
 				}
+			} else if rc {
+				rcSeq := util.ReverseComplement(seq)
+				if filter.MatchString(rcSeq) {
+					if !skipReg.MatchString(rcSeq) {
+						rcQual := string(util.Reverse([]byte(qual)))
+						simpleUtil.HandleError(out.Write([]byte(name + "\n" + rcSeq + "\n" + note + "\n" + rcQual + "\n")))
+					}
+				}
 			}
 		}
 	}
@@ -182,7 +202,7 @@ func splitSkipSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp) {
 	slog.Info("finish", "n", n, "reads", n/4)
 }
 
-func splitCutSE(in io.Reader, out io.Writer, filter *regexp.Regexp) {
+func splitCutSE(in io.Reader, out io.Writer, filter *regexp.Regexp, rc bool) {
 	var (
 		n    = 0
 		name string
@@ -208,6 +228,13 @@ func splitCutSE(in io.Reader, out io.Writer, filter *regexp.Regexp) {
 			var match = filter.FindStringSubmatchIndex(seq)
 			if match != nil {
 				simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq[:match[2]] + "\n" + note + "\n" + qual[:match[2]] + "\n")))
+			} else if rc {
+				rcSeq := util.ReverseComplement(seq)
+				var match = filter.FindStringSubmatchIndex(rcSeq)
+				if match != nil {
+					rcQual := string(util.Reverse([]byte(qual)))
+					simpleUtil.HandleError(out.Write([]byte(name + "\n" + rcSeq[:match[2]] + "\n" + note + "\n" + rcQual[:match[2]] + "\n")))
+				}
 			}
 		}
 	}
@@ -215,7 +242,7 @@ func splitCutSE(in io.Reader, out io.Writer, filter *regexp.Regexp) {
 	slog.Info("finish", "n", n, "reads", n/4)
 }
 
-func splitCutSkipSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp) {
+func splitCutSkipSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp, rc bool) {
 	var (
 		n    = 0
 		name string
@@ -242,6 +269,15 @@ func splitCutSkipSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp)
 			if match != nil {
 				if !skipReg.MatchString(seq) {
 					simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq[:match[2]] + "\n" + note + "\n" + qual[:match[2]] + "\n")))
+				}
+			} else if rc {
+				rcSeq := util.ReverseComplement(seq)
+				var match = filter.FindStringSubmatchIndex(rcSeq)
+				if match != nil {
+					rcQual := string(util.Reverse([]byte(qual)))
+					if !skipReg.MatchString(rcSeq) {
+						simpleUtil.HandleError(out.Write([]byte(name + "\n" + rcSeq[:match[2]] + "\n" + note + "\n" + rcQual[:match[2]] + "\n")))
+					}
 				}
 			}
 		}
