@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -35,6 +36,11 @@ var (
 		"h",
 		0,
 		"head",
+	)
+	run = flag.Bool(
+		"run",
+		false,
+		"run NGmerge",
 	)
 )
 
@@ -128,8 +134,46 @@ func main() {
 		// 检测系统环境
 		if os.Getenv("OS") == "Windows_NT" {
 			fmt.Printf("CMD:\n  bash -c '/mnt/d/jrqlx/Documents/中合/测序分析/NGmerge.sh %s'\n", merged)
+			if *run {
+				// E:\github.com\NGmerge\NGmerge.exe -a -1 merged_1.fq.gz -2 .\raw\Y24-240107_L6_2.fq.gz -o test.win.cutAdapter.fq.gz -n 14
+				cmd1 := exec.Command(
+					"NGmerge.exe",
+					"-a",
+					"-1", merged+"_1.fq.gz",
+					"-2", merged+"_2.fq.gz",
+					"-o", merged+"_cutAdapter",
+					"-n", "14",
+				)
+				cmd1.Stderr = os.Stderr
+				cmd1.Stdout = os.Stdout
+				log.Println(cmd1)
+				simpleUtil.CheckErr(cmd1.Run())
+				// E:\github.com\NGmerge\NGmerge.exe -1 .\test.win.cutAdapter.fq.gz_1.fastq.gz -2 .\test.win.cutAdapter.fq.gz_1.fastq.gz -o test.win.merged.fq.gz -n 14 -m 10
+				cmd2 := exec.Command(
+					"NGmerge.exe",
+					"-1", merged+"_cutAdapter_1.fastq.gz",
+					"-2", merged+"_cutAdapter_2.fastq.gz",
+					"-o", merged+"_merged.fq.gz",
+					"-n", "14",
+					"-m", "10",
+				)
+				cmd2.Stderr = os.Stderr
+				cmd2.Stdout = os.Stdout
+				log.Println(cmd2)
+				simpleUtil.CheckErr(cmd2.Run())
+				// remove file
+				simpleUtil.CheckErr(os.Remove(merged + "_cutAdapter_1.fastq.gz"))
+				simpleUtil.CheckErr(os.Remove(merged + "_cutAdapter_2.fastq.gz"))
+			}
 		} else {
 			fmt.Printf("CMD:\n\tNGmerge.sh %s\n", merged)
+			if *run {
+				cmd := exec.Command("NGmerge.sh", merged)
+				cmd.Stderr = os.Stderr
+				cmd.Stdout = os.Stdout
+				log.Println(cmd)
+				simpleUtil.CheckErr(cmd.Run())
+			}
 		}
 	}
 }
