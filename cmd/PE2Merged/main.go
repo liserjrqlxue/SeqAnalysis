@@ -42,6 +42,11 @@ var (
 		false,
 		"run NGmerge",
 	)
+	mergedDir = flag.String(
+		"d",
+		"",
+		"merged dir",
+	)
 )
 
 func main() {
@@ -112,6 +117,9 @@ func main() {
 		fq1 := row[fq1Idx]
 		merged := strings.Replace(fq1, "1.fq.gz", "merged.fq.gz", -1)
 		mergedMap[merged] = true
+		if *mergedDir != "" {
+			merged = filepath.Join(*mergedDir, filepath.Base(merged))
+		}
 		simpleUtil.CheckErr(f.SetCellStr(*sheet, string(cIdx1)+strconv.Itoa(i+1), merged))
 		simpleUtil.CheckErr(f.SetCellStr(*sheet, string(cIdx2)+strconv.Itoa(i+1), ""))
 		if *head > 0 {
@@ -149,11 +157,15 @@ func main() {
 				log.Println(cmd1)
 				simpleUtil.CheckErr(cmd1.Run())
 				// E:\github.com\NGmerge\NGmerge.exe -1 .\test.win.cutAdapter.fq.gz_1.fastq.gz -2 .\test.win.cutAdapter.fq.gz_1.fastq.gz -o test.win.merged.fq.gz -n 14 -m 10
+				mergedFq := merged + "_merged.fq.gz"
+				if *mergedDir != "" {
+					mergedFq = filepath.Join(*mergedDir, filepath.Base(mergedFq))
+				}
 				cmd2 := exec.Command(
 					"NGmerge.exe",
 					"-1", merged+"_cutAdapter_1.fastq.gz",
 					"-2", merged+"_cutAdapter_2.fastq.gz",
-					"-o", merged+"_merged.fq.gz",
+					"-o", mergedFq,
 					"-n", "14",
 					"-m", "10",
 				)
