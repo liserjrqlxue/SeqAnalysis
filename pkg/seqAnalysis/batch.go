@@ -172,7 +172,7 @@ func (batch *Batch) Visual(exPath string) error {
 		slog.Info("Rscript", "cmd", cmd)
 		err := cmd.Run()
 		if err != nil {
-			slog.Error("Rscript error:", err)
+			slog.Error("Rscript error:", "err", err)
 			return err
 		}
 		// use powershell to plot
