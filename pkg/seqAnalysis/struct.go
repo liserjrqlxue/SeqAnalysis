@@ -259,19 +259,19 @@ func (seqInfo *SeqInfo) Init() {
 }
 
 func (seqInfo *SeqInfo) SingleRun(resultDir string, TitleTar, TitleStats []string) {
-	slog.Info("SingleRun Init", slog.Group("seqInfo", "name", seqInfo.Name))
+	slog.Debug("SingleRun Init", slog.Group("seqInfo", "name", seqInfo.Name))
 	seqInfo.Init()
-	slog.Info("SingleRun CountError", slog.Group("seqInfo", "name", seqInfo.Name))
+	slog.Debug("SingleRun CountError", slog.Group("seqInfo", "name", seqInfo.Name))
 	seqInfo.CountError4(resultDir)
 
-	slog.Info("SingleRun WriteStatsSheet", slog.Group("seqInfo", "name", seqInfo.Name))
+	slog.Debug("SingleRun WriteStatsSheet", slog.Group("seqInfo", "name", seqInfo.Name))
 	seqInfo.WriteStatsSheet(resultDir, TitleTar, TitleStats)
-	slog.Info("SingleRun Save", slog.Group("seqInfo", "name", seqInfo.Name))
+	slog.Debug("SingleRun Save", slog.Group("seqInfo", "name", seqInfo.Name))
 	seqInfo.Save()
-	slog.Info("SingleRun PrintStats", slog.Group("seqInfo", "name", seqInfo.Name))
+	slog.Debug("SingleRun PrintStats", slog.Group("seqInfo", "name", seqInfo.Name))
 	seqInfo.PrintStats(resultDir)
 
-	slog.Info("SingleRun PlotLineACGT", slog.Group("seqInfo", "name", seqInfo.Name))
+	slog.Debug("SingleRun PlotLineACGT", slog.Group("seqInfo", "name", seqInfo.Name))
 	prefix := filepath.Join(resultDir, seqInfo.Name)
 	seqInfo.PlotLineACGT(prefix)
 	if seqInfo.UseKmer {
@@ -290,20 +290,26 @@ func (seqInfo *SeqInfo) Save() {
 // CountError4 count seq error
 func (seqInfo *SeqInfo) CountError4(outputDir string) {
 	// 1. 统计不同测序结果出现的频数
+	slog.Debug("CountError4 WriteSeqResult", slog.Group("seqInfo", "name", seqInfo.Name))
 	seqInfo.WriteSeqResult(".SeqResult.txt", outputDir)
 
+	slog.Debug("CountError4 GetHitSeq", slog.Group("seqInfo", "name", seqInfo.Name))
 	seqInfo.GetHitSeq()
 
 	// 2. 与正确合成序列进行比对,统计不同合成结果出现的频数
 	seqInfo.del3 = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+".del3.txt"))
 	seqInfo.del1 = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+".del1.txt"))
 	if seqInfo.LessMem {
+		slog.Debug("CountError4 WriteHitSeqLessMem", slog.Group("seqInfo", "name", seqInfo.Name))
 		seqInfo.WriteHitSeqLessMem()
 	} else {
+		slog.Debug("CountError4 WriteHitSeq", slog.Group("seqInfo", "name", seqInfo.Name))
 		seqInfo.WriteHitSeq()
 	}
+	slog.Debug("CountError4 WriteSeqResultNum", slog.Group("seqInfo", "name", seqInfo.Name))
 	seqInfo.WriteSeqResultNum()
 
+	slog.Debug("CountError4 UpdateDistributionStats", slog.Group("seqInfo", "name", seqInfo.Name))
 	seqInfo.UpdateDistributionStats()
 
 	//seqInfo.PrintStats()
