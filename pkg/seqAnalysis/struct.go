@@ -144,6 +144,10 @@ type SeqInfo struct {
 
 	// One-step accuracy rate
 	OSAR float64
+
+	// 最高频序列
+	HighFreqSeq   string
+	HighFreqCount int
 }
 
 func NewSeqInfo(data, Sheets map[string]string, sheetList []string, outputDir string, lineLimit int, long, rev, useRC, useKmer, lessMem bool) *SeqInfo {
@@ -255,16 +259,23 @@ func (seqInfo *SeqInfo) Init() {
 }
 
 func (seqInfo *SeqInfo) SingleRun(resultDir string, TitleTar, TitleStats []string) {
+	slog.Info("SingleRun Init", slog.Group("seqInfo", "name", seqInfo.Name))
 	seqInfo.Init()
+	slog.Info("SingleRun CountError", slog.Group("seqInfo", "name", seqInfo.Name))
 	seqInfo.CountError4(resultDir)
 
+	slog.Info("SingleRun WriteStatsSheet", slog.Group("seqInfo", "name", seqInfo.Name))
 	seqInfo.WriteStatsSheet(resultDir, TitleTar, TitleStats)
+	slog.Info("SingleRun Save", slog.Group("seqInfo", "name", seqInfo.Name))
 	seqInfo.Save()
+	slog.Info("SingleRun PrintStats", slog.Group("seqInfo", "name", seqInfo.Name))
 	seqInfo.PrintStats(resultDir)
 
+	slog.Info("SingleRun PlotLineACGT", slog.Group("seqInfo", "name", seqInfo.Name))
 	prefix := filepath.Join(resultDir, seqInfo.Name)
 	seqInfo.PlotLineACGT(prefix)
 	if seqInfo.UseKmer {
+		slog.Info("SingleRun WriteKmer", slog.Group("seqInfo", "name", seqInfo.Name))
 		seqInfo.WriteKmer(prefix)
 	}
 }
@@ -309,8 +320,11 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string) {
 	}
 	var regPost = regexp.MustCompile(postSeq)
 
-	seqInfo.RegPolyA = regexp.MustCompile(`^` + indexSeq + `(.*?)` + postSeq)
-	seqInfo.RegIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
+	// seqInfo.RegPolyA = regexp.MustCompile(`^` + indexSeq + `(.*?)` + postSeq)
+	// seqInfo.RegIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
+
+	seqInfo.RegPolyA = regexp.MustCompile(indexSeq + `(.*?)` + postSeq)
+	seqInfo.RegIndexSeq = regexp.MustCompile(indexSeq + `(.*?)$`)
 
 	// seqInfo.SeqResultTxt = osUtil.Create(filepath.Join(outputDir, seqInfo.Name+path))
 	// defer simpleUtil.DeferClose(seqInfo.SeqResultTxt)
@@ -435,6 +449,11 @@ func (seqInfo *SeqInfo) GetHitSeq() {
 func (seqInfo *SeqInfo) WriteHitSeqLessMem() {
 	for i, key := range seqInfo.HitSeq {
 		var keep = true
+		// if i == 0 {
+		// seqInfo.HighFreqSeq = key
+		// seqInfo.HighFreqCount = seqInfo.HitSeqCount[key]
+		// slog.Info("高频序列", "Name", seqInfo.Name, "HighFreqSeq", seqInfo.HighFreqSeq, "HighFreqCount", seqInfo.HighFreqCount)
+		// }
 		if i > seqInfo.lineLimit+2 {
 			keep = false
 		}
@@ -471,6 +490,9 @@ func (seqInfo *SeqInfo) WriteHitSeqLessMem() {
 		}
 		seqInfo.Stats["ErrorOtherReadsNum"] += seqInfo.HitSeqCount[key]
 	}
+	// seqInfo.HighFreqSeq = seqInfo.HitSeq[0]
+	// seqInfo.HighFreqCount = seqInfo.HitSeqCount[seqInfo.HighFreqSeq]
+	// slog.Info("高频序列", "Name", seqInfo.Name, "HighFreqSeq", seqInfo.HighFreqSeq, "HighFreqCount", seqInfo.HighFreqCount)
 	// free HitSeq
 	seqInfo.HitSeq = nil
 }
@@ -716,7 +738,16 @@ func (seqInfo *SeqInfo) Align1(sequencingSeqStr string, keep bool) bool {
 	return false
 }
 
+// Align2 aligns insertions with the key.
+//
+// Parameters:
+// - key: a string representing the key to align with.
+// - keep: a boolean indicating whether to keep the alignment result.
+//
+// Returns:
+// - a boolean indicating whether the alignment was successful.
 func (seqInfo *SeqInfo) Align2(key string, keep bool) bool {
+
 	var (
 		a      = seqInfo.Seq
 		b      = []byte(key)
@@ -1233,8 +1264,8 @@ func (info *SeqInfo) WriteStatsTxt(file *os.File) {
 
 	// Format the statistics into a string
 	statsString := fmt.Sprintf(
-		"%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
-		info.Name, info.IndexSeq, info.Seq, len(info.Seq),
+		"%s\t%s\t%st\t%s\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
+		info.Name, info.IndexSeq, info.Seq, info.PostSeq, len(info.Seq),
 		info.AllReadsNum, info.IndexReadsNum, stats["AnalyzedReadsNum"], info.RightReadsNum,
 		info.YieldCoefficient, info.AverageYieldAccuracy,
 		math2.DivisionInt(stats["ErrorReadsNum"], stats["AnalyzedReadsNum"]),
