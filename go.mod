@@ -5,7 +5,7 @@ go 1.23.2
 require (
 	github.com/go-echarts/go-echarts/v2 v2.2.6
 	github.com/klauspost/pgzip v1.2.6
-	github.com/liserjrqlxue/DNA v0.1.2
+	github.com/liserjrqlxue/DNA v0.1.8
 	github.com/liserjrqlxue/goUtil v0.2.1
 	github.com/xuri/excelize/v2 v2.9.0
 )
@@ -17,7 +17,7 @@ require (
 	github.com/richardlehane/msoleps v1.0.4 // indirect
 	github.com/xuri/efp v0.0.0-20240408161823-9ad904a10d6d // indirect
 	github.com/xuri/nfp v0.0.0-20240318013403-ab9948c2c4a7 // indirect
-	golang.org/x/crypto v0.28.0 // indirect
-	golang.org/x/net v0.30.0 // indirect
-	golang.org/x/text v0.19.0 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/net v0.33.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
 )
