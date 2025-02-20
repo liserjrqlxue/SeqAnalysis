@@ -87,9 +87,10 @@ func AddSteps2Sheet(excel *excelize.File, list []string) {
 		excel.SetSheetRow(sheetName, cellName, &[]string{"名字", "合成前4nt-" + id, "合成碱基-" + id, "合成位置-" + id, "单步错误率-" + id})
 		rIdx++
 		for _, row := range textUtil.File2Slice(id+".one.step.error.rate.txt", "\t") {
-			cellName, err := excelize.CoordinatesToCellName(1+i*5, rIdx)
-			simpleUtil.CheckErr(err)
+			row = row[:5]
+			cellName := simpleUtil.HandleError(excelize.CoordinatesToCellName(1+i*5, rIdx))
 			excel.SetSheetRow(sheetName, cellName, &row)
+
 			rIdx++
 		}
 	}

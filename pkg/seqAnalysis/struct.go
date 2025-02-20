@@ -289,6 +289,12 @@ func (seqInfo *SeqInfo) Save() {
 
 // CountError4 count seq error
 func (seqInfo *SeqInfo) CountError4(outputDir string) {
+	defer func() {
+		slog.Debug("CountError4 Done or Error", slog.Group("seqInfo", "name", seqInfo.Name))
+		if r := recover(); r != nil {
+			slog.Error("CountError4", slog.Group("seqInfo", "name", seqInfo.Name, "error", r))
+		}
+	}()
 	// 1. 统计不同测序结果出现的频数
 	slog.Debug("CountError4 WriteSeqResult", slog.Group("seqInfo", "name", seqInfo.Name))
 	seqInfo.WriteSeqResult(".SeqResult.txt", outputDir)
@@ -316,6 +322,7 @@ func (seqInfo *SeqInfo) CountError4(outputDir string) {
 }
 
 func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string) {
+	defer slog.Debug("WriteSeqResult Done or Error", slog.Group("seqInfo", "name", seqInfo.Name))
 	var (
 		tarSeq   = string(seqInfo.Seq)
 		indexSeq = seqInfo.IndexSeq
@@ -344,7 +351,10 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string) {
 		seqInfo.RegPolyA = regexp.MustCompile(`^` + indexSeq + `(.*?)TTTTTTTT`)
 		seqInfo.RegIndexSeq = regexp.MustCompile(`^` + indexSeq + `(.*?)$`)
 	}
+	slog.Debug("RegPolyA", slog.Group("seqInfo", "name", seqInfo.Name, "reg", seqInfo.RegPolyA.String()))
+	slog.Debug("RegIndexSeq", slog.Group("seqInfo", "name", seqInfo.Name, "reg", seqInfo.RegIndexSeq.String()))
 
+	slog.Debug("WriteSeqResult Write1SeqResult", slog.Group("seqInfo", "name", seqInfo.Name))
 	for s := range seqInfo.SeqChan {
 		seqInfo.Write1SeqResult(s, regPost)
 	}
@@ -355,12 +365,19 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string) {
 	seqInfo.Stats["RightReadsNum"] = seqInfo.RightReadsNum
 	seqInfo.Stats["AnalyzedReadsNum"] = seqInfo.RightReadsNum + seqInfo.IndexPolyAReadsNum
 
+	slog.Debug("WriteSeqResult WriteHistogram", slog.Group("seqInfo", "name", seqInfo.Name))
 	// output histgram.txt
 	WriteHistogram(filepath.Join(outputDir, seqInfo.Name+".histogram.txt"), seqInfo.Histogram)
 
+	slog.Debug("WriteSeqResult Done", slog.Group("seqInfo", "name", seqInfo.Name))
 }
 
 func (seqInfo *SeqInfo) Write1SeqResult(s string, reg *regexp.Regexp) {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("Write1SeqResult", slog.Group("seqInfo", "name", seqInfo.Name, "error", r, "reg", reg))
+		}
+	}()
 	seqInfo.AllReadsNum++
 	submatch, byteS, indexSeqMatch := MatchSeq(s, seqInfo.RegPolyA, seqInfo.RegIndexSeq, seqInfo.UseReverseComplement, seqInfo.AssemblerMode)
 
@@ -444,15 +461,25 @@ func (seqInfo *SeqInfo) UpdateACGT(seq []byte) {
 }
 
 func (seqInfo *SeqInfo) GetHitSeq() {
+	defer slog.Debug("WriteSeqResult GetHitSeq Done or Error", slog.Group("seqInfo", "name", seqInfo.Name))
+	slog.Debug("GetHitSeq append", slog.Group("seqInfo", "name", seqInfo.Name, "len", len(seqInfo.HitSeqCount)))
 	for k := range seqInfo.HitSeqCount {
 		seqInfo.HitSeq = append(seqInfo.HitSeq, k)
 	}
+	slog.Debug("GetHitSeq sort", slog.Group("seqInfo", "name", seqInfo.Name, "len", len(seqInfo.HitSeqCount)))
 	sort.Slice(seqInfo.HitSeq, func(i, j int) bool {
 		return seqInfo.HitSeqCount[seqInfo.HitSeq[i]] > seqInfo.HitSeqCount[seqInfo.HitSeq[j]]
 	})
+	slog.Debug("GetHitSeq Done", slog.Group("seqInfo", "name", seqInfo.Name, "len", len(seqInfo.HitSeqCount)))
 }
 
 func (seqInfo *SeqInfo) WriteHitSeqLessMem() {
+	defer func() {
+		slog.Debug("WriteSeqResult WriteHitSeqLessMem Done or Error", slog.Group("seqInfo", "name", seqInfo.Name))
+		if r := recover(); r != nil {
+			slog.Error("WriteSeqResult WriteHitSeqLessMem", slog.Group("seqInfo", "name", seqInfo.Name, "error", r))
+		}
+	}()
 	for i, key := range seqInfo.HitSeq {
 		var keep = true
 		// if i == 0 {
@@ -1195,20 +1222,21 @@ func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string, TitleTar, TitleStats [
 			ratioDel,
 		}
 
-		readsCount = counts[b]
-
-		SetRow(xlsx, sheet, 1, rIdx, rowValue)
-		rIdx++
-
 		fmtUtil.Fprintf(
 			oser,
-			"%s\t%s\t%c\t%d\t%f\n",
+			"%s\t%s\t%c\t%d\t%f\t%d\t%d\n",
 			seqInfo.Name,
 			sequence[i:i+4],
 			sequence[i+4],
 			i+1,
 			(1-ratio[b])*100,
+			readsCount, counts[b],
 		)
+
+		readsCount = counts[b]
+
+		SetRow(xlsx, sheet, 1, rIdx, rowValue)
+		rIdx++
 
 		fmtUtil.Fprintf(
 			out,

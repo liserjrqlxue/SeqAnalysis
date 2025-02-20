@@ -129,7 +129,7 @@ func MatchSeq(seq string, polyA, regIndexSeq *regexp.Regexp, useRC, assemblerMod
 
 // write upper and down
 func WriteUpperDown(out *os.File, indexSeq, refSeq string, offset, count int, m [][]int) {
-	refSeq = indexSeq[len(indexSeq)-offset:] + refSeq
+	refSeq = indexSeq[max(len(indexSeq)-offset, 0):] + refSeq
 	for i := range m {
 		var end = m[i][0]
 		fmtUtil.Fprintf(out, "%d\t%d\t%s\t%s\n", end, count, refSeq[end:end+offset], refSeq[end+offset:end+offset*2])
@@ -138,7 +138,7 @@ func WriteUpperDown(out *os.File, indexSeq, refSeq string, offset, count int, m 
 
 func WriteUpperDownNIL(out *os.File, indexSeq, refSeq string, offset int) {
 	// fill with 0
-	refSeq = indexSeq[len(indexSeq)-offset:] + refSeq
+	refSeq = indexSeq[max(len(indexSeq)-offset, 0):] + refSeq
 	var n = len(refSeq) - offset*2
 	for end := 0; end <= n; end++ {
 		fmtUtil.Fprintf(out, "%d\t%d\t%s\t%s\n", end, 0, refSeq[end:end+offset], refSeq[end+offset:end+offset*2])
