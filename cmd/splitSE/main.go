@@ -112,25 +112,23 @@ type PrintFQ func(out io.Writer, name, seq, note, qual string, filter, skipReg *
 
 // SplitSE 根据skipReg和cut进行分流
 func SplitSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp, cut, rc, tail bool) {
-	if cut {
+	if cut { // 切除尾靶标
 		if skipReg == nil {
 			splitSE(in, out, filter, skipReg, rc, PrintMatchCut)
 		} else {
 			splitSE(in, out, filter, skipReg, rc, PrintSkipMatchCut)
 		}
-	} else {
+	} else if tail { // 切除尾靶标后面的
 		if skipReg == nil {
-			if tail {
-				splitSE(in, out, filter, skipReg, rc, PrintMatchTrailer)
-			} else {
-				splitSE(in, out, filter, skipReg, rc, PrintMatch)
-			}
+			splitSE(in, out, filter, skipReg, rc, PrintMatchTrailer)
 		} else {
-			if tail {
-				splitSE(in, out, filter, skipReg, rc, PrintSkipMatchTrailer)
-			} else {
-				splitSE(in, out, filter, skipReg, rc, PrintSkipMatch)
-			}
+			splitSE(in, out, filter, skipReg, rc, PrintSkipMatchTrailer)
+		}
+	} else { // 不切除尾部
+		if skipReg == nil {
+			splitSE(in, out, filter, skipReg, rc, PrintMatch)
+		} else {
+			splitSE(in, out, filter, skipReg, rc, PrintSkipMatch)
 		}
 	}
 }
