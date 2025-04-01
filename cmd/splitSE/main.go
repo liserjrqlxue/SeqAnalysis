@@ -65,6 +65,7 @@ func main() {
 	var (
 		header  = strings.ToUpper(*barcode)
 		trailer = strings.ToUpper(*tail)
+		tail    bool
 
 		filter  = regexp.MustCompile(`^` + header)
 		skipReg *regexp.Regexp
@@ -76,6 +77,7 @@ func main() {
 	)
 
 	if trailer != "" {
+		tail = true
 		if *cut {
 			filter = regexp.MustCompile(`^` + header + `.*?(` + trailer + `)`)
 		} else {
@@ -99,14 +101,14 @@ func main() {
 			gr  = simpleUtil.HandleError(gzip.NewReader(inF))
 		)
 		log.Printf("split %s", in)
-		SplitSE(gr, gw, filter, skipReg, *cut, *rc)
+		SplitSE(gr, gw, filter, skipReg, *cut, *rc, tail)
 		simpleUtil.DeferClose(gr)
 		simpleUtil.DeferClose(inF)
 	}
 }
 
 // SplitSE 根据skipReg和cut进行分流
-func SplitSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp, cut, rc bool) {
+func SplitSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp, cut, rc, tail bool) {
 	if cut {
 		if skipReg == nil {
 			splitCutSE(in, out, filter, rc)
@@ -115,14 +117,78 @@ func SplitSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp, cut, r
 		}
 	} else {
 		if skipReg == nil {
-			splitSE(in, out, filter, rc)
+			splitSE(in, out, filter, rc, tail)
 		} else {
-			splitSkipSE(in, out, filter, skipReg, rc)
+			splitSkipSE(in, out, filter, skipReg, rc, tail)
 		}
 	}
 }
 
-func splitSE(in io.Reader, out io.Writer, filter *regexp.Regexp, rc bool) {
+func PrintMatch(out io.Writer, name, seq, note, qual string, filter *regexp.Regexp, rc bool) {
+	match := filter.MatchString(seq)
+	if match {
+		simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq + "\n" + note + "\n" + qual + "\n")))
+	} else if rc {
+		rcSeq := util.ReverseComplement(seq)
+		match := filter.MatchString(seq)
+		if match {
+			rcQual := string(util.Reverse([]byte(qual)))
+			simpleUtil.HandleError(out.Write([]byte(name + "\n" + rcSeq + "\n" + note + "\n" + rcQual + "\n")))
+		}
+	}
+}
+
+func PrintMatchTrailer(out io.Writer, name, seq, note, qual string, filter *regexp.Regexp, rc bool) {
+	match := filter.FindString(seq)
+	if match != "" {
+		simpleUtil.HandleError(out.Write([]byte(name + "\n" + match + "\n" + note + "\n" + qual[:len(match)] + "\n")))
+	} else if rc {
+		rcSeq := util.ReverseComplement(seq)
+		match := filter.FindString(rcSeq)
+		if match != "" {
+			rcQual := string(util.Reverse([]byte(qual)))
+			simpleUtil.HandleError(out.Write([]byte(name + "\n" + match + "\n" + note + "\n" + rcQual[:len(match)] + "\n")))
+		}
+	}
+}
+
+func PrintSkipMatch(out io.Writer, name, seq, note, qual string, filter, skipReg *regexp.Regexp, rc bool) {
+	match := filter.MatchString(seq)
+	if match {
+		if !skipReg.MatchString(seq) {
+			simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq + "\n" + note + "\n" + qual + "\n")))
+		}
+	} else if rc {
+		rcSeq := util.ReverseComplement(seq)
+		match := filter.MatchString(rcSeq)
+		if match {
+			if !skipReg.MatchString(rcSeq) {
+				rcQual := string(util.Reverse([]byte(qual)))
+				simpleUtil.HandleError(out.Write([]byte(name + "\n" + rcSeq + "\n" + note + "\n" + rcQual + "\n")))
+			}
+		}
+	}
+}
+
+func PrintSkipMatchTrailer(out io.Writer, name, seq, note, qual string, filter, skipReg *regexp.Regexp, rc bool) {
+	match := filter.FindString(seq)
+	if match != "" {
+		if !skipReg.MatchString(seq) {
+			simpleUtil.HandleError(out.Write([]byte(name + "\n" + match + "\n" + note + "\n" + qual[:len(match)] + "\n")))
+		}
+	} else if rc {
+		rcSeq := util.ReverseComplement(seq)
+		match := filter.FindString(rcSeq)
+		if match != "" {
+			if !skipReg.MatchString(rcSeq) {
+				rcQual := string(util.Reverse([]byte(qual)))
+				simpleUtil.HandleError(out.Write([]byte(name + "\n" + match + "\n" + note + "\n" + rcQual[:len(match)] + "\n")))
+			}
+		}
+	}
+}
+
+func splitSE(in io.Reader, out io.Writer, filter *regexp.Regexp, rc, tail bool) {
 	var (
 		n    = 0
 		name string
@@ -145,14 +211,10 @@ func splitSE(in io.Reader, out io.Writer, filter *regexp.Regexp, rc bool) {
 			note = line
 		case 0:
 			qual = line
-			if filter.MatchString(seq) {
-				simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq + "\n" + note + "\n" + qual + "\n")))
-			} else if rc {
-				rcSeq := util.ReverseComplement(seq)
-				if filter.MatchString(rcSeq) {
-					rcQual := string(util.Reverse([]byte(qual)))
-					simpleUtil.HandleError(out.Write([]byte(name + "\n" + rcSeq + "\n" + note + "\n" + rcQual + "\n")))
-				}
+			if tail {
+				PrintMatchTrailer(out, name, seq, note, qual, filter, rc)
+			} else {
+				PrintMatch(out, name, seq, note, qual, filter, rc)
 			}
 		}
 	}
@@ -160,7 +222,7 @@ func splitSE(in io.Reader, out io.Writer, filter *regexp.Regexp, rc bool) {
 	simpleUtil.CheckErr(scanner.Err())
 }
 
-func splitSkipSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp, rc bool) {
+func splitSkipSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp, rc, tail bool) {
 	var (
 		n    = 0
 		name string
@@ -183,18 +245,10 @@ func splitSkipSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp, rc
 			note = line
 		case 0:
 			qual = line
-			if filter.MatchString(seq) {
-				if !skipReg.MatchString(seq) {
-					simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq + "\n" + note + "\n" + qual + "\n")))
-				}
-			} else if rc {
-				rcSeq := util.ReverseComplement(seq)
-				if filter.MatchString(rcSeq) {
-					if !skipReg.MatchString(rcSeq) {
-						rcQual := string(util.Reverse([]byte(qual)))
-						simpleUtil.HandleError(out.Write([]byte(name + "\n" + rcSeq + "\n" + note + "\n" + rcQual + "\n")))
-					}
-				}
+			if tail {
+				PrintSkipMatchTrailer(out, name, seq, note, qual, filter, skipReg, rc)
+			} else {
+				PrintSkipMatch(out, name, seq, note, qual, filter, skipReg, rc)
 			}
 		}
 	}
