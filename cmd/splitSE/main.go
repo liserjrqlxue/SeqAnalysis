@@ -101,7 +101,8 @@ func main() {
 			gr  = simpleUtil.HandleError(gzip.NewReader(inF))
 		)
 		log.Printf("split %s", in)
-		SplitSE(gr, gw, filter, skipReg, *cut, *rc, tail)
+		// SplitSE(gr, gw, filter, skipReg, *cut, *rc, tail)
+		splitSE(gr, gw, filter, skipReg, *rc, SwithPrintFunc(skipReg, *cut, tail))
 		simpleUtil.DeferClose(gr)
 		simpleUtil.DeferClose(inF)
 	}
@@ -109,6 +110,27 @@ func main() {
 
 // out io.Writer, name, seq, note, qual string, filter *regexp.Regexp, rc bool
 type PrintFQ func(out io.Writer, name, seq, note, qual string, filter, skipReg *regexp.Regexp, rc bool)
+
+func SwithPrintFunc(skipReg *regexp.Regexp, cut, tail bool) PrintFQ {
+	if skipReg == nil {
+		if cut {
+			return PrintMatchCut
+		} else if tail {
+			return PrintMatchTrailer
+		} else {
+			return PrintMatch
+		}
+	} else {
+		if cut {
+			return PrintSkipMatchCut
+		} else if tail {
+			return PrintSkipMatchTrailer
+		} else {
+			return PrintSkipMatch
+		}
+
+	}
+}
 
 // SplitSE 根据skipReg和cut进行分流
 func SplitSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp, cut, rc, tail bool) {
