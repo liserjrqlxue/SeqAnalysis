@@ -47,6 +47,11 @@ var (
 		"",
 		"merged dir",
 	)
+	rawDir = flag.String(
+		"raw",
+		"",
+		"raw fq dir",
+	)
 )
 
 func main() {
@@ -138,7 +143,11 @@ func main() {
 
 	var outDir = filepath.Dir(*output)
 	for merged := range mergedMap {
-		merged = filepath.Join(outDir, strings.Replace(merged, "_merged.fq.gz", "", -1))
+		if *rawDir != "" {
+			merged = filepath.Join(*rawDir, strings.Replace(merged, "_merged.fq.gz", "", -1))
+		} else {
+			merged = filepath.Join(outDir, strings.Replace(merged, "_merged.fq.gz", "", -1))
+		}
 		// 检测系统环境
 		if os.Getenv("OS") == "Windows_NT" {
 			fmt.Printf("CMD:\n  bash -c '/mnt/d/jrqlx/Documents/中合/测序分析/NGmerge.sh %s'\n", merged)
@@ -161,6 +170,8 @@ func main() {
 				if *mergedDir != "" {
 					mergedFq = filepath.Join(*mergedDir, filepath.Base(mergedFq))
 				}
+				// 创建输出目录
+				simpleUtil.CheckErr(os.MkdirAll(filepath.Dir(mergedFq), 0755))
 				cmd2 := exec.Command(
 					"NGmerge.exe",
 					"-1", merged+"_cutAdapter_1.fastq.gz",
