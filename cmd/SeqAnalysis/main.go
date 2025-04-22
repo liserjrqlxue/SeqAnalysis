@@ -98,6 +98,11 @@ var (
 		"log.memProfile",
 		"mem profile",
 	)
+	short = flag.Int(
+		"short",
+		0,
+		"filter short length",
+	)
 )
 
 // embed etc
@@ -126,6 +131,8 @@ func main() {
 	if *outputDir == "" {
 		*outputDir = filepath.Base(simpleUtil.HandleError(os.Getwd())) + ".分析"
 	}
+
+	util.Short = *short
 
 	var batch = util.Batch{
 		OutputPrefix: *outputDir,
