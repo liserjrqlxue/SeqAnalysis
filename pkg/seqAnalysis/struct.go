@@ -403,6 +403,13 @@ func (seqInfo *SeqInfo) Write1SeqResult(s string, reg *regexp.Regexp) {
 	if submatch != nil {
 		tSeq := submatch[1] //[seqInfo.Offset:]
 		// fmtUtil.Fprintln(seqInfo.SeqResultTxt, tSeq)
+
+		// 过滤 len(seq)<=Short
+		if Short > 0 && len(tSeq) <= Short {
+			seqInfo.ExcludeReadsNum++
+			return
+		}
+
 		seqInfo.Histogram[len(tSeq)]++
 
 		seqInfo.UpdateHitSeqCount(string(seqInfo.Seq), tSeq)
@@ -429,12 +436,6 @@ func (seqInfo *SeqInfo) UpdateKmer(byteS []byte) {
 func (seqInfo *SeqInfo) UpdateHitSeqCount(tarSeq, seq string) {
 	if seqInfo.Reverse {
 		seq = string(Reverse([]byte(seq)))
-	}
-
-	// 过滤 len(seq)<=Short
-	if Short > 0 && len(seq) <= Short {
-		seqInfo.ExcludeReadsNum++
-		return
 	}
 
 	if len(seq) == 0 {
