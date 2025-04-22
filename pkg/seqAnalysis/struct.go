@@ -28,6 +28,10 @@ const (
 	kmerLength = 9
 )
 
+var (
+	Short = 0
+)
+
 // regexp
 var (
 	plus3  = regexp.MustCompile(`\+\+\+`)
@@ -425,6 +429,12 @@ func (seqInfo *SeqInfo) UpdateKmer(byteS []byte) {
 func (seqInfo *SeqInfo) UpdateHitSeqCount(tarSeq, seq string) {
 	if seqInfo.Reverse {
 		seq = string(Reverse([]byte(seq)))
+	}
+
+	// 过滤 len(seq)<=Short
+	if Short > 0 && len(seq) <= Short {
+		seqInfo.ExcludeReadsNum++
+		return
 	}
 
 	if len(seq) == 0 {
