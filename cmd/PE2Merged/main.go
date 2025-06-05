@@ -115,7 +115,7 @@ func main() {
 			continue
 		}
 		//slog.Info("row", slog.Int("i", i), slog.Any("row", row))
-		if len(row) < fq1Idx {
+		if len(row) <= fq1Idx {
 			slog.Info("skip	 row", slog.Int("i", i), slog.Any("row", row))
 			continue
 		}
