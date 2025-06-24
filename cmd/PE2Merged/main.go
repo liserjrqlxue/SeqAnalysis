@@ -175,7 +175,7 @@ func main() {
 			// 创建输出目录
 			simpleUtil.CheckErr(os.MkdirAll(filepath.Dir(mergedFq), 0755))
 			cmd2 := exec.Command(
-				"NGmerge.exe",
+				NGmerge,
 				"-1", merged+"_cutAdapter_1.fastq.gz",
 				"-2", merged+"_cutAdapter_2.fastq.gz",
 				"-o", mergedFq,
