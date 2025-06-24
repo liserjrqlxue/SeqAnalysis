@@ -149,54 +149,46 @@ func main() {
 			merged = filepath.Join(outDir, strings.Replace(merged, "_merged.fq.gz", "", -1))
 		}
 		// 检测系统环境
+		NGmerge := "NGmerge"
 		if os.Getenv("OS") == "Windows_NT" {
-			fmt.Printf("CMD:\n  bash -c '/mnt/d/jrqlx/Documents/中合/测序分析/NGmerge.sh %s'\n", merged)
-			if *run {
-				// E:\github.com\NGmerge\NGmerge.exe -a -1 merged_1.fq.gz -2 .\raw\Y24-240107_L6_2.fq.gz -o test.win.cutAdapter.fq.gz -n 14
-				cmd1 := exec.Command(
-					"NGmerge.exe",
-					"-a",
-					"-1", merged+"_1.fq.gz",
-					"-2", merged+"_2.fq.gz",
-					"-o", merged+"_cutAdapter",
-					"-n", "14",
-				)
-				cmd1.Stderr = os.Stderr
-				cmd1.Stdout = os.Stdout
-				log.Println(cmd1)
-				simpleUtil.CheckErr(cmd1.Run())
-				// E:\github.com\NGmerge\NGmerge.exe -1 .\test.win.cutAdapter.fq.gz_1.fastq.gz -2 .\test.win.cutAdapter.fq.gz_1.fastq.gz -o test.win.merged.fq.gz -n 14 -m 10
-				mergedFq := merged + "_merged.fq.gz"
-				if *mergedDir != "" {
-					mergedFq = filepath.Join(*mergedDir, filepath.Base(mergedFq))
-				}
-				// 创建输出目录
-				simpleUtil.CheckErr(os.MkdirAll(filepath.Dir(mergedFq), 0755))
-				cmd2 := exec.Command(
-					"NGmerge.exe",
-					"-1", merged+"_cutAdapter_1.fastq.gz",
-					"-2", merged+"_cutAdapter_2.fastq.gz",
-					"-o", mergedFq,
-					"-n", "14",
-					"-m", "10",
-				)
-				cmd2.Stderr = os.Stderr
-				cmd2.Stdout = os.Stdout
-				log.Println(cmd2)
-				simpleUtil.CheckErr(cmd2.Run())
-				// remove file
-				simpleUtil.CheckErr(os.Remove(merged + "_cutAdapter_1.fastq.gz"))
-				simpleUtil.CheckErr(os.Remove(merged + "_cutAdapter_2.fastq.gz"))
+			NGmerge = "NGmerge.exe"
+		}
+		if *run {
+			// E:\github.com\NGmerge\NGmerge.exe -a -1 merged_1.fq.gz -2 .\raw\Y24-240107_L6_2.fq.gz -o test.win.cutAdapter.fq.gz -n 14
+			cmd1 := exec.Command(
+				NGmerge,
+				"-a",
+				"-1", merged+"_1.fq.gz",
+				"-2", merged+"_2.fq.gz",
+				"-o", merged+"_cutAdapter",
+				"-n", "14",
+			)
+			cmd1.Stderr = os.Stderr
+			cmd1.Stdout = os.Stdout
+			log.Println(cmd1)
+			simpleUtil.CheckErr(cmd1.Run())
+			// E:\github.com\NGmerge\NGmerge.exe -1 .\test.win.cutAdapter.fq.gz_1.fastq.gz -2 .\test.win.cutAdapter.fq.gz_1.fastq.gz -o test.win.merged.fq.gz -n 14 -m 10
+			mergedFq := merged + "_merged.fq.gz"
+			if *mergedDir != "" {
+				mergedFq = filepath.Join(*mergedDir, filepath.Base(mergedFq))
 			}
-		} else {
-			fmt.Printf("CMD:\n\tNGmerge.sh %s\n", merged)
-			if *run {
-				cmd := exec.Command("NGmerge.sh", merged)
-				cmd.Stderr = os.Stderr
-				cmd.Stdout = os.Stdout
-				log.Println(cmd)
-				simpleUtil.CheckErr(cmd.Run())
-			}
+			// 创建输出目录
+			simpleUtil.CheckErr(os.MkdirAll(filepath.Dir(mergedFq), 0755))
+			cmd2 := exec.Command(
+				"NGmerge.exe",
+				"-1", merged+"_cutAdapter_1.fastq.gz",
+				"-2", merged+"_cutAdapter_2.fastq.gz",
+				"-o", mergedFq,
+				"-n", "14",
+				"-m", "10",
+			)
+			cmd2.Stderr = os.Stderr
+			cmd2.Stdout = os.Stdout
+			log.Println(cmd2)
+			simpleUtil.CheckErr(cmd2.Run())
+			// remove file
+			simpleUtil.CheckErr(os.Remove(merged + "_cutAdapter_1.fastq.gz"))
+			simpleUtil.CheckErr(os.Remove(merged + "_cutAdapter_2.fastq.gz"))
 		}
 	}
 }
