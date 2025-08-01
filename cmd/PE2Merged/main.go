@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
 	"github.com/xuri/excelize/v2"
@@ -52,6 +53,14 @@ var (
 		"",
 		"raw fq dir",
 	)
+	thread = flag.Int(
+		"t",
+		8,
+		"max thread",
+	)
+)
+var (
+	MaxThread = 128
 )
 
 func main() {
@@ -120,7 +129,7 @@ func main() {
 			continue
 		}
 		fq1 := row[fq1Idx]
-		merged := strings.Replace(fq1, "1.fq.gz", "merged.fq.gz", -1)
+		merged := strings.ReplaceAll(fq1, "1.fq.gz", "merged.fq.gz")
 		mergedMap[merged] = true
 		if *mergedDir != "" {
 			merged = filepath.Join(*mergedDir, filepath.Base(merged))
@@ -141,43 +150,96 @@ func main() {
 		fmt.Println(err)
 	}
 
-	var outDir = filepath.Dir(*output)
+	if *run {
+		simpleUtil.CheckErr(RunNGmerge(mergedMap, *thread))
+	}
+}
+
+func RunNGmerge(mergedMap map[string]bool, maxConcurrent int) error {
+	// 创建带缓冲的通道用于控制并发数
+	var (
+		wg sync.WaitGroup
+		mu sync.Mutex
+
+		sem    = make(chan struct{}, maxConcurrent)
+		errCh  = make(chan error, maxConcurrent)
+		doneCh = make(chan struct{})
+
+		errs []error
+
+		NGmerge = "NGmerge"
+	)
+	// 检测系统环境
+	if os.Getenv("OS") == "Windows_NT" {
+		NGmerge = "NGmerge.exe"
+	}
+
+	// 错误收集协程
+	go func() {
+		for err := range errCh {
+			mu.Lock()
+			errs = append(errs, err)
+			mu.Unlock()
+		}
+		close(doneCh)
+	}()
+
 	for merged := range mergedMap {
+		prefix := strings.ReplaceAll(merged, "_merged.fq.gz", "")
 		if *rawDir != "" {
-			merged = filepath.Join(*rawDir, strings.Replace(merged, "_merged.fq.gz", "", -1))
+			prefix = filepath.Join(*rawDir, prefix)
 		} else {
-			merged = filepath.Join(outDir, strings.Replace(merged, "_merged.fq.gz", "", -1))
+			prefix = filepath.Join(filepath.Dir(*output), prefix)
 		}
-		// 检测系统环境
-		NGmerge := "NGmerge"
-		if os.Getenv("OS") == "Windows_NT" {
-			NGmerge = "NGmerge.exe"
-		}
-		if *run {
-			// E:\github.com\NGmerge\NGmerge.exe -a -1 merged_1.fq.gz -2 .\raw\Y24-240107_L6_2.fq.gz -o test.win.cutAdapter.fq.gz -n 14
+		wg.Add(1)
+		go func(prefix string) { // 使用闭包捕获当前merged值
+			defer wg.Done()
+			sem <- struct{}{}        // 获取信号量
+			defer func() { <-sem }() // 释放信号量
+
+			// 错误处理函数
+			handleError := func(err error, operation string) {
+				if err != nil {
+					slog.Error("NGmerge", "operation", operation, "err", err, "prefix", prefix)
+					errCh <- fmt.Errorf("%s failed on %s: %w", operation, filepath.Base(prefix), err)
+				}
+			}
+
+			var (
+				fq1 = prefix + "_1.fq.gz"
+				fq2 = prefix + "_2.fq.gz"
+			)
+
+			// 第一步命令：切除接头
 			cmd1 := exec.Command(
 				NGmerge,
 				"-a",
-				"-1", merged+"_1.fq.gz",
-				"-2", merged+"_2.fq.gz",
-				"-o", merged+"_cutAdapter",
+				"-1", fq1, "-2", fq2,
+				"-o", prefix+"_cutAdapter",
 				"-n", "14",
 			)
 			cmd1.Stderr = os.Stderr
 			cmd1.Stdout = os.Stdout
 			log.Println(cmd1)
-			simpleUtil.CheckErr(cmd1.Run())
-			// E:\github.com\NGmerge\NGmerge.exe -1 .\test.win.cutAdapter.fq.gz_1.fastq.gz -2 .\test.win.cutAdapter.fq.gz_1.fastq.gz -o test.win.merged.fq.gz -n 14 -m 10
-			mergedFq := merged + "_merged.fq.gz"
+			if err := cmd1.Run(); err != nil {
+				handleError(err, "Adapter trimming")
+				return
+			}
+
+			// 第二步命令：合并序列
+			mergedFq := prefix + "_merged.fq.gz"
 			if *mergedDir != "" {
 				mergedFq = filepath.Join(*mergedDir, filepath.Base(mergedFq))
 			}
 			// 创建输出目录
-			simpleUtil.CheckErr(os.MkdirAll(filepath.Dir(mergedFq), 0755))
+			if err := os.MkdirAll(filepath.Dir(mergedFq), 0755); err != nil {
+				handleError(err, "Create output directory")
+				return
+			}
 			cmd2 := exec.Command(
 				NGmerge,
-				"-1", merged+"_cutAdapter_1.fastq.gz",
-				"-2", merged+"_cutAdapter_2.fastq.gz",
+				"-1", prefix+"_cutAdapter_1.fastq.gz",
+				"-2", prefix+"_cutAdapter_2.fastq.gz",
 				"-o", mergedFq,
 				"-n", "14",
 				"-m", "10",
@@ -185,10 +247,29 @@ func main() {
 			cmd2.Stderr = os.Stderr
 			cmd2.Stdout = os.Stdout
 			log.Println(cmd2)
-			simpleUtil.CheckErr(cmd2.Run())
-			// remove file
-			simpleUtil.CheckErr(os.Remove(merged + "_cutAdapter_1.fastq.gz"))
-			simpleUtil.CheckErr(os.Remove(merged + "_cutAdapter_2.fastq.gz"))
-		}
+			if err := cmd2.Run(); err != nil {
+				handleError(err, "Read merging")
+				return
+			}
+
+			// 清理临时文件
+			if err := os.Remove(prefix + "_cutAdapter_1.fastq.gz"); err != nil {
+				handleError(err, "Remove temporary file")
+			}
+			if err := os.Remove(prefix + "_cutAdapter_2.fastq.gz"); err != nil {
+				handleError(err, "Remove temporary file")
+			}
+		}(prefix) // 传递当前prefix值到闭包
 	}
+
+	// 等待所有任务完成
+	wg.Wait()
+	close(errCh) // 关闭错误通道，触发收集协程退出
+	<-doneCh     // 等待错误收集协程完成
+
+	// 返回遇到的第一个错误
+	if len(errs) > 0 {
+		return fmt.Errorf("processing completed with %d errors. First error: %w", len(errs), errs[0])
+	}
+	return nil
 }
