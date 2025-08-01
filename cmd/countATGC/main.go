@@ -18,7 +18,7 @@ var (
 	)
 )
 
-var Count [100][5]float64
+var Count [120][5]float64
 
 func main() {
 	flag.Parse()
@@ -51,7 +51,7 @@ func main() {
 		log.Fatalf("load with error:[%v]", err)
 	}
 	fmt.Print("POS\tA\tC\tG\tT\tGC\tAT\n")
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 120; i++ {
 		fmt.Printf(
 			"%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
 			i+1,
