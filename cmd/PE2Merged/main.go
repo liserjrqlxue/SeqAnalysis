@@ -45,7 +45,7 @@ var (
 	)
 	mergedDir = flag.String(
 		"d",
-		"",
+		".",
 		"merged dir",
 	)
 	rawDir = flag.String(
@@ -208,6 +208,13 @@ func RunNGmerge(mergedMap map[string]bool, maxConcurrent int) error {
 			var (
 				fq1 = prefix + "_1.fq.gz"
 				fq2 = prefix + "_2.fq.gz"
+
+				outPrefix = filepath.Join(*mergedDir, filepath.Base(prefix))
+				mergedFq  = outPrefix + "_merged.fq.gz"
+				cutPrefix = outPrefix + "_cutAdapter"
+
+				cutFq1 = cutPrefix + "_1.fastq.gz"
+				cutFq2 = cutPrefix + "_2.fastq.gz"
 			)
 
 			// 第一步命令：切除接头
@@ -215,7 +222,7 @@ func RunNGmerge(mergedMap map[string]bool, maxConcurrent int) error {
 				NGmerge,
 				"-a",
 				"-1", fq1, "-2", fq2,
-				"-o", prefix+"_cutAdapter",
+				"-o", cutPrefix,
 				"-n", "14",
 			)
 			cmd1.Stderr = os.Stderr
@@ -227,19 +234,14 @@ func RunNGmerge(mergedMap map[string]bool, maxConcurrent int) error {
 			}
 
 			// 第二步命令：合并序列
-			mergedFq := prefix + "_merged.fq.gz"
-			if *mergedDir != "" {
-				mergedFq = filepath.Join(*mergedDir, filepath.Base(mergedFq))
-			}
 			// 创建输出目录
-			if err := os.MkdirAll(filepath.Dir(mergedFq), 0755); err != nil {
+			if err := os.MkdirAll(*mergedDir, 0755); err != nil {
 				handleError(err, "Create output directory")
 				return
 			}
 			cmd2 := exec.Command(
 				NGmerge,
-				"-1", prefix+"_cutAdapter_1.fastq.gz",
-				"-2", prefix+"_cutAdapter_2.fastq.gz",
+				"-1", cutFq1, "-2", cutFq2,
 				"-o", mergedFq,
 				"-n", "14",
 				"-m", "10",
@@ -253,10 +255,10 @@ func RunNGmerge(mergedMap map[string]bool, maxConcurrent int) error {
 			}
 
 			// 清理临时文件
-			if err := os.Remove(prefix + "_cutAdapter_1.fastq.gz"); err != nil {
+			if err := os.Remove(cutFq1); err != nil {
 				handleError(err, "Remove temporary file")
 			}
-			if err := os.Remove(prefix + "_cutAdapter_2.fastq.gz"); err != nil {
+			if err := os.Remove(cutFq2); err != nil {
 				handleError(err, "Remove temporary file")
 			}
 		}(prefix) // 传递当前prefix值到闭包
