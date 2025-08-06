@@ -54,9 +54,15 @@ var (
 		"raw fq dir",
 	)
 	thread = flag.Int(
-		"t",
+		"n",
 		8,
 		"max thread",
+	)
+	// -t  <char>       Delimiter for headers of paired reads (def. ' ')
+	delimiter = flag.String(
+		"t",
+		" ",
+		"Delimiter for headers of paired reads",
 	)
 )
 var (
@@ -224,6 +230,7 @@ func RunNGmerge(mergedMap map[string]bool, maxConcurrent int) error {
 				"-1", fq1, "-2", fq2,
 				"-o", cutPrefix,
 				"-n", "14",
+				"-t", *delimiter,
 			)
 			cmd1.Stderr = os.Stderr
 			cmd1.Stdout = os.Stdout
@@ -245,6 +252,7 @@ func RunNGmerge(mergedMap map[string]bool, maxConcurrent int) error {
 				"-o", mergedFq,
 				"-n", "14",
 				"-m", "10",
+				"-t", *delimiter,
 			)
 			cmd2.Stderr = os.Stderr
 			cmd2.Stdout = os.Stdout
