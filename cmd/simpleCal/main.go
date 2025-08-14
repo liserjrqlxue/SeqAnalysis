@@ -14,6 +14,11 @@ import (
 	//"compress/gzip"
 	gzip "github.com/klauspost/pgzip"
 
+	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/plotutil"
+	"gonum.org/v1/plot/vg"
+
 	"github.com/liserjrqlxue/DNA/pkg/util"
 	"github.com/liserjrqlxue/goUtil/fmtUtil"
 	"github.com/liserjrqlxue/goUtil/osUtil"
@@ -46,11 +51,19 @@ var (
 		"",
 		"tail barcode",
 	)
-	length = flag.Int(
-		"l",
-		10,
-		"length of mutation",
+	line = flag.Bool(
+		"line",
+		false,
+		"plot line",
 	)
+
+/*
+	 	length = flag.Int(
+			"l",
+			0,
+			"length of mutation",
+		)
+*/
 )
 
 func main() {
@@ -59,7 +72,6 @@ func main() {
 		flag.PrintDefaults()
 		log.Fatal("-1/-2/-p required!")
 	}
-
 	var (
 		header = strings.ToUpper(*barcode)
 		filter = regexp.MustCompile(`^` + header + `(.*)`)
@@ -76,41 +88,117 @@ func main() {
 
 	go func() {
 		var (
-			count = make(map[string]int, 1024*1024)
-			// distance = make(map[string]int, 1024*1024)
-			seqs []string
+			count     = make(map[string]int, 1024*1024)
+			distCount = make(map[int]int) // 距离 -> 加权个数
+			seqs      []string
 
-			total  = 0
-			top    = 0
-			topSeq string
+			topSeq  string
+			total   = 0
+			top     = 0
+			maxDist = 0
 		)
 
+		// 收集统计
 		for seq := range targetCh {
 			count[seq]++
 		}
 
+		// 统计总数 & top
 		for k, v := range count {
 			seqs = append(seqs, k)
 			total += v
-			// distance[k] = levenshtein(*target, k)
-
 			if v > top {
 				top = v
 				topSeq = k
 			}
 		}
 		rate := float64(top) / float64(total)
-		meanRate := math.Pow(rate, 1/float64(*length))
+		meanRate := math.Pow(rate, 1/float64(len(*target)))
 		fmt.Printf("%s\t%s+%s\t%d\t%s\t%d\t%.4f%%\t%.4f%%\n", *id, *barcode, *tail, total, topSeq, top, rate*100, meanRate*100)
 
+		// 排序（高频优先）
 		sort.Slice(seqs, func(i, j int) bool { return count[seqs[i]] > count[seqs[j]] })
 
+		// 输出明细并统计距离分布
 		f := osUtil.Create(*id + "_levenshtein.txt")
+		fmtUtil.Fprintln(f, "ID\tCount\tDistance\tSeq")
 		for _, k := range seqs {
+			hit := count[k]
 			dist := levenshtein(*target, k)
-			fmtUtil.Fprintf(f, "%s\t%s\t%d\t%d\n", *id, k, count[k], dist)
+			if maxDist < dist {
+				maxDist = dist
+			}
+			fmtUtil.Fprintf(f, "%s\t%d\t%d\t%s\n", *id, hit, dist, k)
+			distCount[dist] += hit
 		}
 		f.Close()
+
+		// 输出距离分布（加权）
+		fd := osUtil.Create(*id + "_levenshtein_dist.txt")
+		fmtUtil.Fprintln(fd, "Distance\tWeightedCount")
+		for d := 0; d <= maxDist; d++ { // 保证顺序输出
+			if c, ok := distCount[d]; ok {
+				fmt.Fprintf(fd, "%d\t%d\n", d, c)
+			} else {
+				fmt.Fprintf(fd, "%d\t0\n", d)
+			}
+		}
+		fd.Close()
+
+		// 画图
+		plotWidthInch := 16.0
+		plotHeightInch := 9.0
+
+		p := plot.New()
+		// 设置标题
+		p.Title.Text = "Levenshtein Distance Distribution"
+		p.Title.TextStyle.Font.Size = vg.Points(16) // 标题字体 16pt
+
+		// 设置 X 轴标签
+		p.X.Label.Text = "Distance"
+		p.X.Label.TextStyle.Font.Size = vg.Points(14) // X 轴标签字体 14pt
+
+		// 设置 Y 轴标签
+		p.Y.Label.Text = "Weighted Count"
+		p.Y.Label.TextStyle.Font.Size = vg.Points(14) // Y 轴标签字体 14pt
+
+		// 设置刻度字体
+		p.X.Tick.Label.Font.Size = vg.Points(12) // X 轴刻度字体 12pt
+		p.Y.Tick.Label.Font.Size = vg.Points(12) // Y 轴刻度字体 12pt
+
+		// 转成 plotter.Values
+		values := make(plotter.Values, maxDist+1)
+		pts := make(plotter.XYs, maxDist+1)
+		for d := 0; d <= maxDist; d++ {
+			v := float64(distCount[d])
+			values[d] = v
+			pts[d].X = float64(d)
+			pts[d].Y = v
+		}
+
+		// 添加柱状图
+		// 自动计算 bar 宽度
+		totalWidthPoints := plotWidthInch * 72
+		barWidth := vg.Points(totalWidthPoints / float64(maxDist+1) * 0.8)
+		bar := simpleUtil.HandleError(plotter.NewBarChart(values, barWidth))
+		bar.LineStyle.Width = vg.Length(0)
+		bar.Color = plotutil.Color(0)
+		p.Add(bar)
+
+		// 曲线图
+		if *line {
+			line := simpleUtil.HandleError(plotter.NewLine(pts))
+			line.LineStyle.Width = vg.Points(1.5)
+			line.LineStyle.Color = plotutil.Color(1)
+			p.Add(line)
+		}
+
+		// 留出右边界空白
+		p.X.Min = -0.5
+		p.X.Max = float64(maxDist) + 0.5
+		// p.NominalX(makeLabels(maxDist)...)
+
+		simpleUtil.CheckErr(p.Save(vg.Length(plotWidthInch)*vg.Inch, vg.Length(plotHeightInch)*vg.Inch, *id+"_levenshtein_dist.png"))
 
 		done <- true
 	}()
@@ -121,7 +209,7 @@ func main() {
 			gr  = simpleUtil.HandleError(gzip.NewReader(inF))
 		)
 		log.Printf("split %s", in)
-		SplitSE(gr, filter, len(*barcode), len(*barcode)+*length, targetCh)
+		SplitSE(gr, filter, len(*barcode), len(*barcode)+len(*target), targetCh)
 		simpleUtil.DeferClose(gr)
 		simpleUtil.DeferClose(inF)
 	}
@@ -152,4 +240,21 @@ func SplitSE(in io.Reader, filter *regexp.Regexp, start, end int, ch chan<- stri
 		}
 	}
 	simpleUtil.CheckErr(scanner.Err())
+}
+
+// 生成 X 轴标签 （如果 n 太大则间隔显示）
+func makeLabels(n int) []string {
+	labels := make([]string, n+1)
+	step := 1
+	if n > 20 {
+		step = n / 10 // 只显示约 10 个刻度
+	}
+	for i := 0; i <= n; i++ {
+		if i%step == 0 {
+			labels[i] = fmt.Sprintf("%d", i)
+		} else {
+			labels[i] = ""
+		}
+	}
+	return labels
 }
