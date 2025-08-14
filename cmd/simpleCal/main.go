@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -35,6 +36,11 @@ var (
 		"i",
 		"",
 		"input",
+	)
+	outDir = flag.String(
+		"o",
+		".",
+		"output dir",
 	)
 	barcode = flag.String(
 		"b",
@@ -87,6 +93,7 @@ func main() {
 		flag.PrintDefaults()
 		log.Fatal("-1/-2/-p required!")
 	}
+	simpleUtil.CheckErr(os.MkdirAll(*outDir, 0755))
 	var (
 		header = strings.ToUpper(*barcode)
 		filter = regexp.MustCompile(`^` + header + `(.*)`)
@@ -107,9 +114,9 @@ func main() {
 			distCount = make(map[int]int) // 距离 -> 加权个数
 			seqs      []string
 
-			topSeq  string
-			total   = 0
-			top     = 0
+			// topSeq  string
+			total = 0
+			// top     = 0
 			maxDist = 0
 		)
 
@@ -122,20 +129,14 @@ func main() {
 		for k, v := range count {
 			seqs = append(seqs, k)
 			total += v
-			if v > top {
-				top = v
-				topSeq = k
-			}
+
 		}
-		rate := float64(top) / float64(total)
-		meanRate := math.Pow(rate, 1/float64(len(*target)))
-		fmt.Printf("%s\t%s+%s\t%d\t%s\t%d\t%.4f%%\t%.4f%%\n", *id, *barcode, *tail, total, topSeq, top, rate*100, meanRate*100)
 
 		// 排序（高频优先）
 		sort.Slice(seqs, func(i, j int) bool { return count[seqs[i]] > count[seqs[j]] })
 
 		// 输出明细并统计距离分布
-		f := osUtil.Create(*id + "_levenshtein.txt")
+		f := osUtil.Create(filepath.Join(*outDir, *id+"_levenshtein.txt"))
 		fmtUtil.Fprintln(f, "ID\tCount\tDistance\tSeq")
 		for _, k := range seqs {
 			hit := count[k]
@@ -149,16 +150,19 @@ func main() {
 		f.Close()
 
 		// 输出距离分布（加权）
-		fd := osUtil.Create(*id + "_levenshtein_dist.txt")
+		var similarCount = 0
+		fd := osUtil.Create(filepath.Join(*outDir, *id+"_levenshtein_dist.txt"))
 		fmtUtil.Fprintln(fd, "Distance\tWeightedCount")
 		for d := 0; d <= maxDist; d++ { // 保证顺序输出
-			if c, ok := distCount[d]; ok {
-				fmt.Fprintf(fd, "%d\t%d\n", d, c)
-			} else {
-				fmt.Fprintf(fd, "%d\t0\n", d)
+			c := distCount[d]
+			fmt.Fprintf(fd, "%d\t%d\n", d, c)
+			if d <= *distanceThreshold {
+				similarCount += c
 			}
 		}
 		fd.Close()
+
+		fmt.Printf("%s\t%d\t%d\t%d\n", *id, total, similarCount, distCount[0])
 
 		// 画图
 		plotWidthInch := 16.0
@@ -233,8 +237,8 @@ func main() {
 			inF = osUtil.Open(in)
 			gr  = simpleUtil.HandleError(gzip.NewReader(inF))
 		)
-		log.Printf("split %s", in)
-		SplitSE(gr, filter, len(*barcode), len(*barcode)+len(*target), targetCh)
+		// log.Printf("split %s", in)
+		SplitSE(gr, filter, len(*barcode), targetCh)
 		simpleUtil.DeferClose(gr)
 		simpleUtil.DeferClose(inF)
 	}
@@ -243,7 +247,7 @@ func main() {
 	<-done
 }
 
-func SplitSE(in io.Reader, filter *regexp.Regexp, start, end int, ch chan<- string) {
+func SplitSE(in io.Reader, filter *regexp.Regexp, start int, ch chan<- string) {
 	var (
 		n       = 0
 		scanner = bufio.NewScanner(in)
@@ -254,12 +258,12 @@ func SplitSE(in io.Reader, filter *regexp.Regexp, start, end int, ch chan<- stri
 		if n%4 == 2 {
 			var match = filter.FindStringSubmatchIndex(line)
 			if match != nil {
-				ch <- line[start:min(end, match[3])]
+				ch <- line[start:match[3]]
 			} else {
 				line = util.ReverseComplement(line)
 				match = filter.FindStringSubmatchIndex(line)
 				if match != nil {
-					ch <- line[start:min(end, match[3])]
+					ch <- line[start:match[3]]
 				}
 			}
 		}
