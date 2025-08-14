@@ -56,6 +56,21 @@ var (
 		false,
 		"plot line",
 	)
+	logScale = flag.Bool(
+		"log",
+		false,
+		"LogScale of Y",
+	)
+	offset = flag.Float64(
+		"offset",
+		0.1,
+		"offset in case log(0)",
+	)
+	distanceThreshold = flag.Int(
+		"dt",
+		30,
+		"distance threshold",
+	)
 
 /*
 	 	length = flag.Int(
@@ -148,47 +163,57 @@ func main() {
 		// 画图
 		plotWidthInch := 16.0
 		plotHeightInch := 9.0
+		// 缩放系数（基准 8 英寸）
+		scale := plotWidthInch / 8.0
 
 		p := plot.New()
 		// 设置标题
 		p.Title.Text = "Levenshtein Distance Distribution"
-		p.Title.TextStyle.Font.Size = vg.Points(16) // 标题字体 16pt
+		p.Title.TextStyle.Font.Size = vg.Points(16 * scale) // 标题字体 16pt
 
 		// 设置 X 轴标签
 		p.X.Label.Text = "Distance"
-		p.X.Label.TextStyle.Font.Size = vg.Points(14) // X 轴标签字体 14pt
+		p.X.Label.TextStyle.Font.Size = vg.Points(14 * scale) // X 轴标签字体 14pt
 
 		// 设置 Y 轴标签
 		p.Y.Label.Text = "Weighted Count"
-		p.Y.Label.TextStyle.Font.Size = vg.Points(14) // Y 轴标签字体 14pt
+		p.Y.Label.TextStyle.Font.Size = vg.Points(14 * scale) // Y 轴标签字体 14pt
 
 		// 设置刻度字体
-		p.X.Tick.Label.Font.Size = vg.Points(12) // X 轴刻度字体 12pt
-		p.Y.Tick.Label.Font.Size = vg.Points(12) // Y 轴刻度字体 12pt
+		p.X.Tick.Label.Font.Size = vg.Points(12 * scale) // X 轴刻度字体 12pt
+		p.Y.Tick.Label.Font.Size = vg.Points(12 * scale) // Y 轴刻度字体 12pt
+
+		if *logScale {
+			p.Y.Scale = plot.LogScale{}
+			p.Y.Tick.Marker = plot.LogTicks{}
+		}
 
 		// 转成 plotter.Values
 		values := make(plotter.Values, maxDist+1)
 		pts := make(plotter.XYs, maxDist+1)
 		for d := 0; d <= maxDist; d++ {
-			v := float64(distCount[d])
+			v := max(float64(distCount[d]), *offset)
 			values[d] = v
-			pts[d].X = float64(d)
 			pts[d].Y = v
+			pts[d].X = float64(d)
 		}
 
 		// 添加柱状图
-		// 自动计算 bar 宽度
-		totalWidthPoints := plotWidthInch * 72
-		barWidth := vg.Points(totalWidthPoints / float64(maxDist+1) * 0.8)
-		bar := simpleUtil.HandleError(plotter.NewBarChart(values, barWidth))
-		bar.LineStyle.Width = vg.Length(0)
-		bar.Color = plotutil.Color(0)
-		p.Add(bar)
+		if !*logScale {
+			// 自动计算 bar 宽度
+			totalWidthPoints := plotWidthInch * 72
+			barWidth := vg.Points(totalWidthPoints / float64(maxDist+1) * 0.8)
+
+			bar := simpleUtil.HandleError(plotter.NewBarChart(values, barWidth))
+			bar.LineStyle.Width = vg.Length(0)
+			bar.Color = plotutil.Color(0)
+			p.Add(bar)
+		}
 
 		// 曲线图
 		if *line {
 			line := simpleUtil.HandleError(plotter.NewLine(pts))
-			line.LineStyle.Width = vg.Points(1.5)
+			line.LineStyle.Width = vg.Points(1.5 * scale)
 			line.LineStyle.Color = plotutil.Color(1)
 			p.Add(line)
 		}
