@@ -227,7 +227,7 @@ func main() {
 		p.X.Max = float64(maxDist) + 0.5
 		// p.NominalX(makeLabels(maxDist)...)
 
-		simpleUtil.CheckErr(p.Save(vg.Length(plotWidthInch)*vg.Inch, vg.Length(plotHeightInch)*vg.Inch, *id+"_levenshtein_dist.png"))
+		simpleUtil.CheckErr(p.Save(vg.Length(plotWidthInch)*vg.Inch, vg.Length(plotHeightInch)*vg.Inch, filepath.Join(*outDir, *id+"_levenshtein_dist.png")))
 
 		done <- true
 	}()
