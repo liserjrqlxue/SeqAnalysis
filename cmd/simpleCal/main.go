@@ -8,12 +8,14 @@ import (
 	"log"
 	"math"
 	"regexp"
+	"sort"
 	"strings"
 
 	//"compress/gzip"
 	gzip "github.com/klauspost/pgzip"
 
 	"github.com/liserjrqlxue/DNA/pkg/util"
+	"github.com/liserjrqlxue/goUtil/fmtUtil"
 	"github.com/liserjrqlxue/goUtil/osUtil"
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
 )
@@ -33,6 +35,11 @@ var (
 		"b",
 		"",
 		"barcode",
+	)
+	target = flag.String(
+		"s",
+		"",
+		"target seq",
 	)
 	tail = flag.String(
 		"t",
@@ -69,26 +76,42 @@ func main() {
 
 	go func() {
 		var (
-			count  = make(map[string]int, 1024*1024)
+			count = make(map[string]int, 1024*1024)
+			// distance = make(map[string]int, 1024*1024)
+			seqs []string
+
 			total  = 0
-			max    = 0
-			maxSeq string
+			top    = 0
+			topSeq string
 		)
 
 		for seq := range targetCh {
 			count[seq]++
-			total++
 		}
 
 		for k, v := range count {
-			if v > max {
-				max = v
-				maxSeq = k
+			seqs = append(seqs, k)
+			total += v
+			// distance[k] = levenshtein(*target, k)
+
+			if v > top {
+				top = v
+				topSeq = k
 			}
 		}
-		rate := float64(max) / float64(total)
+		rate := float64(top) / float64(total)
 		meanRate := math.Pow(rate, 1/float64(*length))
-		fmt.Printf("%s\t%s+%s\t%d\t%s\t%d\t%.4f%%\t%.4f%%\n", *id, *barcode, *tail, total, maxSeq, max, rate*100, meanRate*100)
+		fmt.Printf("%s\t%s+%s\t%d\t%s\t%d\t%.4f%%\t%.4f%%\n", *id, *barcode, *tail, total, topSeq, top, rate*100, meanRate*100)
+
+		sort.Slice(seqs, func(i, j int) bool { return count[seqs[i]] > count[seqs[j]] })
+
+		f := osUtil.Create(*id + "_levenshtein.txt")
+		for _, k := range seqs {
+			dist := levenshtein(*target, k)
+			fmtUtil.Fprintf(f, "%s\t%s\t%d\t%d\n", *id, k, count[k], dist)
+		}
+		f.Close()
+
 		done <- true
 	}()
 
