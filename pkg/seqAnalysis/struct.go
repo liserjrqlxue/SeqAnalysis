@@ -1158,12 +1158,13 @@ func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string, TitleTar, TitleStats [
 		sumDel    = 0
 		countDels = make(map[byte]int)
 		sequence  string
+		extLen    = min(4, len(seqInfo.IndexSeq))
 	)
 	if seqInfo.Reverse {
 		sequence = "AAAA" + string(seqInfo.Seq)
 
 	} else {
-		sequence = seqInfo.IndexSeq[max(0, len(seqInfo.IndexSeq)-4):] + string(seqInfo.Seq)
+		sequence = seqInfo.IndexSeq[len(seqInfo.IndexSeq)-extLen:] + string(seqInfo.Seq)
 	}
 	for i, b := range seqInfo.Seq {
 		var counts = make(map[byte]int)
@@ -1237,8 +1238,8 @@ func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string, TitleTar, TitleStats [
 			oser,
 			"%s\t%s\t%c\t%d\t%f\t%d\t%d\n",
 			seqInfo.Name,
-			sequence[i:i+4],
-			sequence[i+4],
+			sequence[i:i+extLen],
+			sequence[i+extLen],
 			i+1,
 			(1-ratio[b])*100,
 			readsCount, counts[b],
