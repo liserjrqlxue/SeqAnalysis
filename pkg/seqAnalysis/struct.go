@@ -580,19 +580,19 @@ func (seqInfo *SeqInfo) WriteSeqResultNum() {
 	simpleUtil.CheckErr(seqInfo.del1.Close())
 
 	SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 5, 1,
-		[]interface{}{"总数", seqInfo.Stats["Deletion"] + seqInfo.RightReadsNum},
+		[]any{"总数", seqInfo.Stats["Deletion"] + seqInfo.RightReadsNum},
 	)
 	SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionSingle"], 5, 1,
-		[]interface{}{"总数", seqInfo.Stats["DeletionSingle"]},
+		[]any{"总数", seqInfo.Stats["DeletionSingle"]},
 	)
 	SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDiscrete2"], 5, 1,
-		[]interface{}{"总数", seqInfo.Stats["DeletionDiscrete2"]},
+		[]any{"总数", seqInfo.Stats["DeletionDiscrete2"]},
 	)
 	SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionContinuous2"], 5, 1,
-		[]interface{}{"总数", seqInfo.Stats["DeletionContinuous2"]},
+		[]any{"总数", seqInfo.Stats["DeletionContinuous2"]},
 	)
 	SetRow(seqInfo.xlsx, seqInfo.Sheets["DeletionDiscrete3"], 5, 1,
-		[]interface{}{"总数", seqInfo.Stats["DeletionDiscrete3"]},
+		[]any{"总数", seqInfo.Stats["DeletionDiscrete3"]},
 	)
 
 	var sheet = seqInfo.Sheets["Deletion"]
@@ -666,7 +666,7 @@ func (seqInfo *SeqInfo) Align1(sequencingSeqStr string, keep bool) bool {
 		seqInfo.Stats["Deletion"] += count
 
 		if keep {
-			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []interface{}{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
+			SetRow(seqInfo.xlsx, seqInfo.Sheets["Deletion"], 1, seqInfo.rowDeletion, []any{seqInfo.Seq, sequencingSeqStr, count, sequencingAlignment})
 			seqInfo.rowDeletion++
 		}
 
@@ -1330,9 +1330,9 @@ func (info *SeqInfo) WriteStatsTxt(file *os.File) {
 	fmtUtil.Fprintf(file, statsString)
 }
 
-func (info *SeqInfo) SummaryRow() []interface{} {
+func (info *SeqInfo) SummaryRow() []any {
 	var stats = info.Stats
-	return []interface{}{
+	return []any{
 		info.Name, info.IndexSeq, info.Seq, len(info.Seq),
 		info.AllReadsNum, info.IndexReadsNum, stats["AnalyzedReadsNum"], info.RightReadsNum,
 		info.YieldCoefficient, info.AverageYieldAccuracy,
