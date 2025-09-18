@@ -76,6 +76,7 @@ type SeqInfo struct {
 	UseReverseComplement bool
 	AssemblerMode        bool
 	Reverse              bool
+	NoTail               bool
 
 	lineLimit int
 	xlsx      *excelize.File
@@ -332,7 +333,7 @@ func (seqInfo *SeqInfo) WriteSeqResult(path, outputDir string) {
 		indexSeq = seqInfo.IndexSeq
 		postSeq  = seqInfo.PostSeq
 	)
-	if postSeq == "" {
+	if postSeq == "" && !seqInfo.NoTail {
 		postSeq = "AAAAAAAA"
 	}
 	var regPost = regexp.MustCompile(postSeq)

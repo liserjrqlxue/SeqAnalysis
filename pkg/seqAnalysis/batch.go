@@ -35,6 +35,7 @@ type Batch struct {
 	LessMem   bool
 	Zip       bool
 	Plot      bool
+	NoTail    bool
 
 	TitleTar     []string
 	TitleStats   []string
@@ -98,6 +99,7 @@ func (batch *Batch) WriteInfoTxt(path string) {
 func (batch *Batch) BuildSeqInfo() {
 	for _, data := range batch.InputInfo {
 		seqInfo := NewSeqInfo(data, batch.Sheets, batch.SheetList, batch.OutputPrefix, batch.LineLimit, batch.Long, batch.Rev, batch.UseRC, batch.UseKmer, batch.LessMem)
+		seqInfo.NoTail = batch.NoTail
 		batch.SeqInfoMap[seqInfo.Name] = seqInfo
 
 		for _, fq := range seqInfo.Fastqs {
@@ -202,6 +204,10 @@ func (batch *Batch) Compress() {
 	}
 }
 
+var (
+	NoTail bool
+)
+
 func (batch *Batch) BatchRun(input, workDir, exPath string, etcEMFS embed.FS, thread int) error {
 	now := time.Now()
 
@@ -213,6 +219,7 @@ func (batch *Batch) BatchRun(input, workDir, exPath string, etcEMFS embed.FS, th
 	batch.LoadInput(input, workDir)
 	batch.Prepare()
 	batch.WriteInfoTxt(filepath.Join(batch.OutputPrefix, "info.txt"))
+	batch.NoTail = NoTail
 	batch.BuildSeqInfo()
 	batch.ConcurrencyRun(thread)
 	batch.Summary(input)

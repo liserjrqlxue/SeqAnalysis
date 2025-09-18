@@ -103,6 +103,11 @@ var (
 		0,
 		"filter short length",
 	)
+	noTail = flag.Bool(
+		"noTail",
+		false,
+		"if no tail, no polyA tail",
+	)
 )
 
 // embed etc
@@ -152,6 +157,7 @@ func main() {
 		ParallelStatsMap: make(map[string]*util.ParallelTest),
 	}
 
+	batch.NoTail = *noTail
 	batch.BatchRun(*input, *fqDir, exPath, etcEMFS, *thread)
 
 	if *memProfile != "" {
