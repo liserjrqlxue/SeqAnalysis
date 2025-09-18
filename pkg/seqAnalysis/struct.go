@@ -1163,7 +1163,7 @@ func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string, TitleTar, TitleStats [
 		sequence = "AAAA" + string(seqInfo.Seq)
 
 	} else {
-		sequence = seqInfo.IndexSeq[len(seqInfo.IndexSeq)-4:] + string(seqInfo.Seq)
+		sequence = seqInfo.IndexSeq[max(0, len(seqInfo.IndexSeq)-4):] + string(seqInfo.Seq)
 	}
 	for i, b := range seqInfo.Seq {
 		var counts = make(map[byte]int)
