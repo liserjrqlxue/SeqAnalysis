@@ -64,6 +64,12 @@ var (
 		" ",
 		"Delimiter for headers of paired reads",
 	)
+	// -m  <int>        Minimum overlap of the paired-end reads (def. 20)
+	overlap = flag.Int(
+		"m",
+		10,
+		"Minimum overlap of the paired-end reads",
+	)
 )
 var (
 	MaxThread = 128
@@ -251,7 +257,7 @@ func RunNGmerge(mergedMap map[string]bool, maxConcurrent int) error {
 				"-1", cutFq1, "-2", cutFq2,
 				"-o", mergedFq,
 				"-n", "14",
-				"-m", "10",
+				"-m", strconv.Itoa(*overlap),
 				"-t", *delimiter,
 			)
 			cmd2.Stderr = os.Stderr
