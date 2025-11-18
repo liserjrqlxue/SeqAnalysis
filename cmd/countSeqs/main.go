@@ -114,7 +114,10 @@ func processFastqFile(sequences []Sequence, fastqFile string, wg *sync.WaitGroup
 	fmt.Printf("开始处理FASTQ文件: %s\n", fastqFile)
 	startTime := time.Now()
 
-	const maxCapacity = 1024 * 1024
+	const maxCapacity = 4 * 1024 * 1024 // 4MB缓冲区
+	const batchSize = 5000              // 更大的批次
+	const numWorkers = 16               // 更多worker
+
 	buf := make([]byte, maxCapacity)
 	scanner.Buffer(buf, maxCapacity)
 
@@ -122,14 +125,12 @@ func processFastqFile(sequences []Sequence, fastqFile string, wg *sync.WaitGroup
 	readCount := 0
 
 	// 使用通道和worker池并行处理reads
-	const batchSize = 1000
-	const numWorkers = 8
-	batches := make(chan []string, 10)
-	batchResults := make(chan []int, 10)
+	batches := make(chan []string, 20)
+	batchResults := make(chan []int, 20)
 
 	// 启动worker
 	var workerWg sync.WaitGroup
-	for i := 0; i < numWorkers; i++ {
+	for i := range numWorkers {
 		workerWg.Add(1)
 		go func() {
 			defer workerWg.Done()
@@ -151,6 +152,8 @@ func processFastqFile(sequences []Sequence, fastqFile string, wg *sync.WaitGroup
 
 	// 读取文件并分批次发送
 	var currentBatch []string
+	batchCounter := 0
+
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		lineCount++
@@ -159,19 +162,23 @@ func processFastqFile(sequences []Sequence, fastqFile string, wg *sync.WaitGroup
 		if lineCount%4 == 2 {
 			readCount++
 
-			currentBatch = append(currentBatch, strings.ToUpper(line))
+			// currentBatch = append(currentBatch, strings.ToUpper(line))
+			currentBatch = append(currentBatch, line)
 
 			// 当批次达到大小时发送处理
 			if len(currentBatch) >= batchSize {
 				batches <- currentBatch
 				currentBatch = nil
+
+				batchCounter++
+
+				// 减少进度输出频率，减少I/O
+				if batchCounter%200 == 0 {
+					elapsed := time.Since(startTime)
+					fmt.Printf("  %s: 已处理 %d 条reads, 用时: %v\n", fastqFile, readCount, elapsed)
+				}
 			}
 
-			// 进度显示
-			if readCount%100000 == 0 {
-				elapsed := time.Since(startTime)
-				fmt.Printf("  %s: 已处理 %d 条reads, 用时: %v\n", fastqFile, readCount, elapsed)
-			}
 		}
 	}
 
@@ -204,15 +211,21 @@ func processFastqFile(sequences []Sequence, fastqFile string, wg *sync.WaitGroup
 // 处理reads批次的worker函数
 func processReadsBatch(i int, matcher *ahocorasick.Matcher, patterns []string, patternToSeqIdx map[string]int,
 	batches <-chan []string, results chan<- []int) {
+	total := 0
+	hit := 0
+
 	for batch := range batches {
 		batchCounts := make([]int, len(patternToSeqIdx)/2) // 除以2因为每个序列有两个模式
 
-		total := 0
-		hit := 0
+		// 预编译字节切片，避免重复转换
+		batchBytes := make([][]byte, len(batch))
+		for i, read := range batch {
+			batchBytes[i] = []byte(read)
+		}
 
-		for _, read := range batch {
+		for _, readBytes := range batchBytes {
 			total++
-			matches := matcher.Match([]byte(read))
+			matches := matcher.Match(readBytes)
 			if len(matches) > 0 {
 				hit++
 				// 取第一个匹配的模式索引
@@ -225,11 +238,10 @@ func processReadsBatch(i int, matcher *ahocorasick.Matcher, patterns []string, p
 			}
 		}
 
-		// 调试输出
-		fmt.Printf("ProcessReadsBatch %2d, Total %d, Hit %d\n", i+1, total, hit)
-
 		results <- batchCounts
 	}
+	// 调试输出
+	fmt.Printf("ProcessReadsBatch %2d, Total %d, Hit %d\n", i+1, total, hit)
 }
 
 // 并行处理多个FASTQ文件
