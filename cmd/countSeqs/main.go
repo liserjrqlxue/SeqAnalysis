@@ -25,6 +25,7 @@ type Sequence struct {
 type FastqFile struct {
 	Filename  string
 	ReadCount int
+	CountMap  []int
 }
 
 func readSequences(filename string) ([]Sequence, error) {
@@ -64,7 +65,7 @@ func readSequences(filename string) ([]Sequence, error) {
 	return sequences, scanner.Err()
 }
 
-func processFastqFile(sequences []Sequence, fastqFile string, wg *sync.WaitGroup, results chan<- []int) {
+func processFastqFile(sequences []Sequence, fastqFile string, wg *sync.WaitGroup, results chan<- FastqFile) {
 	defer wg.Done()
 
 	// 打开文件
@@ -103,6 +104,7 @@ func processFastqFile(sequences []Sequence, fastqFile string, wg *sync.WaitGroup
 		patterns = append(patterns, seq.RcSeq)
 		patternToSeqIdx[seq.RcSeq] = i
 	}
+
 	// 构建Aho-Corasick自动机
 	matcher := ahocorasick.NewStringMatcher(patterns)
 
@@ -112,8 +114,7 @@ func processFastqFile(sequences []Sequence, fastqFile string, wg *sync.WaitGroup
 	fmt.Printf("开始处理FASTQ文件: %s\n", fastqFile)
 	startTime := time.Now()
 
-	// 设置缓冲区大小以提高大文件读取性能
-	const maxCapacity = 10 * 1024 * 1024 // 1MB
+	const maxCapacity = 1024 * 1024
 	buf := make([]byte, maxCapacity)
 	scanner.Buffer(buf, maxCapacity)
 
@@ -121,8 +122,8 @@ func processFastqFile(sequences []Sequence, fastqFile string, wg *sync.WaitGroup
 	readCount := 0
 
 	// 使用通道和worker池并行处理reads
-	const batchSize = 100000
-	const numWorkers = 16
+	const batchSize = 1000
+	const numWorkers = 8
 	batches := make(chan []string, 10)
 	batchResults := make(chan []int, 10)
 
@@ -132,7 +133,7 @@ func processFastqFile(sequences []Sequence, fastqFile string, wg *sync.WaitGroup
 		workerWg.Add(1)
 		go func() {
 			defer workerWg.Done()
-			processReadsBatch(matcher, patterns, patternToSeqIdx, batches, batchResults)
+			processReadsBatch(i, matcher, patterns, patternToSeqIdx, batches, batchResults)
 		}()
 	}
 
@@ -192,20 +193,28 @@ func processFastqFile(sequences []Sequence, fastqFile string, wg *sync.WaitGroup
 	totalTime := time.Since(startTime)
 	fmt.Printf("处理完成! %s: 总共处理 %d 条reads, 用时: %v\n", fastqFile, readCount, totalTime)
 
-	// 发送结果
-	results <- countMap
+	// 发送结果，包含文件信息和计数
+	results <- FastqFile{
+		Filename:  fastqFile,
+		ReadCount: readCount,
+		CountMap:  countMap,
+	}
 }
 
 // 处理reads批次的worker函数
-func processReadsBatch(matcher *ahocorasick.Matcher, patterns []string, patternToSeqIdx map[string]int,
+func processReadsBatch(i int, matcher *ahocorasick.Matcher, patterns []string, patternToSeqIdx map[string]int,
 	batches <-chan []string, results chan<- []int) {
 	for batch := range batches {
 		batchCounts := make([]int, len(patternToSeqIdx)/2) // 除以2因为每个序列有两个模式
 
+		total := 0
+		hit := 0
+
 		for _, read := range batch {
-			// 使用Aho-Corasick查找匹配
+			total++
 			matches := matcher.Match([]byte(read))
 			if len(matches) > 0 {
+				hit++
 				// 取第一个匹配的模式索引
 				patternIdx := matches[0]
 				// 通过模式索引找到对应的序列
@@ -216,6 +225,9 @@ func processReadsBatch(matcher *ahocorasick.Matcher, patterns []string, patternT
 			}
 		}
 
+		// 调试输出
+		fmt.Printf("ProcessReadsBatch %2d, Total %d, Hit %d\n", i+1, total, hit)
+
 		results <- batchCounts
 	}
 }
@@ -223,7 +235,8 @@ func processReadsBatch(matcher *ahocorasick.Matcher, patterns []string, patternT
 // 并行处理多个FASTQ文件
 func countSequencesInFastqFiles(sequences []Sequence, fastqFiles []string) ([]FastqFile, error) {
 	var wg sync.WaitGroup
-	results := make(chan []int, len(fastqFiles))
+	// 修改通道类型为FileResult
+	results := make(chan FastqFile, len(fastqFiles))
 	processedFiles := make([]FastqFile, 0, len(fastqFiles))
 
 	// 为每个文件启动一个处理goroutine
@@ -241,19 +254,14 @@ func countSequencesInFastqFiles(sequences []Sequence, fastqFiles []string) ([]Fa
 	// 收集结果
 	fileCount := 0
 	for result := range results {
-		readCount := 0
 		// 将每个文件的结果累加到sequences中
-		for i, count := range result {
+		for i, count := range result.CountMap {
 			sequences[i].Count += count
-			readCount += count
 		}
 		fileCount++
 
 		// 这里我们简化处理，实际应该记录每个文件的reads数
-		processedFiles = append(processedFiles, FastqFile{
-			Filename:  fastqFiles[fileCount-1],
-			ReadCount: readCount, // 实际实现中应该记录每个文件的实际reads数
-		})
+		processedFiles = append(processedFiles, result)
 	}
 
 	return processedFiles, nil
