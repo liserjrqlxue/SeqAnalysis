@@ -9,11 +9,13 @@ import (
 
 	// "compress/gzip"
 	gzip "github.com/klauspost/pgzip"
+	"github.com/liserjrqlxue/DNA/pkg/util"
 )
 
 type Sequence struct {
 	Name  string
 	Seq   string
+	RcSeq string
 	Count int
 }
 
@@ -52,6 +54,7 @@ func readSequences(filename string) ([]Sequence, error) {
 			Seq:   strings.ToUpper(fields[1]),
 			Count: 0,
 		}
+		seq.RcSeq = util.ReverseComplement(seq.Seq)
 		sequences = append(sequences, seq)
 	}
 
@@ -109,8 +112,9 @@ func countSequencesInFastq(sequences []Sequence, fastqFile string) (int, error) 
 
 			// 检查每个目标序列
 			for targetSeq, seqStruct := range seqMap {
-				if strings.Contains(seqLine, targetSeq) {
+				if strings.Contains(seqLine, targetSeq) || strings.Contains(seqLine, seqStruct.RcSeq) {
 					seqStruct.Count++
+					break
 				}
 			}
 
