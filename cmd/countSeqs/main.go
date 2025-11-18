@@ -8,7 +8,9 @@ import (
 	"time"
 
 	// "compress/gzip"
+	"github.com/cloudflare/ahocorasick"
 	gzip "github.com/klauspost/pgzip"
+
 	"github.com/liserjrqlxue/DNA/pkg/util"
 )
 
@@ -85,12 +87,26 @@ func countSequencesInFastq(sequences []Sequence, fastqFile string) (int, error) 
 
 	lineCount := 0
 	readCount := 0
+	hitCount := 0
 
-	// 预编译序列到map，提高查找效率
-	seqMap := make(map[string]*Sequence)
-	for i := range sequences {
-		seqMap[sequences[i].Seq] = &sequences[i]
+	// 准备所有模式：原始序列和它们的反向互补序列
+	patterns := make([]string, 0, len(sequences)*2)
+	patternToSeqIdx := make(map[string]int) // 映射模式到序列索引
+
+	for i, seq := range sequences {
+		// 添加原始序列
+		patterns = append(patterns, seq.Seq)
+		patternToSeqIdx[seq.Seq] = i
+
+		// 添加反向互补序列
+		patterns = append(patterns, seq.RcSeq)
+		patternToSeqIdx[seq.RcSeq] = i
 	}
+	// 构建Aho-Corasick自动机
+	matcher := ahocorasick.NewStringMatcher(patterns)
+
+	// 创建计数映射
+	countMap := make([]int, len(sequences))
 
 	fmt.Printf("开始处理FASTQ文件: %s\n", fastqFile)
 	startTime := time.Now()
@@ -110,12 +126,19 @@ func countSequencesInFastq(sequences []Sequence, fastqFile string) (int, error) 
 			// 转换为大写确保匹配
 			seqLine := strings.ToUpper(line)
 
-			// 检查每个目标序列
-			for targetSeq, seqStruct := range seqMap {
-				if strings.Contains(seqLine, targetSeq) || strings.Contains(seqLine, seqStruct.RcSeq) {
-					seqStruct.Count++
-					break
-				}
+			// 使用Aho-Corasick查找匹配
+			matches := matcher.Match([]byte(seqLine))
+
+			// 由于一条reads至多匹配一条目标序列，我们只需要第一个匹配
+			if len(matches) > 0 {
+				hitCount++
+				// 取第一个匹配的模式索引
+				patternIdx := matches[0]
+				// 通过模式索引找到对应的序列
+				pattern := patterns[patternIdx]
+				// 通过模式找到序列索引
+				seqIdx := patternToSeqIdx[pattern]
+				countMap[seqIdx]++
 			}
 
 			// 进度显示
@@ -124,6 +147,11 @@ func countSequencesInFastq(sequences []Sequence, fastqFile string) (int, error) 
 				fmt.Printf("  %s: 已处理 %d 条reads, 用时: %v\n", fastqFile, readCount, elapsed)
 			}
 		}
+	}
+
+	// 将计数结果写回sequences
+	for i := range sequences {
+		sequences[i].Count += countMap[i]
 	}
 
 	if err := scanner.Err(); err != nil {
