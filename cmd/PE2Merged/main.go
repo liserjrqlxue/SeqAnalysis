@@ -70,6 +70,11 @@ var (
 		10,
 		"Minimum overlap of the paired-end reads",
 	)
+	fastp = flag.Bool(
+		"fastp",
+		false,
+		"Use Fastp instead of NGmerge",
+	)
 )
 var (
 	MaxThread = 128
@@ -163,7 +168,11 @@ func main() {
 	}
 
 	if *run {
-		simpleUtil.CheckErr(RunNGmerge(mergedMap, *thread))
+		if *fastp {
+			simpleUtil.CheckErr(RunFastp(mergedMap, *thread))
+		} else {
+			simpleUtil.CheckErr(RunNGmerge(mergedMap, *thread))
+		}
 	}
 }
 
@@ -275,6 +284,110 @@ func RunNGmerge(mergedMap map[string]bool, maxConcurrent int) error {
 			if err := os.Remove(cutFq2); err != nil {
 				handleError(err, "Remove temporary file")
 			}
+		}(prefix) // 传递当前prefix值到闭包
+	}
+
+	// 等待所有任务完成
+	wg.Wait()
+	close(errCh) // 关闭错误通道，触发收集协程退出
+	<-doneCh     // 等待错误收集协程完成
+
+	// 返回遇到的第一个错误
+	if len(errs) > 0 {
+		return fmt.Errorf("processing completed with %d errors. First error: %w", len(errs), errs[0])
+	}
+	return nil
+}
+
+func RunFastp(mergedMap map[string]bool, maxConcurrent int) error {
+	// 创建带缓冲的通道用于控制并发数
+	var (
+		wg sync.WaitGroup
+		mu sync.Mutex
+
+		sem    = make(chan struct{}, maxConcurrent)
+		errCh  = make(chan error, maxConcurrent)
+		doneCh = make(chan struct{})
+
+		errs []error
+
+		fastp = "fastp"
+	)
+	// 检测系统环境
+	if os.Getenv("OS") == "Windows_NT" {
+		fastp = "fastp.exe"
+	}
+
+	// 错误收集协程
+	go func() {
+		for err := range errCh {
+			mu.Lock()
+			errs = append(errs, err)
+			mu.Unlock()
+		}
+		close(doneCh)
+	}()
+
+	for merged := range mergedMap {
+		prefix := strings.ReplaceAll(merged, "_merged.fq.gz", "")
+		if *rawDir != "" {
+			prefix = filepath.Join(*rawDir, prefix)
+		} else {
+			prefix = filepath.Join(filepath.Dir(*output), prefix)
+		}
+		wg.Add(1)
+		go func(prefix string) { // 使用闭包捕获当前merged值
+			defer wg.Done()
+			sem <- struct{}{}        // 获取信号量
+			defer func() { <-sem }() // 释放信号量
+
+			// 错误处理函数
+			handleError := func(err error, operation string) {
+				if err != nil {
+					slog.Error("NGmerge", "operation", operation, "err", err, "prefix", prefix)
+					errCh <- fmt.Errorf("%s failed on %s: %w", operation, filepath.Base(prefix), err)
+				}
+			}
+
+			var (
+				fq1 = prefix + "_1.fq.gz"
+				fq2 = prefix + "_2.fq.gz"
+
+				outPrefix = filepath.Join(*mergedDir, filepath.Base(prefix))
+				mergedFq  = outPrefix + "_merged.fq.gz"
+				cutPrefix = outPrefix + "_fastp"
+
+				cutFq1 = cutPrefix + "_1.fastq.gz"
+				cutFq2 = cutPrefix + "_2.fastq.gz"
+			)
+
+			// 创建输出目录
+			if err := os.MkdirAll(*mergedDir, 0755); err != nil {
+				handleError(err, "Create output directory")
+				return
+			}
+
+			// 第一步命令：切除接头
+			cmd1 := exec.Command(
+				fastp,
+				"-i", fq1, "-I", fq2,
+				"-o", cutFq1, "-O", cutFq2,
+				"--merged_out", mergedFq,
+				"--thread", "16",
+				"--merged",
+				"--detect_adapter_for_pe",
+				"--overlap_len_require", strconv.Itoa(*overlap),
+				"--json", outPrefix+"_fastp.json",
+				"--html", outPrefix+"_fastp.html",
+			)
+			cmd1.Stderr = os.Stderr
+			cmd1.Stdout = os.Stdout
+			log.Println(cmd1)
+			if err := cmd1.Run(); err != nil {
+				handleError(err, "Fastp Run")
+				return
+			}
+
 		}(prefix) // 传递当前prefix值到闭包
 	}
 
