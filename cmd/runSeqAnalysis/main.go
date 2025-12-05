@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"SeqAnalysis/pkg/wechatwork" // 替换为你的模块名
+
+	"github.com/liserjrqlxue/goUtil/simpleUtil"
 )
 
 const (
@@ -41,7 +43,7 @@ func main() {
 	startTime := time.Now()
 
 	// 发送开始通知
-	if err := sendStartNotification(notifier, dirPath); err != nil {
+	if err := sendStartNotification(notifier, simpleUtil.HandleError(filepath.Abs(dirPath))); err != nil {
 		fmt.Printf("发送开始通知失败: %v\n", err)
 	}
 
@@ -421,7 +423,9 @@ func runPE2Merged(xlsxFile, rawDataPath string) error {
 		"-raw", rawDataPath,
 		"-d", ".",
 		"-run",
-		"-i", xlsxFile)
+		"-i", xlsxFile,
+	)
+	cmd.Stderr = os.Stderr
 
 	// 执行命令并捕获输出
 	output, err := cmd.CombinedOutput()
@@ -445,7 +449,9 @@ func runSeqAnalysis(mergedFile, seqAnalysisPath, dirName string) error {
 		"-rc",
 		"-zip",
 		"-i", mergedFile,
-		"-o", fmt.Sprintf("%s.%s", dirName, baseName))
+		"-o", fmt.Sprintf("%s.%s", dirName, baseName),
+	)
+	cmd.Stderr = os.Stderr
 
 	// 执行命令并捕获输出
 	output, err := cmd.CombinedOutput()
