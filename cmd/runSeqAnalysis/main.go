@@ -424,6 +424,7 @@ func runPE2Merged(xlsxFile, rawDataPath string) error {
 		"-d", ".",
 		"-run",
 		"-i", xlsxFile,
+		"-m", "5",
 	)
 	cmd.Stderr = os.Stderr
 
