@@ -374,7 +374,7 @@ func RunFastp(mergedMap map[string]bool, maxConcurrent int) error {
 				"-o", cutFq1, "-O", cutFq2,
 				"--merged_out", mergedFq,
 				"--thread", "16",
-				"--merged",
+				"--merge",
 				"--detect_adapter_for_pe",
 				"--overlap_len_require", strconv.Itoa(*overlap),
 				"--json", outPrefix+"_fastp.json",
