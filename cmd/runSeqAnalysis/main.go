@@ -501,7 +501,7 @@ func runSeqAnalysis(mergedFile, seqAnalysisPath, dirName string) error {
 		"-i", mergedFile,
 		"-o", fmt.Sprintf("%s.%s", dirName, baseName),
 	)
-	cmd.Stderr = os.Stderr
+	// cmd.Stderr = os.Stderr
 
 	// 执行命令并捕获输出
 	output, err := cmd.CombinedOutput()
