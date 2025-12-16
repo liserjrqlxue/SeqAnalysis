@@ -16,6 +16,21 @@ import (
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
 )
 
+// 定义批次类型
+type BatchType int
+
+const (
+	BatchTypeUnknown BatchType = iota
+	BatchTypeNovo
+	BatchTypeG99
+)
+
+// 批次信息
+type BatchInfo struct {
+	Name string
+	Type BatchType
+}
+
 const (
 	maxConcurrent = 8 // 最大并发数
 )
@@ -67,11 +82,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	var batchInfo BatchInfo
 	// 如果batch未指定，尝试从Path.txt文件中解析
 	if batch == "" {
 		fmt.Println("batch参数未指定，尝试从Path.txt文件中解析...")
 		var err error
-		batch, err = extractBatchFromPathFiles(currentDir)
+		batchInfo, err = extractBatchInfoFromPathFiles(currentDir)
 		if err != nil {
 			msg := fmt.Sprintf("从Path.txt文件中解析batch失败: %v", err)
 			fmt.Println(msg)
@@ -79,14 +95,35 @@ func main() {
 			fmt.Println("请使用 -batch 参数指定批次名称")
 			os.Exit(1)
 		}
-		fmt.Printf("从Path.txt文件中解析到的batch: %s\n", batch)
+		fmt.Printf("从Path.txt文件中解析到的batch: %s (类型: %v)\n", batchInfo.Name, batchInfo.Type)
+	} else {
+		// 用户指定了batch，需要判断类型
+		batchInfo = BatchInfo{Name: batch}
+		if isOssURL(batch) {
+			batchInfo.Type = BatchTypeNovo
+		} else {
+			batchInfo.Type = BatchTypeG99
+		}
+		fmt.Printf("指定的batch: %s (类型: %v)\n", batchInfo.Name, batchInfo.Type)
 	}
 
 	// 获取目录名
 	dirName := filepath.Base(currentDir)
 
-	// 构建路径
-	rawDataPath := fmt.Sprintf("/data2/wangyaoshen/novo-medical-customer-tj/CYB24030020/%s/Rawdata", batch)
+	// 根据批次类型构建不同的路径
+	var rawDataPath string
+	switch batchInfo.Type {
+	case BatchTypeNovo:
+		rawDataPath = fmt.Sprintf("/data2/wangyaoshen/novo-medical-customer-tj/CYB24030020/%s/Rawdata", batchInfo.Name)
+	case BatchTypeG99:
+		rawDataPath = fmt.Sprintf("/data2/wangyaoshen/Sequencing_data/G99/R21007100240139/%s/L01", batchInfo.Name)
+	default:
+		msg := fmt.Sprintf("未知的批次类型: %v", batchInfo.Type)
+		fmt.Println(msg)
+		sendErrorNotification(notifier, msg)
+		os.Exit(1)
+	}
+
 	seqAnalysisPath := "/data2/wangyaoshen/src/SeqAnalysis/cmd/SeqAnalysis/SeqAnalysis"
 
 	// 查找所有非merged的.xlsx文件
@@ -160,7 +197,7 @@ func main() {
 	duration := time.Since(startTime)
 
 	// 发送完成通知
-	sendCompletionNotification(notifier, currentDir, batch, len(xlsxFiles), successCount, failCount, failedFiles, duration)
+	sendCompletionNotification(notifier, currentDir, batchInfo, len(xlsxFiles), successCount, failCount, failedFiles, duration)
 
 	// 输出总结
 	fmt.Printf("\n=== 处理完成 ===\n")
@@ -220,7 +257,17 @@ func sendWarningNotification(notifier *wechatwork.NotificationSender, warningMsg
 }
 
 // 发送完成通知
-func sendCompletionNotification(notifier *wechatwork.NotificationSender, currentDir, batch string, total, success, fail int, failedFiles []string, duration time.Duration) {
+func sendCompletionNotification(notifier *wechatwork.NotificationSender, currentDir string, batchInfo BatchInfo, total, success, fail int, failedFiles []string, duration time.Duration) {
+	var batchType string
+	switch batchInfo.Type {
+	case BatchTypeNovo:
+		batchType = "Novo"
+	case BatchTypeG99:
+		batchType = "G99"
+	default:
+		batchType = "未知"
+	}
+
 	var statusIcon string
 	var statusText string
 
@@ -238,6 +285,7 @@ func sendCompletionNotification(notifier *wechatwork.NotificationSender, current
 	// 构建Markdown内容
 	content := fmt.Sprintf("### %s 数据处理完成\n"+
 		"**批次**: %s\n"+
+		"**类型**: %s\n"+
 		"**目录**: %s\n"+
 		"**状态**: %s\n"+
 		"**总文件数**: %d\n"+
@@ -246,7 +294,8 @@ func sendCompletionNotification(notifier *wechatwork.NotificationSender, current
 		"**耗时**: %v\n"+
 		"**完成时间**: %s\n",
 		statusIcon,
-		batch,
+		batchInfo.Name,
+		batchType,
 		currentDir,
 		statusText,
 		total,
@@ -426,7 +475,7 @@ func runPE2Merged(xlsxFile, rawDataPath string) error {
 		"-i", xlsxFile,
 		"-m", "5",
 	)
-	cmd.Stderr = os.Stderr
+	// cmd.Stderr = os.Stderr
 
 	// 执行命令并捕获输出
 	output, err := cmd.CombinedOutput()
@@ -462,4 +511,95 @@ func runSeqAnalysis(mergedFile, seqAnalysisPath, dirName string) error {
 
 	fmt.Printf("    SeqAnalysis输出: %s\n", string(output))
 	return nil
+}
+
+// 添加辅助函数
+func extractBatchInfoFromPathFiles(dir string) (BatchInfo, error) {
+	var batchInfo BatchInfo
+
+	// 查找所有匹配的文件
+	var pathFiles []string
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return batchInfo, err
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+		// 检查文件名是否匹配 *[Pp]ath.txt
+		lowerName := strings.ToLower(name)
+		if strings.HasSuffix(lowerName, "ath.txt") {
+			pathFiles = append(pathFiles, name)
+		}
+	}
+
+	if len(pathFiles) == 0 {
+		return batchInfo, fmt.Errorf("未找到*[Pp]ath.txt文件")
+	}
+
+	if len(pathFiles) > 1 {
+		return batchInfo, fmt.Errorf("找到多个*[Pp]ath.txt文件: %v", pathFiles)
+	}
+
+	// 读取文件
+	filePath := pathFiles[0]
+	file, err := os.Open(filePath)
+	if err != nil {
+		return batchInfo, fmt.Errorf("无法打开文件 %s: %w", filePath, err)
+	}
+	defer file.Close()
+
+	// 读取文件内容
+	var lines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" { // 只处理非空行
+			lines = append(lines, line)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return batchInfo, fmt.Errorf("读取文件 %s 失败: %w", filePath, err)
+	}
+
+	if len(lines) == 0 {
+		return batchInfo, fmt.Errorf("文件 %s 为空或只包含空行", filePath)
+	}
+
+	if len(lines) > 1 {
+		return batchInfo, fmt.Errorf("文件 %s 包含多行有效内容，无法确定batch", filePath)
+	}
+
+	// 解析第一行
+	firstLine := lines[0]
+
+	// 判断类型
+	if strings.HasPrefix(firstLine, "oss://") {
+		// Novo类型，从URL中提取最后一部分
+		parts := strings.Split(firstLine, "/")
+		if len(parts) > 0 {
+			batchInfo.Name = parts[len(parts)-1]
+			batchInfo.Type = BatchTypeNovo
+		}
+	} else {
+		// G99类型，芯片号
+		batchInfo.Name = firstLine
+		batchInfo.Type = BatchTypeG99
+	}
+
+	if batchInfo.Name == "" {
+		return batchInfo, fmt.Errorf("无法从行中提取batch: %s", firstLine)
+	}
+
+	return batchInfo, nil
+}
+
+// 判断是否为OSS URL
+func isOssURL(str string) bool {
+	return strings.HasPrefix(str, "oss://")
 }
