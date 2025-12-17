@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/liserjrqlxue/goUtil/osUtil"
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
 	"github.com/xuri/excelize/v2"
 )
@@ -74,6 +75,11 @@ var (
 		"fastp",
 		false,
 		"Use Fastp instead of NGmerge",
+	)
+	skip = flag.Bool(
+		"skip",
+		false,
+		"is skip exists merged fastq",
 	)
 )
 var (
@@ -169,14 +175,14 @@ func main() {
 
 	if *run {
 		if *fastp {
-			simpleUtil.CheckErr(RunFastp(mergedMap, *thread))
+			simpleUtil.CheckErr(RunFastp(mergedMap, *thread, *skip))
 		} else {
-			simpleUtil.CheckErr(RunNGmerge(mergedMap, *thread))
+			simpleUtil.CheckErr(RunNGmerge(mergedMap, *thread, *skip))
 		}
 	}
 }
 
-func RunNGmerge(mergedMap map[string]bool, maxConcurrent int) error {
+func RunNGmerge(mergedMap map[string]bool, maxConcurrent int, skip bool) error {
 	// 创建带缓冲的通道用于控制并发数
 	var (
 		wg sync.WaitGroup
@@ -237,6 +243,10 @@ func RunNGmerge(mergedMap map[string]bool, maxConcurrent int) error {
 				cutFq1 = cutPrefix + "_1.fastq.gz"
 				cutFq2 = cutPrefix + "_2.fastq.gz"
 			)
+
+			if skip && osUtil.FileExists(mergedFq) {
+				slog.Info("SKIP Merge", "mergedFq", mergedFq)
+			}
 
 			// 第一步命令：切除接头
 			cmd1 := exec.Command(
@@ -299,7 +309,7 @@ func RunNGmerge(mergedMap map[string]bool, maxConcurrent int) error {
 	return nil
 }
 
-func RunFastp(mergedMap map[string]bool, maxConcurrent int) error {
+func RunFastp(mergedMap map[string]bool, maxConcurrent int, skip bool) error {
 	// 创建带缓冲的通道用于控制并发数
 	var (
 		wg sync.WaitGroup
@@ -360,6 +370,10 @@ func RunFastp(mergedMap map[string]bool, maxConcurrent int) error {
 				cutFq1 = cutPrefix + "_1.fastq.gz"
 				cutFq2 = cutPrefix + "_2.fastq.gz"
 			)
+
+			if skip && osUtil.FileExists(mergedFq) {
+				slog.Info("SKIP Merge", "mergedFq", mergedFq)
+			}
 
 			// 创建输出目录
 			if err := os.MkdirAll(*mergedDir, 0755); err != nil {
