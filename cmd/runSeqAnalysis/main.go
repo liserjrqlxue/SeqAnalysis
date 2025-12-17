@@ -468,6 +468,7 @@ func processXLSXFile(xlsxFile, rawDataPath, seqAnalysisPath, dirName string) err
 func runPE2Merged(xlsxFile, rawDataPath string) error {
 	// 构建命令
 	cmd := exec.Command("PE2Merged",
+		"-skip",
 		"-fastp",
 		"-raw", rawDataPath,
 		"-d", ".",
