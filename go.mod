@@ -6,8 +6,8 @@ require (
 	github.com/cloudflare/ahocorasick v0.0.0-20240916140611-054963ec9396
 	github.com/go-echarts/go-echarts/v2 v2.2.6
 	github.com/klauspost/pgzip v1.2.6
-	github.com/liserjrqlxue/DNA v0.1.8
-	github.com/liserjrqlxue/goUtil v0.2.1
+	github.com/liserjrqlxue/DNA v0.1.16
+	github.com/liserjrqlxue/goUtil v0.2.7
 	github.com/xuri/excelize/v2 v2.9.0
 	gonum.org/v1/plot v0.14.0
 )

@@ -37,10 +37,10 @@ github.com/klauspost/pgzip v1.2.6/go.mod h1:Ch1tH69qFZu15pkjo5kYi6mth2Zzwzt50oCQ
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
-github.com/liserjrqlxue/DNA v0.1.8 h1:yKdPvud8OGykIftW2DKoT79E7wQNt9vCMfmoJ58f8kA=
-github.com/liserjrqlxue/DNA v0.1.8/go.mod h1:ox5iZlpIpRMbWekhbf65rdoRPnLtt+Kxoag2WUfGq/o=
-github.com/liserjrqlxue/goUtil v0.2.1 h1:voDOTUaJl+0ctPSk+Ybz7Ulk6JHErnokFMRy5D3XZ5c=
-github.com/liserjrqlxue/goUtil v0.2.1/go.mod h1:HpRbioiKXuFLSZLc/FboWjarrUfaQ90AB/zIaDv4p5g=
+github.com/liserjrqlxue/DNA v0.1.16 h1:y1nSuavks6cr11OjB2ONhKRRSi8TCrNoZu9kr6of178=
+github.com/liserjrqlxue/DNA v0.1.16/go.mod h1:ox5iZlpIpRMbWekhbf65rdoRPnLtt+Kxoag2WUfGq/o=
+github.com/liserjrqlxue/goUtil v0.2.7 h1:QL4ZnQpe+1BN44mZ1CmiVvulJCPCUUbO15gEBoDQWaU=
+github.com/liserjrqlxue/goUtil v0.2.7/go.mod h1:HpRbioiKXuFLSZLc/FboWjarrUfaQ90AB/zIaDv4p5g=
 github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 h1:RWengNIwukTxcDr9M+97sNutRR1RKhG96O6jWumTTnw=
 github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826/go.mod h1:TaXosZuwdSHYgviHp1DAtfrULt5eUgsSMsZf+YrPgl8=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
