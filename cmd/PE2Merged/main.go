@@ -246,6 +246,7 @@ func RunNGmerge(mergedMap map[string]bool, maxConcurrent int, skip bool) error {
 
 			if skip && osUtil.FileExists(mergedFq) {
 				slog.Info("SKIP Merge", "mergedFq", mergedFq)
+				return
 			}
 
 			// 第一步命令：切除接头
@@ -373,6 +374,7 @@ func RunFastp(mergedMap map[string]bool, maxConcurrent int, skip bool) error {
 
 			if skip && osUtil.FileExists(mergedFq) {
 				slog.Info("SKIP Merge", "mergedFq", mergedFq)
+				return
 			}
 
 			// 创建输出目录
