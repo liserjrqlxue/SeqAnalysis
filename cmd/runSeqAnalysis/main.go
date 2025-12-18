@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 
 	"SeqAnalysis/pkg/wechatwork" // 替换为你的模块名
 
+	"github.com/liserjrqlxue/goUtil/osUtil"
 	"github.com/liserjrqlxue/goUtil/simpleUtil"
 )
 
@@ -466,6 +468,13 @@ func processXLSXFile(xlsxFile, rawDataPath, seqAnalysisPath, dirName string) err
 
 // 运行PE2Merged处理
 func runPE2Merged(xlsxFile, rawDataPath string) error {
+
+	mergedXlsx := strings.Replace(xlsxFile, ".xlsx", ".merged.xlsx", 1)
+	if simpleUtil.HandleError(osUtil.ShouldSkipReprocess(xlsxFile, mergedXlsx)) {
+		slog.Warn("Skip PE2Merged", "source", xlsxFile, "dest", mergedXlsx)
+		return nil
+	}
+
 	// 构建命令
 	cmd := exec.Command("PE2Merged",
 		"-skip",
@@ -492,6 +501,12 @@ func runPE2Merged(xlsxFile, rawDataPath string) error {
 func runSeqAnalysis(mergedFile, seqAnalysisPath, dirName string) error {
 	// 获取基本文件名（不带扩展名）
 	baseName := strings.TrimSuffix(mergedFile, ".xlsx")
+	outputDir := fmt.Sprintf("%s.%s", dirName, baseName)
+	result := outputDir + ".result.zip"
+	if simpleUtil.HandleError(osUtil.ShouldSkipReprocess(mergedFile, result)) {
+		slog.Warn("Skip SeqAnalysis", "source", mergedFile, "dest", result)
+		return nil
+	}
 
 	// 构建命令
 	cmd := exec.Command(seqAnalysisPath,
@@ -500,7 +515,7 @@ func runSeqAnalysis(mergedFile, seqAnalysisPath, dirName string) error {
 		"-rc",
 		"-zip",
 		"-i", mergedFile,
-		"-o", fmt.Sprintf("%s.%s", dirName, baseName),
+		"-o", outputDir,
 	)
 	// cmd.Stderr = os.Stderr
 
