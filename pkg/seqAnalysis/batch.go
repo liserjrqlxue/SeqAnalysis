@@ -161,7 +161,7 @@ func (batch *Batch) Summary(input string) {
 	// write summary.xlsx
 	if isXlsx.MatchString(input) {
 		// update from input.xlsx
-		Input2summaryXlsx(input, batch.OutputPrefix, batch.BasePrefix, batch.StatisticalField, batch.SeqInfoMap, batch.ParallelStatsMap)
+		Input2summaryXlsx(input, batch.OutputPrefix, batch.BasePrefix, batch.SuffixCol, batch.StatisticalField, batch.SeqInfoMap, batch.ParallelStatsMap)
 	} else {
 		SummaryXlsx(batch.OutputPrefix, batch.BasePrefix, batch.TitleSummary, batch.InputInfo, batch.SeqInfoMap)
 	}

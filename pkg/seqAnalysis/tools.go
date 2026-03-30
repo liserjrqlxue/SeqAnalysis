@@ -259,7 +259,7 @@ func SummaryXlsx(resultDir, baseName string, TitleSummary []string, inputInfo []
 	simpleUtil.CheckErr(os.Chdir(cwd))
 }
 
-func Input2summaryXlsx(input, resultDir, baseName string, StatisticalField []map[string]string, SeqInfoMap map[string]*SeqInfo, ParallelStatsMap map[string]*ParallelTest) {
+func Input2summaryXlsx(input, resultDir, baseName, suffixCol string, StatisticalField []map[string]string, SeqInfoMap map[string]*SeqInfo, ParallelStatsMap map[string]*ParallelTest) {
 	var excel, err = excelize.OpenFile(input)
 	simpleUtil.CheckErr(err)
 	rows, err := excel.GetRows("Summary")
@@ -296,7 +296,12 @@ func Input2summaryXlsx(input, resultDir, baseName string, StatisticalField []map
 			nrow     = i + 1
 			cellName string
 
-			id           = rows[i][titleIndex["样品名称"]-1]
+			id = rows[i][titleIndex["样品名称"]-1]
+		)
+		if suffixCol != "" {
+			id = id + "." + rows[i][titleIndex[suffixCol]-1]
+		}
+		var (
 			info         = SeqInfoMap[id]
 			stats        = info.Stats
 			pId          = info.ParallelTestID
