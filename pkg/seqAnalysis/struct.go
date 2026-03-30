@@ -2,7 +2,6 @@ package seqAnalysis
 
 import (
 	"fmt"
-	"log"
 	"log/slog"
 	"math"
 	"os"
@@ -1285,16 +1284,6 @@ func (seqInfo *SeqInfo) WriteStatsSheet(resultDir string, TitleTar, TitleStats [
 	// free seqInfo.HitSeqCount
 	seqInfo.HitSeqCount = make(map[string]int)
 	seqInfo.HitSeqCount = nil
-
-	log.Printf(
-		"Simple Deletion:\t%s\nAll\t%d\t%.0f%%\nA\t%d\t%0.f%%\nT\t%d\t%.0f%%\nC\t%d\t%.0f%%\nG\t%d\t%.0f%%\n",
-		seqInfo.Name,
-		sumDel, math2.DivisionInt(100*sumDel, seqInfo.Stats["ErrorReadsNum"]),
-		countDels['A'], math2.DivisionInt(100*countDels['A'], sumDel),
-		countDels['T'], math2.DivisionInt(100*countDels['T'], sumDel),
-		countDels['C'], math2.DivisionInt(100*countDels['C'], sumDel),
-		countDels['G'], math2.DivisionInt(100*countDels['G'], sumDel),
-	)
 
 	simpleUtil.CheckErr(seqInfo.xlsx.SetRowStyle(sheet, 1, rIdx-1, seqInfo.Style["center"]))
 }
