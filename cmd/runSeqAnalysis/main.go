@@ -43,6 +43,10 @@ type FileResult struct {
 	Error    string
 }
 
+var (
+	suffixCol string
+)
+
 func main() {
 	// 解析命令行参数
 	var dirPath string
@@ -51,6 +55,7 @@ func main() {
 	flag.StringVar(&dirPath, "d", ".", "指定要处理的目录")
 	flag.StringVar(&batch, "batch", "", "批次名称（如果不提供，将从Path.txt文件中解析）")
 	flag.StringVar(&webhookKey, "webhook", "", "企业微信Webhook Key（可选）")
+	flag.StringVar(&suffixCol, "suffix-col", "", "可选参数：样品名称后缀列，若指定则将该列值拼接到样品名称后")
 	flag.Parse()
 
 	// 初始化企业微信通知
@@ -509,14 +514,18 @@ func runSeqAnalysis(mergedFile, seqAnalysisPath, dirName string) error {
 	}
 
 	// 构建命令
-	cmd := exec.Command(seqAnalysisPath,
+	args := []string{
 		"--lessMem",
 		"-plot",
 		"-rc",
 		"-zip",
 		"-i", mergedFile,
 		"-o", outputDir,
-	)
+	}
+	if suffixCol != "" {
+		args = append(args, "-suffix-col", suffixCol)
+	}
+	cmd := exec.Command(seqAnalysisPath, args...)
 	// cmd.Stderr = os.Stderr
 
 	// 执行命令并捕获输出

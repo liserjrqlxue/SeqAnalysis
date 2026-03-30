@@ -49,6 +49,8 @@ type Batch struct {
 	SeqInfoMap       map[string]*SeqInfo
 	ParallelStatsMap map[string]*ParallelTest
 	FqSet            map[string][]*SeqInfo
+
+	SuffixCol string
 }
 
 func (batch *Batch) LoadConfig(cfgPath string, cfgFS embed.FS) {
@@ -66,7 +68,7 @@ func (batch *Batch) LoadConfig(cfgPath string, cfgFS embed.FS) {
 
 func (batch *Batch) LoadInput(input, workDir string) {
 	// parse input
-	var inputInfo, fqSet = ParseInput(input, workDir)
+	var inputInfo, fqSet = ParseInput(input, workDir, batch.SuffixCol)
 	batch.InputInfo = inputInfo
 	batch.FqSet = fqSet
 }

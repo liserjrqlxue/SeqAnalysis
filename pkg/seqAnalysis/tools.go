@@ -372,16 +372,6 @@ func Zip(basePrefix, outputPrefix string) {
 		return strings.HasSuffix(s, ".xlsx") || strings.HasSuffix(s, ".pdf")
 	})
 	if runtime.GOOS == "windows" {
-		// var args = []string{
-		// 	"Compress-Archive",
-		// 	"-Path",
-		// 	fmt.Sprintf("\"%s/*.xlsx\",\"%s/*.pdf\"", basePrefix, basePrefix),
-		// 	"-DestinationPath",
-		// 	outputPrefix + ".result.zip",
-		// 	"-Force",
-		// }
-		// log.Println(strings.Join(args, " "))
-		// simpleUtil.CheckErr(sge.Run("powershell", args...))
 		absDir, err := filepath.Abs(outputPrefix)
 		if err != nil {
 			slog.Error("get abs dir error", "dir", outputPrefix, "err", err)
@@ -406,7 +396,7 @@ func Rows2Map(rows [][]string) (result []map[string]string) {
 	return
 }
 
-func ParseInput(input, fqDir string) (info []map[string]string, fqSet map[string][]*SeqInfo) {
+func ParseInput(input, fqDir, suffixCol string) (info []map[string]string, fqSet map[string][]*SeqInfo) {
 	fqSet = make(map[string][]*SeqInfo)
 	if isXlsx.MatchString(input) {
 		xlsx, err := excelize.OpenFile(input)
@@ -423,6 +413,9 @@ func ParseInput(input, fqDir string) (info []map[string]string, fqSet map[string
 			data["index"] = data["靶标序列"]
 			data["postBase"] = data["后靶标"]
 			data["seq"] = data["合成序列"]
+			if suffixCol != "" {
+				data["id"] = data["id"] + "." + data[suffixCol]
+			}
 			if fqDir != "" {
 				if data["路径-R1"] != "" {
 					data["路径-R1"] = filepath.Join(fqDir, data["路径-R1"])
