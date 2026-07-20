@@ -85,8 +85,10 @@ func fqCount(fastq string, start, end int) {
 		if i%4 != 1 {
 			continue
 		}
-		var key = line[start:min(end, len(line))]
-		counts[key]++
+		if len(line) >= start {
+			var key = line[start:min(end, len(line))]
+			counts[key]++
+		}
 	}
 	slog.Info("fqCount Done", "fq", fastq, "count", (i+1)/4)
 }

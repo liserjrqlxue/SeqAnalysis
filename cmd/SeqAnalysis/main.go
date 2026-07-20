@@ -98,6 +98,21 @@ var (
 		"log.memProfile",
 		"mem profile",
 	)
+	short = flag.Int(
+		"short",
+		0,
+		"filter short length",
+	)
+	noTail = flag.Bool(
+		"noTail",
+		false,
+		"if no tail, no polyA tail",
+	)
+	suffixCol = flag.String(
+		"suffix-col",
+		"",
+		"可选参数：样品名称后缀列，若指定则将该列值拼接到样品名称后",
+	)
 )
 
 // embed etc
@@ -127,6 +142,8 @@ func main() {
 		*outputDir = filepath.Base(simpleUtil.HandleError(os.Getwd())) + ".分析"
 	}
 
+	util.Short = *short
+
 	var batch = util.Batch{
 		OutputPrefix: *outputDir,
 		BasePrefix:   filepath.Base(*outputDir),
@@ -145,6 +162,8 @@ func main() {
 		ParallelStatsMap: make(map[string]*util.ParallelTest),
 	}
 
+	batch.NoTail = *noTail
+	batch.SuffixCol = *suffixCol
 	batch.BatchRun(*input, *fqDir, exPath, etcEMFS, *thread)
 
 	if *memProfile != "" {

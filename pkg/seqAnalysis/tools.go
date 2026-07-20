@@ -129,7 +129,7 @@ func MatchSeq(seq string, polyA, regIndexSeq *regexp.Regexp, useRC, assemblerMod
 
 // write upper and down
 func WriteUpperDown(out *os.File, indexSeq, refSeq string, offset, count int, m [][]int) {
-	refSeq = indexSeq[len(indexSeq)-offset:] + refSeq
+	refSeq = indexSeq[max(len(indexSeq)-offset, 0):] + refSeq
 	for i := range m {
 		var end = m[i][0]
 		fmtUtil.Fprintf(out, "%d\t%d\t%s\t%s\n", end, count, refSeq[end:end+offset], refSeq[end+offset:end+offset*2])
@@ -138,7 +138,7 @@ func WriteUpperDown(out *os.File, indexSeq, refSeq string, offset, count int, m 
 
 func WriteUpperDownNIL(out *os.File, indexSeq, refSeq string, offset int) {
 	// fill with 0
-	refSeq = indexSeq[len(indexSeq)-offset:] + refSeq
+	refSeq = indexSeq[max(len(indexSeq)-offset, 0):] + refSeq
 	var n = len(refSeq) - offset*2
 	for end := 0; end <= n; end++ {
 		fmtUtil.Fprintf(out, "%d\t%d\t%s\t%s\n", end, 0, refSeq[end:end+offset], refSeq[end+offset:end+offset*2])
@@ -259,7 +259,7 @@ func SummaryXlsx(resultDir, baseName string, TitleSummary []string, inputInfo []
 	simpleUtil.CheckErr(os.Chdir(cwd))
 }
 
-func Input2summaryXlsx(input, resultDir, baseName string, StatisticalField []map[string]string, SeqInfoMap map[string]*SeqInfo, ParallelStatsMap map[string]*ParallelTest) {
+func Input2summaryXlsx(input, resultDir, baseName, suffixCol string, StatisticalField []map[string]string, SeqInfoMap map[string]*SeqInfo, ParallelStatsMap map[string]*ParallelTest) {
 	var excel, err = excelize.OpenFile(input)
 	simpleUtil.CheckErr(err)
 	rows, err := excel.GetRows("Summary")
@@ -296,7 +296,12 @@ func Input2summaryXlsx(input, resultDir, baseName string, StatisticalField []map
 			nrow     = i + 1
 			cellName string
 
-			id           = rows[i][titleIndex["样品名称"]-1]
+			id = rows[i][titleIndex["样品名称"]-1]
+		)
+		if suffixCol != "" {
+			id = id + "." + rows[i][titleIndex[suffixCol]-1]
+		}
+		var (
 			info         = SeqInfoMap[id]
 			stats        = info.Stats
 			pId          = info.ParallelTestID
@@ -372,16 +377,6 @@ func Zip(basePrefix, outputPrefix string) {
 		return strings.HasSuffix(s, ".xlsx") || strings.HasSuffix(s, ".pdf")
 	})
 	if runtime.GOOS == "windows" {
-		// var args = []string{
-		// 	"Compress-Archive",
-		// 	"-Path",
-		// 	fmt.Sprintf("\"%s/*.xlsx\",\"%s/*.pdf\"", basePrefix, basePrefix),
-		// 	"-DestinationPath",
-		// 	outputPrefix + ".result.zip",
-		// 	"-Force",
-		// }
-		// log.Println(strings.Join(args, " "))
-		// simpleUtil.CheckErr(sge.Run("powershell", args...))
 		absDir, err := filepath.Abs(outputPrefix)
 		if err != nil {
 			slog.Error("get abs dir error", "dir", outputPrefix, "err", err)
@@ -406,7 +401,7 @@ func Rows2Map(rows [][]string) (result []map[string]string) {
 	return
 }
 
-func ParseInput(input, fqDir string) (info []map[string]string, fqSet map[string][]*SeqInfo) {
+func ParseInput(input, fqDir, suffixCol string) (info []map[string]string, fqSet map[string][]*SeqInfo) {
 	fqSet = make(map[string][]*SeqInfo)
 	if isXlsx.MatchString(input) {
 		xlsx, err := excelize.OpenFile(input)
@@ -423,6 +418,9 @@ func ParseInput(input, fqDir string) (info []map[string]string, fqSet map[string
 			data["index"] = data["靶标序列"]
 			data["postBase"] = data["后靶标"]
 			data["seq"] = data["合成序列"]
+			if suffixCol != "" {
+				data["id"] = data["id"] + "." + data[suffixCol]
+			}
 			if fqDir != "" {
 				if data["路径-R1"] != "" {
 					data["路径-R1"] = filepath.Join(fqDir, data["路径-R1"])

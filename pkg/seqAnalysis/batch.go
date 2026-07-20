@@ -35,6 +35,7 @@ type Batch struct {
 	LessMem   bool
 	Zip       bool
 	Plot      bool
+	NoTail    bool
 
 	TitleTar     []string
 	TitleStats   []string
@@ -48,6 +49,8 @@ type Batch struct {
 	SeqInfoMap       map[string]*SeqInfo
 	ParallelStatsMap map[string]*ParallelTest
 	FqSet            map[string][]*SeqInfo
+
+	SuffixCol string
 }
 
 func (batch *Batch) LoadConfig(cfgPath string, cfgFS embed.FS) {
@@ -65,7 +68,7 @@ func (batch *Batch) LoadConfig(cfgPath string, cfgFS embed.FS) {
 
 func (batch *Batch) LoadInput(input, workDir string) {
 	// parse input
-	var inputInfo, fqSet = ParseInput(input, workDir)
+	var inputInfo, fqSet = ParseInput(input, workDir, batch.SuffixCol)
 	batch.InputInfo = inputInfo
 	batch.FqSet = fqSet
 }
@@ -98,6 +101,7 @@ func (batch *Batch) WriteInfoTxt(path string) {
 func (batch *Batch) BuildSeqInfo() {
 	for _, data := range batch.InputInfo {
 		seqInfo := NewSeqInfo(data, batch.Sheets, batch.SheetList, batch.OutputPrefix, batch.LineLimit, batch.Long, batch.Rev, batch.UseRC, batch.UseKmer, batch.LessMem)
+		seqInfo.NoTail = batch.NoTail
 		batch.SeqInfoMap[seqInfo.Name] = seqInfo
 
 		for _, fq := range seqInfo.Fastqs {
@@ -157,7 +161,7 @@ func (batch *Batch) Summary(input string) {
 	// write summary.xlsx
 	if isXlsx.MatchString(input) {
 		// update from input.xlsx
-		Input2summaryXlsx(input, batch.OutputPrefix, batch.BasePrefix, batch.StatisticalField, batch.SeqInfoMap, batch.ParallelStatsMap)
+		Input2summaryXlsx(input, batch.OutputPrefix, batch.BasePrefix, batch.SuffixCol, batch.StatisticalField, batch.SeqInfoMap, batch.ParallelStatsMap)
 	} else {
 		SummaryXlsx(batch.OutputPrefix, batch.BasePrefix, batch.TitleSummary, batch.InputInfo, batch.SeqInfoMap)
 	}
@@ -172,7 +176,7 @@ func (batch *Batch) Visual(exPath string) error {
 		slog.Info("Rscript", "cmd", cmd)
 		err := cmd.Run()
 		if err != nil {
-			slog.Error("Rscript error:", err)
+			slog.Error("Rscript error:", "err", err)
 			return err
 		}
 		// use powershell to plot
@@ -202,6 +206,10 @@ func (batch *Batch) Compress() {
 	}
 }
 
+var (
+	NoTail bool
+)
+
 func (batch *Batch) BatchRun(input, workDir, exPath string, etcEMFS embed.FS, thread int) error {
 	now := time.Now()
 
@@ -213,6 +221,7 @@ func (batch *Batch) BatchRun(input, workDir, exPath string, etcEMFS embed.FS, th
 	batch.LoadInput(input, workDir)
 	batch.Prepare()
 	batch.WriteInfoTxt(filepath.Join(batch.OutputPrefix, "info.txt"))
+	batch.NoTail = NoTail
 	batch.BuildSeqInfo()
 	batch.ConcurrencyRun(thread)
 	batch.Summary(input)
