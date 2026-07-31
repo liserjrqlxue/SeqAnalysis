@@ -53,13 +53,22 @@ var (
 		false,
 		"if use rc",
 	)
+	minLen = flag.Int(
+		"minLen",
+		0,
+		"min length threshold (length to tail), reads shorter than this will not be output",
+	)
 )
 
 func main() {
 	flag.Parse()
-	if *input == "" || *output == "" || *barcode == "" {
+	if *input == "" || *output == "" {
 		flag.PrintDefaults()
-		log.Fatal("-i/-o/-b required!")
+		log.Fatal("-i/-o required!")
+	}
+	if *barcode == "" && *tail == "" {
+		flag.PrintDefaults()
+		log.Fatal("at least one of -b (barcode) or -e (tail) is required!")
 	}
 
 	var (
@@ -86,6 +95,10 @@ func main() {
 	} else if *cut {
 		log.Printf("empty trailer, not cut!")
 		*cut = false
+	}
+
+	if *barcode == "" {
+		log.Printf("barcode is empty, using tail-only mode")
 	}
 
 	if *skip != "" {
@@ -158,13 +171,17 @@ func SplitSE(in io.Reader, out io.Writer, filter, skipReg *regexp.Regexp, cut, r
 func PrintMatch(out io.Writer, name, seq, note, qual string, filter, skipReg *regexp.Regexp, rc bool) {
 	match := filter.MatchString(seq)
 	if match {
-		simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq + "\n" + note + "\n" + qual + "\n")))
+		if len(seq) >= *minLen {
+			simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq + "\n" + note + "\n" + qual + "\n")))
+		}
 	} else if rc {
 		rcSeq := util.ReverseComplement(seq)
-		match := filter.MatchString(seq)
+		match := filter.MatchString(rcSeq)
 		if match {
-			rcQual := string(util.Reverse([]byte(qual)))
-			simpleUtil.HandleError(out.Write([]byte(name + "\n" + rcSeq + "\n" + note + "\n" + rcQual + "\n")))
+			if len(rcSeq) >= *minLen {
+				rcQual := string(util.Reverse([]byte(qual)))
+				simpleUtil.HandleError(out.Write([]byte(name + "\n" + rcSeq + "\n" + note + "\n" + rcQual + "\n")))
+			}
 		}
 	}
 }
@@ -172,13 +189,17 @@ func PrintMatch(out io.Writer, name, seq, note, qual string, filter, skipReg *re
 func PrintMatchTrailer(out io.Writer, name, seq, note, qual string, filter, skipReg *regexp.Regexp, rc bool) {
 	match := filter.FindString(seq)
 	if match != "" {
-		simpleUtil.HandleError(out.Write([]byte(name + "\n" + match + "\n" + note + "\n" + qual[:len(match)] + "\n")))
+		if len(match) >= *minLen {
+			simpleUtil.HandleError(out.Write([]byte(name + "\n" + match + "\n" + note + "\n" + qual[:len(match)] + "\n")))
+		}
 	} else if rc {
 		rcSeq := util.ReverseComplement(seq)
 		match := filter.FindString(rcSeq)
 		if match != "" {
-			rcQual := string(util.Reverse([]byte(qual)))
-			simpleUtil.HandleError(out.Write([]byte(name + "\n" + match + "\n" + note + "\n" + rcQual[:len(match)] + "\n")))
+			if len(match) >= *minLen {
+				rcQual := string(util.Reverse([]byte(qual)))
+				simpleUtil.HandleError(out.Write([]byte(name + "\n" + match + "\n" + note + "\n" + rcQual[:len(match)] + "\n")))
+			}
 		}
 	}
 }
@@ -186,14 +207,17 @@ func PrintMatchTrailer(out io.Writer, name, seq, note, qual string, filter, skip
 func PrintMatchCut(out io.Writer, name, seq, note, qual string, filter, skipReg *regexp.Regexp, rc bool) {
 	match := filter.FindStringSubmatchIndex(seq)
 	if match != nil {
-		simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq[:match[2]] + "\n" + note + "\n" + qual[:match[2]] + "\n")))
+		if match[2] >= *minLen {
+			simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq[:match[2]] + "\n" + note + "\n" + qual[:match[2]] + "\n")))
+		}
 	} else if rc {
 		rcSeq := util.ReverseComplement(seq)
 		match := filter.FindStringSubmatchIndex(rcSeq)
 		if match != nil {
-			rcQual := string(util.Reverse([]byte(qual)))
-			simpleUtil.HandleError(out.Write([]byte(name + "\n" + rcSeq[:match[2]] + "\n" + note + "\n" + rcQual[:match[2]] + "\n")))
-
+			if match[2] >= *minLen {
+				rcQual := string(util.Reverse([]byte(qual)))
+				simpleUtil.HandleError(out.Write([]byte(name + "\n" + rcSeq[:match[2]] + "\n" + note + "\n" + rcQual[:match[2]] + "\n")))
+			}
 		}
 	}
 }
@@ -202,15 +226,19 @@ func PrintSkipMatch(out io.Writer, name, seq, note, qual string, filter, skipReg
 	match := filter.MatchString(seq)
 	if match {
 		if !skipReg.MatchString(seq) {
-			simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq + "\n" + note + "\n" + qual + "\n")))
+			if len(seq) >= *minLen {
+				simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq + "\n" + note + "\n" + qual + "\n")))
+			}
 		}
 	} else if rc {
 		rcSeq := util.ReverseComplement(seq)
 		match := filter.MatchString(rcSeq)
 		if match {
 			if !skipReg.MatchString(rcSeq) {
-				rcQual := string(util.Reverse([]byte(qual)))
-				simpleUtil.HandleError(out.Write([]byte(name + "\n" + rcSeq + "\n" + note + "\n" + rcQual + "\n")))
+				if len(rcSeq) >= *minLen {
+					rcQual := string(util.Reverse([]byte(qual)))
+					simpleUtil.HandleError(out.Write([]byte(name + "\n" + rcSeq + "\n" + note + "\n" + rcQual + "\n")))
+				}
 			}
 		}
 	}
@@ -220,15 +248,19 @@ func PrintSkipMatchTrailer(out io.Writer, name, seq, note, qual string, filter, 
 	match := filter.FindString(seq)
 	if match != "" {
 		if !skipReg.MatchString(seq) {
-			simpleUtil.HandleError(out.Write([]byte(name + "\n" + match + "\n" + note + "\n" + qual[:len(match)] + "\n")))
+			if len(match) >= *minLen {
+				simpleUtil.HandleError(out.Write([]byte(name + "\n" + match + "\n" + note + "\n" + qual[:len(match)] + "\n")))
+			}
 		}
 	} else if rc {
 		rcSeq := util.ReverseComplement(seq)
 		match := filter.FindString(rcSeq)
 		if match != "" {
 			if !skipReg.MatchString(rcSeq) {
-				rcQual := string(util.Reverse([]byte(qual)))
-				simpleUtil.HandleError(out.Write([]byte(name + "\n" + match + "\n" + note + "\n" + rcQual[:len(match)] + "\n")))
+				if len(match) >= *minLen {
+					rcQual := string(util.Reverse([]byte(qual)))
+					simpleUtil.HandleError(out.Write([]byte(name + "\n" + match + "\n" + note + "\n" + rcQual[:len(match)] + "\n")))
+				}
 			}
 		}
 	}
@@ -238,15 +270,19 @@ func PrintSkipMatchCut(out io.Writer, name, seq, note, qual string, filter, skip
 	match := filter.FindStringSubmatchIndex(seq)
 	if match != nil {
 		if !skipReg.MatchString(seq) {
-			simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq[:match[2]] + "\n" + note + "\n" + qual[:match[2]] + "\n")))
+			if match[2] >= *minLen {
+				simpleUtil.HandleError(out.Write([]byte(name + "\n" + seq[:match[2]] + "\n" + note + "\n" + qual[:match[2]] + "\n")))
+			}
 		}
 	} else if rc {
 		rcSeq := util.ReverseComplement(seq)
 		match := filter.FindStringSubmatchIndex(rcSeq)
 		if match != nil {
 			if !skipReg.MatchString(rcSeq) {
-				rcQual := string(util.Reverse([]byte(qual)))
-				simpleUtil.HandleError(out.Write([]byte(name + "\n" + rcSeq[:match[2]] + "\n" + note + "\n" + rcQual[:match[2]] + "\n")))
+				if match[2] >= *minLen {
+					rcQual := string(util.Reverse([]byte(qual)))
+					simpleUtil.HandleError(out.Write([]byte(name + "\n" + rcSeq[:match[2]] + "\n" + note + "\n" + rcQual[:match[2]] + "\n")))
+				}
 			}
 		}
 	}
